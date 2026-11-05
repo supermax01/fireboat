@@ -15,7 +15,7 @@ The local stdio gateway implements five tools: capabilities, patient-bound searc
 | Actual MCP clients | In-memory and stdio subprocess clients, modern `2026-07-28` negotiation, exactly five tools, schemas and structured results. |
 | Runnable examples | Source and compiled SDK demos pass and clean up their processes. |
 | Real FHIR backend | Pinned HAPI R4.0.1 container: three pages, three authorized observations, wrong-patient denial, inline-payload withholding. |
-| CI | [Push run 39157010653](https://github.com/supermax01/fhir-mcp-gateway/actions/runs/39157010653) and [PR run 39157014483](https://github.com/supermax01/fhir-mcp-gateway/actions/runs/39157014483), both successful at the exact reviewed commit. |
+| CI | Push run 39157010653 (private development repository) and PR run 39157014483 (private development repository), both successful at the exact reviewed commit. |
 | Dependency check | Production dependency audit passes in those CI runs. |
 | Independent implementation review | Muse round 3: **READY_FOR_SYNTHETIC_PREVIEW**, F1–F5 and R2-1 resolved. Original findings and responses remain preserved beside it. |
 

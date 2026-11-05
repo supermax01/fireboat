@@ -16,9 +16,9 @@ Date: 2026-10-18. Source revision: `655e63c583a9885b9070bfbc0e2ac4dd203be647`. T
 
 ## Verification
 
-The initial batch at `1138ffa` passed all three CI jobs in both [push](https://github.com/supermax01/fhir-mcp-gateway/actions/runs/39160313041) and [PR](https://github.com/supermax01/fhir-mcp-gateway/actions/runs/39160316239) workflows. It had 76 tests. Two subsequently reproduced review findings—duplicate detection in the evaluation harness and a late-metadata invalidation race—were fixed and covered by regression tests at the source revision above.
+The initial batch at `1138ffa` passed all three CI jobs in both push (private development repository) and PR (private development repository) workflows. It had 76 tests. Two subsequently reproduced review findings—duplicate detection in the evaluation harness and a late-metadata invalidation race—were fixed and covered by regression tests at the source revision above.
 
-Final source verification passed in [push CI](https://github.com/supermax01/fhir-mcp-gateway/actions/runs/39160514604) and [PR CI](https://github.com/supermax01/fhir-mcp-gateway/actions/runs/39160517468): the unit/MCP, HAPI and authenticated Medplum jobs are green. The [downloadable push-run report](https://github.com/supermax01/fhir-mcp-gateway/actions/runs/39160514604/artifacts/12149065331) was downloaded and checked for the exact source revision, fixture hash, 105 results and zero reported failure causes. The artifact expires after 14 days; the workflow logs and this record retain the summary.
+Final source verification passed in push CI (private development repository) and PR CI (private development repository): the unit/MCP, HAPI and authenticated Medplum jobs are green. The downloadable push-run report (artifact, private development repository) was downloaded and checked for the exact source revision, fixture hash, 105 results and zero reported failure causes. The artifact expires after 14 days; the workflow logs and this record retain the summary.
 
 Local Node 24 checks pass type checking, all **78 tests**, compilation, source/compiled SDK demos, source/compiled evaluation CLIs and the production dependency audit (zero reported vulnerabilities). Docker is unavailable on the development host; actual HAPI/Medplum evidence comes from the isolated GitHub CI jobs, rather than a local mock.
 

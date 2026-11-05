@@ -179,6 +179,10 @@ Generated from the code and data by `scripts/generate-m3b-docs.ts` and checked b
 
 M3b and later gates are specified in [PLAN.md](PLAN.md) revision 0.4.1. Synthetic results do not establish production or clinical readiness.
 
+## How it was built
+
+Much of the code, tests and documentation was written with AI coding assistants working under the maintainer's direction. Changes are accepted on the evidence of the local test suite, the deterministic evals, the isolation suite and the mutation gate, with independent AI reviews along the way. No independent human security or clinical review has happened yet; it is planned before a pinned alpha.
+
 ## Feedback and contributing
 
 Testing feedback is the point of this preview: open a GitHub issue with your platform, Node version, the command you ran and its output. Report security issues privately as described in [SECURITY.md](SECURITY.md), not in public issues. Issues and pull requests are welcome. Keep the core policy, transport, projection, result store and MCP adapter separate; add tests for authorization, confinement, payload omission, continuations, transport budgets and denials. Run `npm run check` before opening a pull request. Do not add real patient data, credentials, arbitrary HTTP surfaces or unimplemented tools.

@@ -41,7 +41,7 @@ This page records what M3a fixed, who did what, and the evidence. It replaced [M
 
 Local results were run on Node 26.10.0. The full suite also passes locally on Node 24.21.0 and 24.22.0.
 
-**Pushed CI at `2fd6b3b`.** All four jobs are green in both the [push run](https://github.com/supermax01/fhir-mcp-gateway/actions/runs/39211637076) and the [PR run](https://github.com/supermax01/fhir-mcp-gateway/actions/runs/39211640135). The jobs are:
+**Pushed CI at `2fd6b3b`.** All four jobs are green in both the push run (private development repository) and the PR run (private development repository). The jobs are:
 - unit and MCP tests, with both eval eras;
 - the mutation gate;
 - pinned HAPI R4, including the new decoy-predicate checks;
