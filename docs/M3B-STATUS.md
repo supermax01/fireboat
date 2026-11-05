@@ -1,7 +1,7 @@
 # M3b status (2026-10-24)
 
 - **What this is:** the current status of milestone M3b on the integration branch `candidate/s8-int` (read HANDOFF.md first for where everything is and what is next), for application schema 0.3 (catalog `m3b-catalog/3`). Earlier dated status records (`M1-STATUS.md`, `M2-STATUS.md`, `M3A-STATUS.md`, `S5-STATUS.md`, `S6-STATUS.md`, `B2-STATUS.md`) stay as historical records.
-- **Not a release.** Synthetic data only, local stdio only, read-only, one trusted patient. Nothing here establishes SMART authorization, clinical deployment readiness, vendor support or protocol compatibility beyond the checks named below. Hosted CI has not run on this candidate; it runs once on the frozen release candidate.
+- **Not a release.** Synthetic data only, local stdio only, read-only, one trusted patient. Nothing here establishes SMART authorization, clinical deployment readiness, vendor support or protocol compatibility beyond the checks named below. The project uses no hosted CI; every check here was run locally and recorded.
 - **Release path:** `proposals/release-plan.md` (stages, amendments A1–A10, owner decisions).
 - **Current names:** npm package `@fireboat/gateway`, CLI and MCP server identity `fireboat`. Historical evidence keeps the names of the builds it measured. Repository rename, publication and any Registry entry are separate owner actions.
 

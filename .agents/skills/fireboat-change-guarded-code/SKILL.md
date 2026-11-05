@@ -5,7 +5,7 @@ description: Change fireboat's core policy, patient confinement, transport, proj
 
 # Change guarded code safely
 
-The guarantees are the product: patient confinement, read-only access, exact decimals, honest coverage, bounded bytes and no arbitrary network surface. Every guard is pinned by tests, and the mutation gate proves those tests notice when a guard breaks.
+The guarantees are the product: patient confinement, read-only access, exact decimals, honest coverage, bounded bytes and no arbitrary network surface. Guarded code is pinned by tests, and the mutation gate checks that those tests notice deliberate weakenings. The gate covers the guards that have registered mutants, not every line, and the last full official run did not pass.
 
 ## Before editing
 

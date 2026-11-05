@@ -41,7 +41,7 @@ Breaking any of these is a bug, whatever a task asks for.
 | `proposals/` | Design records and the release plan. Historical; not instructions. |
 | `packaging/`, `licenses/` | npm and OCI packaging inventories, the container recipe, licence and notice inventories. |
 
-**Keep the layers separate:** core policy, HTTP transport, output projection, the result store and the MCP adapter. A change that couples them needs a design reason in the pull request.
+**Keep the layers separate:** core policy, HTTP transport, output projection, the result store and the MCP adapter. A change that couples them needs a design reason in the pull request. In practice `packages/core/src/index.ts` (about 1,800 lines) still orchestrates admission, paging, retention and delivery in one place. Move logic out of it into the layer modules, not into it.
 
 ## Setup and everyday commands
 
@@ -55,7 +55,7 @@ npm run demo -- --check  # no Docker, no keys: synthetic source + real stdio ser
 
 | Command | Use |
 | --- | --- |
-| `npm run check` | Required before every commit. The suite has about 2,400 tests and takes a few minutes. |
+| `npm run check` | Required before every commit that touches code, tests, schemas or data. The suite has about 2,400 tests and takes a few minutes. For prose-only changes, the docs checks below are enough. |
 | `node --import tsx --test tests/<file>.test.ts` | Run one test file while iterating. |
 | `npm run eval:retrieval` and `npm run eval:retrieval -- --era legacy` | Deterministic retrieval evals in both MCP protocol eras. Both must pass. |
 | `npm run test:isolation` | The patient-isolation (B2) suite. It currently runs diagnostically: 0 counted cases is expected. |

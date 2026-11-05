@@ -24,6 +24,7 @@ npm run test:isolation
 ```
 
 - The suite runs manifested attack and control cases against the patient-confinement core, with independent oracles and a counting aggregate.
-- Today's expected result is `status=DIAGNOSTIC earned=0`. The release gate needs at least 200 independent counted cases, and that work is in progress. Never report the diagnostic run as isolation proof.
+- Today's expected result is `status=DIAGNOSTIC earned=0`. Never report the diagnostic run as isolation proof.
+- **Which contract applies.** The original v1 target (≥200 independent counted cases out of 216) is unreachable without removing overlapping defences, and is reported as unmet. The project adopted a corrected, versioned v2 contract instead, in which every counted obligation must be earned. Do not add cases just to raise a count, and never weaken a defence so that a case becomes countable.
 - `proposals/b2-isolation-suite-design.md` is bound by digest. Editing it breaks the suite (`ledger design digest differs`).
 - New cases go in `tests/isolation/cases-v1.json`, following `tests/isolation/case-schema.ts`. Each case names its design obligation and needs its own independent fault that the case kills.

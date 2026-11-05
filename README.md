@@ -13,7 +13,7 @@
 
 ## What it is
 
-`fireboat` is an MCP (Model Context Protocol) server, also usable as a gateway library, that lets an AI agent discover a configured FHIR R4 endpoint, search within one trusted patient, read exact resources, follow bounded pages, and inspect retained results. It returns FHIR-shaped JSON with source references, coverage signals, and a per-call byte budget. The patient binding comes from operator configuration, never from a model argument, and every returned record is checked against it. The npm package is `@fireboat/gateway` and the CLI binary is `fireboat`.
+`fireboat` is an MCP (Model Context Protocol) server that lets an AI agent discover a configured FHIR R4 endpoint, search within one trusted patient, read exact resources (sanitized and projected, with inline payloads withheld), follow bounded pages, and inspect retained results. It returns FHIR-shaped JSON with source references, coverage signals, and a per-call byte budget. The patient binding comes from operator configuration, never from a model argument, and every returned record is checked against it. The planned npm package is `@fireboat/gateway`, with the CLI binary `fireboat`. It is not published yet, and the core is not exported as a library.
 
 ## Why it is different
 
@@ -21,8 +21,8 @@
 - **Exact decimal values survive.** Source lexemes such as `7.0`, trailing zeros, exponents and unsafe integers are preserved through parsing, projection, retention and final JSON serialization. A resource whose numbers cannot be preserved is refused rather than silently rounded.
 - **Coverage and evidence are stated plainly.** Every result carries a coverage state, reasons, each constraint with how it was enforced (by the gateway, by a qualified search profile, or unknown), and a query-evidence label. Exhausting pages is not presented as a complete clinical history, and an error says `query_evidence: "none"`. See [query evidence](docs/QUERY-EVIDENCE.md).
 - **Cursors are opaque, and next links are checked before fetching.** Cursors expire and are not model-constructed URLs. An upstream next link is fetched after it is validated against the original query constraints; otherwise the page is returned as non-continuable partial coverage.
-- **Final responses have a byte limit.** A configurable ceiling applies to the serialized MCP result, not just to upstream bodies, and error paths are measured too.
-- **Retrieval is tested deterministically.** Evals assert facts, decimals, ordering, provenance, coverage, denials, outbound patient confinement and independently measured wire bytes. A mutation gate deliberately breaks guarded code to confirm the tests notice.
+- **Final responses have a byte limit.** A configurable ceiling applies to the complete serialized MCP tool result, including the text and structured copies and error results, not just to upstream bodies. JSON-RPC framing is measured separately; see [limits](docs/LIMITS.md).
+- **Retrieval is tested deterministically.** Evals assert facts, decimals, ordering, provenance, coverage, denials, outbound patient confinement and independently measured wire bytes. A mutation gate deliberately breaks guarded code to check that the tests notice. The last full official run did not pass; mutants added since were caught in diagnostic runs only.
 
 ## What is proven and what is not
 
@@ -36,6 +36,12 @@ This preview is for reading the code and trying the gateway locally. What the ev
   - only one real MCP host (Claude Code) has been tested, on an earlier build;
   - Linux x64, Windows, other Node versions and FHIR servers other than the synthetic source and HAPI FHIR 8.12.0 are unverified.
 - **Out of scope:** real patient data, clinical writes, remote serving and SMART authorization.
+
+## Scope today
+
+- **One named workflow:** `recent-labs-v1`, recent laboratory evidence for one patient. It is what the evals, the demo and the comparisons centre on.
+- **Resource coverage:** 25 of the 147 FHIR R4 resource types are classified, 15 patient-linked and 10 shared. Unclassified types are refused. Documents are metadata-only. See the [support matrix](docs/SUPPORT-MATRIX.md).
+- **One patient per configuration,** local stdio, synthetic data, FHIR R4 only.
 
 ## Tools
 
@@ -116,7 +122,20 @@ Point an MCP host at `node /absolute/path/to/dist/packages/server/src/cli.js --c
 - `privacy.patientIdentifierSystems` is an optional trusted list of absolute Identifier-system URIs. Matching is exact: no case folding, prefix matching or URI normalization, so case variants, trailing slashes and suffix variants are distinct. List every spelling the source emits. The bundled synthetic source emits exactly `http://example.invalid/synthetic-mrn`. An empty or omitted list is a documented residual: patient identity in unlisted absolute-URI systems is not withheld. The standalone shared-response policy does not extend into A-linked resource content.
 - `limits` is optional: `defaultBytes`, `maxBytes`, `upstreamBytes`, `retentionBytes`, `ttlMs`, `timeoutMs`, `maxHandles`, `deadlineMs`, `maxQueue`. `defaultBytes` and `maxBytes` each accept 8–128 KiB; the explicit per-call `output.max_bytes` floor remains 4 KiB. The shipped default is 24 KiB, capped by the configured maximum; an explicit default above that maximum is rejected.
 
-Run `npm run doctor` to print the gateway name and release, the resolved mode, alias, loopback URL, auth type, patient-system count, FHIR version, metadata coverage, tool list, and ambient-proxy status.
+Run `npm run doctor` to check a configuration against its source. It prints:
+
+- the gateway release, schema and catalog revision;
+- the runtime cell;
+- the source alias, with its loopback check, auth type and data classification;
+- the FHIR version and metadata coverage;
+- the readiness of the `recent-labs-v1` workflow;
+- the search-profile proof state;
+- the output limits;
+- the configured patient-identifier systems;
+- the hashes of the bundled data;
+- the ambient-proxy status, faults and scope.
+
+It does not print the source URL or the tool list.
 
 ## Testing and evidence
 
@@ -143,7 +162,7 @@ Runs the local mutation gate. The official run splits it into 14 shards and an a
 npm run test:isolation
 ```
 
-Runs the B2 isolation suite: manifested attack and control cases with independent oracles and a counting aggregate. The suite currently runs diagnostically; the ≥200 counted independent cases a release needs are still being written.
+Runs the B2 isolation suite: manifested attack and control cases with independent oracles and a counting aggregate. It currently runs diagnostically and counts nothing. The original target of ≥200 independent counted cases turned out to be unreachable without removing overlapping defences. A corrected, versioned contract (v2) has been adopted, and the original target will be reported as unmet. No isolation count is claimed yet.
 
 Live integration checks run against pinned local containers: HAPI R4 via `npm run test:hapi` after `docker compose up -d`, and authenticated Medplum R4 via `npm run test:medplum` after `docker compose -f compose.medplum.yaml up -d`. Both are loopback-only synthetic stacks. The project uses no hosted CI; verification is local and recorded in [docs/evidence/](docs/evidence/) and [M3b status](docs/M3B-STATUS.md).
 
