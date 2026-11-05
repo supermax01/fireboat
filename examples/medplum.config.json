@@ -1,0 +1,14 @@
+{
+  "mode": "synthetic",
+  "source": {
+    "alias": "local-medplum",
+    "baseUrl": "http://127.0.0.1:18103/fhir/R4/",
+    "auth": {
+      "type": "client_credentials",
+      "tokenUrl": "http://127.0.0.1:18103/oauth2/token",
+      "clientId": "replace-with-synthetic-project-client-id",
+      "clientSecretEnv": "FHIR_MCP_MEDPLUM_CLIENT_SECRET"
+    }
+  },
+  "patientId": "replace-with-synthetic-patient-id"
+}

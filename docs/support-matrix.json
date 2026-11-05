@@ -1,0 +1,382 @@
+{
+  "revision": "support-matrix/2",
+  "policy_revision": "2026-10-19.1",
+  "workflow": "recent-labs-v1",
+  "denominator": {
+    "package": "hl7.fhir.r4.core",
+    "version": "4.0.1",
+    "source_sha256": "b090bf929e1f665cf2c91583720849695bc38d2892a7c5037c56cb00817fb091",
+    "resource_type_count": 147
+  },
+  "document_support": "metadata_only",
+  "clinical_sections": [],
+  "rows": [
+    {
+      "resource_type": "Patient",
+      "policy_class": "patient",
+      "patient_link": "_id",
+      "instance_policy": "Exact configured patient id only.",
+      "compact_recipe": "r4-compact-2026-10-18.1/Patient.compact.1",
+      "workflow_role": "required",
+      "limitations": [
+        "Only the trusted configured identity is readable; link targets are withheld."
+      ],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "Observation",
+      "policy_class": "patient",
+      "patient_link": "subject",
+      "instance_policy": "Bound-patient subject linkage required.",
+      "compact_recipe": "r4-lab-evidence-v1/Observation.2",
+      "workflow_role": "required",
+      "limitations": [
+        "Specimen/device/derivedFrom: unresolved provenance only. Fields override; modifiers force structural sanitized FHIR."
+      ],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "Condition",
+      "policy_class": "patient",
+      "patient_link": "subject",
+      "instance_policy": "Bound-patient subject linkage required.",
+      "compact_recipe": "r4-compact-2026-10-18.1/Condition.compact.1",
+      "workflow_role": "outside_workflow",
+      "limitations": [],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "AllergyIntolerance",
+      "policy_class": "patient",
+      "patient_link": "patient",
+      "instance_policy": "Bound-patient patient linkage required.",
+      "compact_recipe": "r4-compact-2026-10-18.1/AllergyIntolerance.compact.1",
+      "workflow_role": "outside_workflow",
+      "limitations": [],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "MedicationRequest",
+      "policy_class": "patient",
+      "patient_link": "subject",
+      "instance_policy": "Bound-patient subject linkage required.",
+      "compact_recipe": "r4-compact-2026-10-18.1/MedicationRequest.compact.1",
+      "workflow_role": "outside_workflow",
+      "limitations": [],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "MedicationStatement",
+      "policy_class": "patient",
+      "patient_link": "subject",
+      "instance_policy": "Bound-patient subject linkage required.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "No reviewed compact recipe; sanitized FHIR fallback."
+      ],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "Encounter",
+      "policy_class": "patient",
+      "patient_link": "subject",
+      "instance_policy": "Bound-patient subject linkage required.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "No reviewed compact recipe; sanitized FHIR fallback."
+      ],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "DocumentReference",
+      "policy_class": "patient",
+      "patient_link": "subject",
+      "instance_policy": "Bound-patient subject linkage required.",
+      "compact_recipe": "r4-compact-2026-10-18.1/DocumentReference.compact.1",
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "Document metadata only; attachment bytes and links are withheld."
+      ],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "DiagnosticReport",
+      "policy_class": "patient",
+      "patient_link": "subject",
+      "instance_policy": "Bound-patient subject linkage required.",
+      "compact_recipe": "r4-compact-2026-10-18.1/DiagnosticReport.compact.1",
+      "workflow_role": "optional",
+      "limitations": [
+        "Presented forms are withheld; result references are never resolved."
+      ],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "Immunization",
+      "policy_class": "patient",
+      "patient_link": "patient",
+      "instance_policy": "Bound-patient patient linkage required.",
+      "compact_recipe": "r4-compact-2026-10-18.1/Immunization.compact.1",
+      "workflow_role": "outside_workflow",
+      "limitations": [],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "Procedure",
+      "policy_class": "patient",
+      "patient_link": "subject",
+      "instance_policy": "Bound-patient subject linkage required.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "No reviewed compact recipe; sanitized FHIR fallback."
+      ],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "Coverage",
+      "policy_class": "patient",
+      "patient_link": "beneficiary",
+      "instance_policy": "Bound-patient beneficiary linkage required.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "Dependent and subscriber references do not establish linkage."
+      ],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "ExplanationOfBenefit",
+      "policy_class": "patient",
+      "patient_link": "patient",
+      "instance_policy": "Bound-patient patient linkage required.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "No reviewed compact recipe; sanitized FHIR fallback."
+      ],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "ServiceRequest",
+      "policy_class": "patient",
+      "patient_link": "subject",
+      "instance_policy": "Bound-patient subject linkage required.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "No reviewed compact recipe; sanitized FHIR fallback."
+      ],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "Claim",
+      "policy_class": "patient",
+      "patient_link": "patient",
+      "instance_policy": "Bound-patient patient linkage required.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "No reviewed compact recipe; sanitized FHIR fallback."
+      ],
+      "test_ids": [
+        "support-matrix:patient-predicates"
+      ]
+    },
+    {
+      "resource_type": "Medication",
+      "policy_class": "conditional_shared",
+      "patient_link": null,
+      "instance_policy": "Catalog products only; no identifier/batch; any code fully coded; coded product for ingredients.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "Conditional instance policy; type membership alone never permits access."
+      ],
+      "instance_policy_full": "Catalog products only: no identifier or batch; a present code must be fully coded (system and code); ingredients require a coded product code. Free-text-only or uncoded compounds are unclassified.",
+      "test_ids": [
+        "support-matrix:drift",
+        "support-matrix:intersection"
+      ]
+    },
+    {
+      "resource_type": "Organization",
+      "policy_class": "conditional_shared",
+      "patient_link": null,
+      "instance_policy": "Directory fields only; contact persons are unclassified.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "Conditional instance policy; type membership alone never permits access."
+      ],
+      "test_ids": [
+        "support-matrix:drift"
+      ]
+    },
+    {
+      "resource_type": "Location",
+      "policy_class": "conditional_shared",
+      "patient_link": null,
+      "instance_policy": "Affirmative facility allowlist via reviewed type/physicalType codings.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "Conditional instance policy; type membership alone never permits access."
+      ],
+      "instance_policy_full": "Affirmative facility allowlist: at least one coding in type/physicalType; every type coding a reviewed facility v3-RoleCode (URI or OID system); every physicalType coding in {si,bu,wi,wa,lvl,co,ro,bd,area}. Untyped, text-only and residential/work/school instances are unclassified. Name is an operator-attested semantic residual; description, alias and availabilityExceptions are withheld with labels.",
+      "test_ids": [
+        "support-matrix:drift"
+      ]
+    },
+    {
+      "resource_type": "Practitioner",
+      "policy_class": "conditional_shared",
+      "patient_link": null,
+      "instance_policy": "Directory fields only.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "Conditional instance policy; type membership alone never permits access."
+      ],
+      "test_ids": [
+        "support-matrix:drift"
+      ]
+    },
+    {
+      "resource_type": "CodeSystem",
+      "policy_class": "conditional_shared",
+      "patient_link": null,
+      "instance_policy": "Base R4 elements only; no profiles, security labels or extensions.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "Conditional instance policy; type membership alone never permits access."
+      ],
+      "instance_policy_full": "CodeSystem, ValueSet, StructureDefinition, SearchParameter, CapabilityStatement, OperationDefinition: base R4 elements only.",
+      "test_ids": [
+        "support-matrix:drift"
+      ]
+    },
+    {
+      "resource_type": "ValueSet",
+      "policy_class": "conditional_shared",
+      "patient_link": null,
+      "instance_policy": "Base R4 elements only; no profiles, security labels or extensions.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "Conditional instance policy; type membership alone never permits access."
+      ],
+      "instance_policy_full": "CodeSystem, ValueSet, StructureDefinition, SearchParameter, CapabilityStatement, OperationDefinition: base R4 elements only.",
+      "test_ids": [
+        "support-matrix:drift"
+      ]
+    },
+    {
+      "resource_type": "StructureDefinition",
+      "policy_class": "conditional_shared",
+      "patient_link": null,
+      "instance_policy": "Base R4 elements only; no profiles, security labels or extensions.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "Conditional instance policy; type membership alone never permits access."
+      ],
+      "instance_policy_full": "CodeSystem, ValueSet, StructureDefinition, SearchParameter, CapabilityStatement, OperationDefinition: base R4 elements only.",
+      "test_ids": [
+        "support-matrix:drift"
+      ]
+    },
+    {
+      "resource_type": "SearchParameter",
+      "policy_class": "conditional_shared",
+      "patient_link": null,
+      "instance_policy": "Base R4 elements only; no profiles, security labels or extensions.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "Conditional instance policy; type membership alone never permits access.",
+        "Canonical definitions are identifiers only and are never fetched."
+      ],
+      "instance_policy_full": "CodeSystem, ValueSet, StructureDefinition, SearchParameter, CapabilityStatement, OperationDefinition: base R4 elements only.",
+      "test_ids": [
+        "support-matrix:drift"
+      ]
+    },
+    {
+      "resource_type": "CapabilityStatement",
+      "policy_class": "conditional_shared",
+      "patient_link": null,
+      "instance_policy": "Base R4 elements only; no profiles, security labels or extensions.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "Conditional instance policy; type membership alone never permits access."
+      ],
+      "instance_policy_full": "CodeSystem, ValueSet, StructureDefinition, SearchParameter, CapabilityStatement, OperationDefinition: base R4 elements only.",
+      "test_ids": [
+        "support-matrix:drift"
+      ]
+    },
+    {
+      "resource_type": "OperationDefinition",
+      "policy_class": "conditional_shared",
+      "patient_link": null,
+      "instance_policy": "Base R4 elements only; no profiles, security labels or extensions.",
+      "compact_recipe": null,
+      "workflow_role": "outside_workflow",
+      "limitations": [
+        "Conditional instance policy; type membership alone never permits access.",
+        "Operations are never invoked."
+      ],
+      "instance_policy_full": "CodeSystem, ValueSet, StructureDefinition, SearchParameter, CapabilityStatement, OperationDefinition: base R4 elements only.",
+      "test_ids": [
+        "support-matrix:drift"
+      ]
+    }
+  ],
+  "decided_against": [
+    {
+      "resource_type": "Specimen",
+      "reason": "Denied in M3b. Observation specimen references stay unresolved provenance; standalone or contained Specimen support needs a separately reviewed increment."
+    },
+    {
+      "resource_type": "CarePlan",
+      "reason": "Denied in M3b; no blanket type-policy widening."
+    },
+    {
+      "resource_type": "Goal",
+      "reason": "Denied in M3b; no blanket type-policy widening."
+    }
+  ]
+}

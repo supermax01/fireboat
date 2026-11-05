@@ -1,0 +1,310 @@
+{
+  "schema_version": "m3b-oracle/1",
+  "vectors": [
+    {
+      "id": "oracle-date-eq-day",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "eq2020-06-15",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-1",
+        "effectiveDateTime": "2020-06-15"
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-gt-period-extends",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "gt2020",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-2",
+        "effectivePeriod": {
+          "start": "2020-06-01",
+          "end": "2021-03-01"
+        }
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-gt-year-target",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "gt2020-06-01",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-3",
+        "effectiveDateTime": "2020"
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-lt-year-target",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "lt2020-06-01",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-4",
+        "effectiveDateTime": "2020"
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-ge-straddle",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "ge2020",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-5",
+        "effectivePeriod": {
+          "start": "2019-06-01",
+          "end": "2020-06-01"
+        }
+      },
+      "matches": false
+    },
+    {
+      "id": "oracle-date-le-straddle",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "le2020",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-6",
+        "effectivePeriod": {
+          "start": "2020-06-01",
+          "end": "2021-06-01"
+        }
+      },
+      "matches": false
+    },
+    {
+      "id": "oracle-date-sa-boundary",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "sa2020-06-14",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-7",
+        "effectiveDateTime": "2020-06-15"
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-eb-boundary",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "eb2020-06-16",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-8",
+        "effectiveDateTime": "2020-06-15"
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-offset-equivalent",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "ge2020-06-15T10:00:00Z",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-9",
+        "effectiveDateTime": "2020-06-15T12:00:00+02:00"
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-offset-before",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "lt2020-06-15T10:00:00Z",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-10",
+        "effectiveDateTime": "2020-06-15T12:00:00+02:00"
+      },
+      "matches": false
+    },
+    {
+      "id": "oracle-date-open-period-end",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "gt2030",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-11",
+        "effectivePeriod": {
+          "start": "2020-06-01"
+        }
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-open-period-start",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "eb2020-06-02",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-12",
+        "effectivePeriod": {
+          "end": "2020-06-01"
+        }
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-month-precision",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "eq2020-06",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-13",
+        "effectiveDateTime": "2020-06-30"
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-fractional",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "ge2020-06-15T10:00:00.500Z",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-14",
+        "effectiveDateTime": "2020-06-15T10:00:00.500Z"
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-issued-never-effective",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "ge2025-01-01",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-15",
+        "issued": "2025-06-01T00:00:00Z"
+      },
+      "matches": false
+    },
+    {
+      "id": "oracle-date-ne-different-day",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "ne2020-06-15",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-16",
+        "effectiveDateTime": "2020-06-16"
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-ne-same-day",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "ne2020-06-15",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-17",
+        "effectiveDateTime": "2020-06-15"
+      },
+      "matches": false
+    },
+    {
+      "id": "oracle-date-instant-inside",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "ge2025-01-01",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-18",
+        "effectiveInstant": "2025-06-15T08:00:00Z"
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-instant-outside",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "lt2025-01-01",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-19",
+        "effectiveInstant": "2025-06-15T08:00:00Z"
+      },
+      "matches": false
+    },
+    {
+      "id": "oracle-date-effective-beats-issued",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "ge2025-01-01",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-20",
+        "effectiveDateTime": "2025-06-01T00:00:00Z",
+        "issued": "2019-01-01T00:00:00Z"
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-issued-never-rescues",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "ge2025-01-01",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-21",
+        "effectiveDateTime": "2019-06-01T00:00:00Z",
+        "issued": "2025-06-01T00:00:00Z"
+      },
+      "matches": false
+    },
+    {
+      "id": "oracle-date-offsets-both-nonz-equal",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "ge2020-06-15T12:00:00+02:00",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-22",
+        "effectiveDateTime": "2020-06-15T05:00:00-05:00"
+      },
+      "matches": true
+    },
+    {
+      "id": "oracle-date-offsets-both-nonz-not-lt",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "lt2020-06-15T12:00:00+02:00",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-23",
+        "effectiveDateTime": "2020-06-15T05:00:00-05:00"
+      },
+      "matches": false
+    },
+    {
+      "id": "oracle-date-extension-only-never",
+      "resource_type": "Observation",
+      "parameter": "date",
+      "value": "ge2025-01-01",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "ov-24",
+        "_effectiveDateTime": {
+          "extension": []
+        }
+      },
+      "matches": false
+    }
+  ]
+}

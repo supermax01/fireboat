@@ -1,0 +1,655 @@
+{
+  "schema_version": "external-applicability/1",
+  "tasks": [
+    {
+      "task_id": "allergy-verification-reaction",
+      "task_sha256": "7c02b6c3e8926f4b88f8a79ebadcc27287bc7a715dc99dd6218244675f638036",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "bp-components",
+      "task_sha256": "141b5219888fab84bbb0383d029b3112bf1676cba917155cdaa4e9c250c344be",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "bp-components-tight-ceiling",
+      "task_sha256": "ba49c9d2b76c9bab64815339c1af0beae0cb0965f01504f3128d55a238332b8f",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "capabilities-resource-observation",
+      "task_sha256": "17b91d68e96128ec9664b92f92d3f5353cbbec6c0fd42f7f70d545e3538bc6ca",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "capabilities-server",
+      "task_sha256": "e5721b2cb7ceedd8235e80de2568b61cd9c1dd3bbed28ab4ee991466894ca31d",
+      "corpus": "baseline",
+      "classification": "fixture-simulated",
+      "reason": "The exact advertised resource_count=8 is the fixture CapabilityStatement catalog, not a real-backend invariant.",
+      "profile_control": false
+    },
+    {
+      "task_id": "condition-active-confirmed",
+      "task_sha256": "3a5ba98d90d5830202de65f13812cfb5ecc1148e434574c74d9da5513e14341b",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "condition-entered-in-error-search",
+      "task_sha256": "dc67b34532d221b64b64ad3fc3d9b727da100008c6e371af109448fd5d0af995",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "contained-cross-patient-denied",
+      "task_sha256": "e61c389e40642d78fee406d05d6c729c96c64c4ad6460d009823886fff24c9cb",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "cross-patient-read-denied",
+      "task_sha256": "baff2569fcd13210e6e0431ccf9d891539d1f05aa196c05ea32e93b54878504c",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "cross-patient-selector-denied",
+      "task_sha256": "f79259315460eaf12b1d99d3c23884da624027c66022785698ea53cf1cea48b3",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "data-absent-reason",
+      "task_sha256": "7e934e9550448290e043a4aa2550a6393b2d2a4f1c4ed931e368c6b527a322b2",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "decimal-lexeme-preserved",
+      "task_sha256": "1f96a191d7535a3da508da6b122efae7b9d6865203af829f9414f7c650909b40",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "diagnostic-report-conclusion",
+      "task_sha256": "87a578ee3778629ad1c383b8bbdd93afa7865e6a6f071dd5b546ee7ddf95193c",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "document-withheld-payload",
+      "task_sha256": "48327540b688f696784b7c7b87c4611d36bffca974969b2d9551f54f87f0d40f",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "effective-period-observation",
+      "task_sha256": "d8a50871ba1f045fc6a5c3bea2f45410563645cef58f63c7ea3a7b690daecbf4",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "hba1c-quantity-ucum",
+      "task_sha256": "014c071224020a88557e247c4a665fe6b877a0246d81eaa87d4b8a0eca6ada44",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "heart-rate-paging-drain",
+      "task_sha256": "ef460c5fe06bfb3868d998718912090bbfa761b805c043536d50b43f2c193138",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "immunization-vaccine-code",
+      "task_sha256": "6e2cf60f8be8d9ed31abec766a871cc2a8ce1008ba63f9730be899508ab1d8c7",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "medication-request-dosage",
+      "task_sha256": "a1f8746995757ea3c53467971b5fa62b2280f755fd5ba51fbf4dea4b47dbc856",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "observation-category-search",
+      "task_sha256": "7d9f5e3d45dd0e9a92d0c0679e0b520eb09ad22b41931e772922ac8246853bc1",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "paging-exact-boundary",
+      "task_sha256": "53a6f0b49373c7c538a939bcf823cf652080bed20b0f82d15bf7ea155c31a36d",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "patient-identity-fields",
+      "task_sha256": "acfdc14ebe7e14cc2f98259ccc6f719bbeb96ff9718ddc93b43c27c0b9bddc97",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "quantity-comparator",
+      "task_sha256": "8640b5f082b752bdc251ab1651d64db9ecd98b7de25b67c8103f638bc05581cd",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "reference-range-interpretation",
+      "task_sha256": "db6cc41a89d7b44957c6d1040ea803c4752b36d6cf3458cb0bccf55668692346",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "result-project-compact-omitted",
+      "task_sha256": "f5dfa83f3dac89f33aa7d5c4aff13085762677d63ef603a9729db3521af20eb1",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "schema-observation-root",
+      "task_sha256": "95d3a40050d03a1e422161c21d5c0e242b3b98ed0c8ab775099258a31dc4e59d",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "schema-observation-value-quantity",
+      "task_sha256": "3bf1684b2cf71a052408d11b30ce1fe04606a9c96d80214b3bf1a8a67405ae67",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "search-no-match",
+      "task_sha256": "1370838da2d3ec77c24b44c4db5c5d119e889fc6ba4797337ddafb6e456ddcb2",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "search-repeated-date-range",
+      "task_sha256": "5c1be5de82a5d9e9cfc52857e385aefe3eaea0a01d80374cb4a0452c6fd8cfc8",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "search-sort-desc",
+      "task_sha256": "7b0655f895dbe14b9d085d0ba6b65d15eedc8e7fe2c8ba094014037ba1dd7940",
+      "corpus": "baseline",
+      "classification": "fixture-simulated",
+      "reason": "Its exact glucose result set uses the baseline-only fixture view; the fixed baseline+query corpus also contains a matching query decoy.",
+      "profile_control": false
+    },
+    {
+      "task_id": "search-status-entered-in-error",
+      "task_sha256": "359dd1515929dfd2b84b030a9ec7041082cfbfc6244eccf03fb9f8ef6d72c4e5",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "search-value-quantity",
+      "task_sha256": "5083937777bd512ad125059874bde54e54f6ed61f4eaafcb69c4ca51c62bc6a0",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "signed-link-withheld",
+      "task_sha256": "6af5625f5c45a3b8949526040ca871f8c976e5a094c1782445483f4fff6ee258",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "value-boolean",
+      "task_sha256": "1a403015592328717f13c7ce1ea84e71e9a374103a712443f0896a6037cf87a9",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "value-codeable-concept",
+      "task_sha256": "bc5a7bb780041e6238eb2dec8a962dcf5a6c46207d63bb9c78025bd75e8ba0ee",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "value-integer",
+      "task_sha256": "bf2c6e3f86784756e0fbdfa05acba0886a2e611c152d7587954cc5f6ebbe5aeb",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "value-string",
+      "task_sha256": "90c8b4637b74a940588bd932484c221a2f4e695881d765f7cd6168b75672b5fc",
+      "corpus": "baseline",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "adversarial-self-link-omits-filter",
+      "task_sha256": "c384a386aa84bc1810a07b666372f17d17e9d54a68aab3bbb7db24ff31d1f1b4",
+      "corpus": "baseline",
+      "classification": "fixture-simulated",
+      "reason": "Requires synthetic fixture mode self-link-omits-filter; the external backend does not simulate that response behavior.",
+      "profile_control": false
+    },
+    {
+      "task_id": "adversarial-self-link-claims-unapplied-filter",
+      "task_sha256": "e4bd0a58450e8199826afaefa79e46372bdd77064a710283c0346f014ac8103b",
+      "corpus": "baseline",
+      "classification": "fixture-simulated",
+      "reason": "Requires synthetic fixture mode self-link-claims-unapplied-filter; the external backend does not simulate that response behavior.",
+      "profile_control": false
+    },
+    {
+      "task_id": "adversarial-include-entries",
+      "task_sha256": "e2a271cbc0c21b161fb0890b7eebd66b79974bb45db6eae58a557b089e0f872e",
+      "corpus": "baseline",
+      "classification": "fixture-simulated",
+      "reason": "Requires synthetic fixture mode include-entries; the external backend does not simulate that response behavior.",
+      "profile_control": false
+    },
+    {
+      "task_id": "adversarial-page2-suppression",
+      "task_sha256": "5677b1a6d710692b270b4dc9604d1046b5166707f2672db831f1fd265bff516c",
+      "corpus": "baseline",
+      "classification": "fixture-simulated",
+      "reason": "Requires synthetic fixture mode page2-suppression; the external backend does not simulate that response behavior.",
+      "profile_control": false
+    },
+    {
+      "task_id": "adversarial-continuation-drops-filter",
+      "task_sha256": "9eb578268cb0d19a4e626e8b73a699854c48304b9c21c5ba2d2787f3d7887663",
+      "corpus": "baseline",
+      "classification": "fixture-simulated",
+      "reason": "Requires synthetic fixture mode continuation-drops-filter; the external backend does not simulate that response behavior.",
+      "profile_control": false
+    },
+    {
+      "task_id": "adversarial-continuation-drops-patient",
+      "task_sha256": "af7a5d4b40b5230de21c92acc8c8e888226076d017c5522c4c691a2d002f7208",
+      "corpus": "baseline",
+      "classification": "fixture-simulated",
+      "reason": "Requires synthetic fixture mode continuation-drops-patient; the external backend does not simulate that response behavior.",
+      "profile_control": false
+    },
+    {
+      "task_id": "byte-ceiling-wire-boundary",
+      "task_sha256": "bbaf4aef2d8471ce62fed0c152039f05b5ef58e7ffa91948294fb62b2305ef72",
+      "corpus": "baseline",
+      "classification": "fixture-simulated",
+      "reason": "Requires synthetic fixture mode wide-capability; the external backend does not simulate that response behavior.",
+      "profile_control": false
+    },
+    {
+      "task_id": "discover-observation-search-types",
+      "task_sha256": "56ecb48789a864407fa1f177fd883e32c6610294178c04274679ea0c8fecb7e4",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "repair-code-text-discovery",
+      "task_sha256": "0067074698a750ea212e12ad8ac09144373e851d0e27b9f0fa5dad0670425aca",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "patient-link-bare-id-denied",
+      "task_sha256": "9cb8a1587f6ed35e36d4278e5ebc96b68e93e4262a291d0882b1fe4034162a9a",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "support-before-first-query",
+      "task_sha256": "09dfd6c458d766b1b4ebbdb40ac1e72cefd98f55800e29f7406cc79c9b6e1489",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-complete-proven",
+      "task_sha256": "2b595d79e83e0900293b2a800bc3dc79d15dec57cff4f737e28ac640be6e1913",
+      "corpus": "query",
+      "classification": "profile-inapplicable",
+      "reason": "Requires tested descending-date sort proof, which the narrowed HAPI candidate does not claim. The original strict task remains unchanged in the synthetic regression suite; its prior HAPI result is not a fixture simulation.",
+      "profile_control": false,
+      "retained_synthetic_task": "query-complete-proven"
+    },
+    {
+      "task_id": "query-echo-only-unknown",
+      "task_sha256": "614f5168bd00d3f43a7d45fb6485fe86d1c78722fd54465cd991f8b2d163d53a",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "discover-unknown-and-conflicting-definition",
+      "task_sha256": "744f270329164a3db36830fff54097394dde4e78ebbb817ecf5ed3f8d2e9b94e",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "The executable task only checks metadata resource_type and does not seed a conflict; it provides no conflicting-definition evidence.",
+      "profile_control": false
+    },
+    {
+      "task_id": "discovery-snapshot-drain",
+      "task_sha256": "4e05f24734bde4ffd7d7300da37154b2d033fee4a8e20569a913e3a35de662d6",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "support-source-policy-intersection",
+      "task_sha256": "4a8f12f369de2b0e8f4f525ff276d2c00cedfc4f3a1fd1cb54dc5167fdaee35f",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "lab-reference-no-hydration",
+      "task_sha256": "6a623eba49a36257703e49337e3039db752d8172095598776cd16f18d49243b4",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "contained-unclassified-parent-denied",
+      "task_sha256": "9d3b1e614c3c11c5aec492e9549b07bb230829400fd24fdf2f1d206713b48fb5",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "shared-instance-positive-negative",
+      "task_sha256": "09b9fb1386a044dd6de23462a0d5179a77ce6eab83ae248c153bada6bfb5a949",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-ignore-code",
+      "task_sha256": "23841b79e0237dabe05fefe9e2ccac1e011ae9bd8e8537a103186fac99368283",
+      "corpus": "query",
+      "classification": "fixture-simulated",
+      "reason": "Requires synthetic fixture mode self-link-claims-unapplied-filter; the external backend does not simulate that response behavior.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-ignore-date-lower",
+      "task_sha256": "f72fa004044642b1885a1bbd418d1e766c1c32fddb65c130ff18d5de19a6061d",
+      "corpus": "query",
+      "classification": "fixture-simulated",
+      "reason": "selectScenario deliberately disables the lower date filter in the synthetic fixture; no such behavior is injected into HAPI.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-ignore-date-upper",
+      "task_sha256": "b15f063a8e8dd03ea5eaa4204028696fc908da4c89e9ab339bdda04ddb7d99ad",
+      "corpus": "query",
+      "classification": "fixture-simulated",
+      "reason": "selectScenario deliberately disables the upper date filter in the synthetic fixture; no such behavior is injected into HAPI.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-ignore-sort",
+      "task_sha256": "f9670c41a19eb8bb189a4fd2eeed3a248a2cdfac611ed649ecda10f1db2120e0",
+      "corpus": "query",
+      "classification": "fixture-simulated",
+      "reason": "selectScenario deliberately ignores requested sorting in the synthetic fixture; it is not a task for a normally operating backend.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-cross-page-sort",
+      "task_sha256": "7864c2947a9ce76f371b5f7e071a499e6ce66bab46fae7bfc0e819c4a6963ffe",
+      "corpus": "query",
+      "classification": "profile-inapplicable",
+      "reason": "Requires tested descending-date sort proof, which the narrowed HAPI candidate does not claim. The original strict task remains unchanged in the synthetic regression suite; its prior HAPI result is not a fixture simulation.",
+      "profile_control": false,
+      "retained_synthetic_task": "query-cross-page-sort"
+    },
+    {
+      "task_id": "query-empty-page-with-next",
+      "task_sha256": "03a19255800b9dbeb32810e0a98678443f56397f44d1941dc0a04c53b93d80d0",
+      "corpus": "query",
+      "classification": "fixture-simulated",
+      "reason": "The fixture deliberately emits an empty first page with a synthetic offset jump; that response is not constructed on HAPI.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-invalid-next-safe-first-page",
+      "task_sha256": "1c5632d5252cda446ee87fc29e54e6102c2c8c1dba26134fa9ed253f4e9f4063",
+      "corpus": "query",
+      "classification": "fixture-simulated",
+      "reason": "The fixture deliberately emits a next link changing the sort direction; no HAPI response is rewritten to create it.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-opaque-evidence",
+      "task_sha256": "020a48b591d3ab5ca9b7626f48fa52bc916aa7e01e70f4fc9d67f5161dcac0ac",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "retained-not-query-complete",
+      "task_sha256": "1ad035e3351b9b4b648db007af06b62d4436cb56d7f751f248e9d5b374669a3b",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-token-escaped-comma",
+      "task_sha256": "abee9703808b304bb890212380a2a4b479a74837c0ef75cd2f896cee1b9c32b6",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-token-systemless",
+      "task_sha256": "4dd9aef4a4cdcc69a50e2e8de30c4ec5efea3c60597b8d54985b8332b8c1a301",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-date-instant",
+      "task_sha256": "6807416b1a5f6337607d8ff797476fb76d2be8478d53031a6750a23e391e569e",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "retained-offset-multi-record",
+      "task_sha256": "ee05df183c5e77d9cec7131e3ebca959eaaa3aaae9ebc8111c06b6e45480f085",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-ignore-sort-proven",
+      "task_sha256": "1ff66d16aa25c8702e944397413cbae6211f4e43b6b6cfbb7a27d64824054eb9",
+      "corpus": "query",
+      "classification": "fixture-simulated",
+      "reason": "selectScenario deliberately ignores requested sorting to require a contradiction error; it is not a task for a normally operating backend.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-cross-page-sort-generic",
+      "task_sha256": "a6d610830270f0568fcc23d16365427743949de243537d53ddae34b581139ea4",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged query/discovery/retention oracle on the fixed real backend, including failure when unsupported.",
+      "profile_control": false
+    },
+    {
+      "task_id": "query-empty-page-with-next-proven",
+      "task_sha256": "1470aefe35d4f40062ce4ed3b1d36a99da888ec3b2bf73accb18fa09c902f442",
+      "corpus": "query",
+      "classification": "fixture-simulated",
+      "reason": "The fixture deliberately emits an empty first page with a synthetic offset jump to test sticky refusal; it is not a real-backend scenario.",
+      "profile_control": false
+    },
+    {
+      "task_id": "p-guidance-date-pair",
+      "task_sha256": "dba7a01e85f48c8868fc2c5ab5562046d85b20a39a47e0007315586335d64dcd",
+      "corpus": "projection",
+      "classification": "fixture-simulated",
+      "reason": "The citation oracle hard-codes fixture version 1; HAPI owns persisted versions, and the expectation is not rewritten to match it.",
+      "profile_control": false
+    },
+    {
+      "task_id": "p-guidance-field-recovery",
+      "task_sha256": "f963eaf0d11d1fb05e6f34c20ffd94bc8c146da3361de1fb61c52989340973d2",
+      "corpus": "projection",
+      "classification": "fixture-simulated",
+      "reason": "The fact and citation oracles hard-code fixture version 1; HAPI owns persisted versions, and the expectations remain unchanged.",
+      "profile_control": false
+    },
+    {
+      "task_id": "p-guidance-cursor-drain",
+      "task_sha256": "7464ccddfc0be11be30fd0ffc8133c719b3053c311f511ac01a2fe5e8a40a55e",
+      "corpus": "projection",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "p-guidance-expired-handle",
+      "task_sha256": "dae2643263e4116bfd01cc88321e55a03b14e8e4b6f9c883b90b910a63df0930",
+      "corpus": "projection",
+      "classification": "fixture-simulated",
+      "reason": "The runner expires a handle through private store mutation and the citation oracle pins fixture version 1; this is a fixture/harness simulation.",
+      "profile_control": false
+    },
+    {
+      "task_id": "p-guidance-unsupported-code-text",
+      "task_sha256": "71544416dfcb94e5c82f3e6119017106ff31e1b430b142d79139c0afc196b0cb",
+      "corpus": "projection",
+      "classification": "real-backend",
+      "reason": "Executes the unchanged baseline resource or gateway behavior oracle; the fixed external corpus contains its inputs.",
+      "profile_control": false
+    },
+    {
+      "task_id": "hapi-code-membership",
+      "task_sha256": "3e8d81bd1e5f63c564e78c673ef42cb31e733d2c3536da7993eca93e8b2d2441",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Independent exact membership and explicit negative discrimination for the declared code/ge/lt candidate; no sort or continuation proof is requested.",
+      "profile_control": true
+    },
+    {
+      "task_id": "hapi-code-date-window",
+      "task_sha256": "5bfab63719cb16fb66fb1d5b4b7d8182183456d666829955b1e0b18f7911b5b3",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Independent exact membership and explicit negative discrimination for the declared code/ge/lt candidate; no sort or continuation proof is requested.",
+      "profile_control": true
+    },
+    {
+      "task_id": "hapi-date-lower-discrimination",
+      "task_sha256": "e19ebec4154bd479f2b3165e5341560cd2466d17141f53fd79bc5c95079d5782",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Independent exact membership and explicit negative discrimination for the declared code/ge/lt candidate; no sort or continuation proof is requested.",
+      "profile_control": true
+    },
+    {
+      "task_id": "hapi-date-upper-discrimination",
+      "task_sha256": "38c02f14bc595fe48c205cd35cdb470ef64050a08e0f2e416dd13ef9c5d9c456",
+      "corpus": "query",
+      "classification": "real-backend",
+      "reason": "Independent exact membership and explicit negative discrimination for the declared code/ge/lt candidate; no sort or continuation proof is requested.",
+      "profile_control": true
+    }
+  ]
+}

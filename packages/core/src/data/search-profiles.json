@@ -1,0 +1,57 @@
+{
+  "revision": "search-profiles/1",
+  "gateway_controls": [
+    { "name": "_id", "type": "token", "definition": "http://hl7.org/fhir/SearchParameter/Resource-id", "description": "Logical id of this artifact" },
+    { "name": "_lastUpdated", "type": "date", "definition": "http://hl7.org/fhir/SearchParameter/Resource-lastUpdated", "description": "When the resource version last changed" },
+    { "name": "_sort", "type": "special", "description": "Reviewed gateway ordering control; ordering proof is reported separately from filter proof." }
+  ],
+  "denied_parameters": ["_query", "_filter", "_list", "_type", "_contained", "_containedType"],
+  "profiles": [
+    {
+      "id": "generic-r4",
+      "version": "1",
+      "eligible": true,
+      "source": { "software": "any FHIR R4 source", "fhir_version": "4.0.1" },
+      "evidence": null,
+      "tested_filters": [],
+      "tested_sorts": [],
+      "tested_continuations": [],
+      "test_ids": [],
+      "note": "Default profile. Declared syntax may be sent, but clinical filter and sort execution stay unknown; self links are source-reported evidence only."
+    },
+    {
+      "id": "synthetic-fixture-r4-v1",
+      "version": "1",
+      "eligible": true,
+      "source": { "software": "fhir-mcp retrieval eval fixture", "software_version": "0.1.0", "fhir_version": "4.0.1", "fixture_sha256": "c14e170bd47671f357b2ef81338cae6252372bf2dbc5817f4cf814ce8b288f1a", "backend_sha256": "763bfddce2221d4432d748a61634c2b65d3ce69a412f24fddeb387324381f4b5" },
+      "evidence": { "report_sha256": "d06b6f4818acecaa069cfbffc6d3dc5587d6aa30bd290b42d08154681e1ba960", "recorded_at": "2026-10-22T16:24:22.193Z", "capability_revision": "d4e500616f35fe24", "tasks_sha256": "ce7c9440fac53024ae0cb8454406e014fc6e12216f334ad05faae837a66252ee" },
+      "tested_filters": [
+        { "resource_type": "Observation", "parameter": "code", "variant": "token-system-code", "test_ids": ["query-complete-proven", "query-ignore-code", "query-token-escaped-comma", "query-token-systemless"] },
+        { "resource_type": "Observation", "parameter": "date", "variant": "effective-interval-eq-ne-gt-lt-ge-le-sa-eb", "test_ids": ["query-complete-proven", "query-ignore-date-lower", "query-ignore-date-upper", "oracle-date-vectors", "query-date-instant"] },
+        { "resource_type": "Observation", "parameter": "patient", "variant": "reference-confinement", "test_ids": ["query-complete-proven"] },
+        { "resource_type": "Observation", "parameter": "subject", "variant": "reference-confinement", "test_ids": ["query-complete-proven"] }
+      ],
+      "tested_sorts": [
+        { "resource_type": "Observation", "parameter": "date", "variant": "descending-timezone-qualified-effectiveDateTime", "test_ids": ["query-ignore-sort-proven", "query-complete-proven", "query-cross-page-sort", "oracle-sort-vectors"] }
+      ],
+      "tested_continuations": ["offset-next-link"],
+      "test_ids": ["query-complete-proven", "query-echo-only-unknown", "query-ignore-code", "query-ignore-date-lower", "query-ignore-date-upper", "query-ignore-sort", "query-ignore-sort-proven", "query-cross-page-sort", "query-cross-page-sort-generic", "query-token-escaped-comma", "query-token-systemless", "query-date-instant", "oracle-date-vectors", "oracle-sort-vectors"],
+      "note": "Qualified 2026-10-22 (S6, Q-2; re-qualified the same day after the review round added the offset-link negative control): the listed tasks passed on the integrated gateway as a labelled private candidate against the pinned fixture/backend hashes (scripts/qualify-search-profile.ts; docs/evidence/s6-profile-qualification.md), then eligibility was recorded and the public selection re-run with no override. Proof is bound to the recorded capability revision and limited to the listed variants. ap, partial-date ordering, Period/Timing ordering, code-only/|code/system| token forms, ascending sort and every unlisted parameter stay unproved. Fixture, backend, task-corpus or capability drift invalidates this evidence: re-qualify."
+    },
+    {
+      "id": "hapi-r4-labs-v1",
+      "version": "1",
+      "eligible": true,
+      "source": { "kind": "external", "software": "HAPI FHIR Server", "software_version": "8.12.0", "fhir_version": "4.0.1", "image_digest": "sha256:0ff86aac4c7bd13a1ee226444a70263bb46ed1c28ef543c30a44f865b80ca04e", "corpus_sha256": "bbd21aa1ede24de3c3cd59f8db5991e11b343b31f3700a6bdae3bf3e916e1404" },
+      "evidence": { "report_sha256": "f9f95bde48dd2d29716b89089a54779fb8d4700dbb04e30cfcbfda293996d51e", "recorded_at": "2026-10-23T21:20:40.922Z", "capability_revision": "0835b8480514fb73", "tasks_sha256": "8a649af6fda16c203f6e9bb62fcdf3cc7c9236655f1feb98bb0ff236dbf771ff" },
+      "tested_filters": [
+        { "resource_type": "Observation", "parameter": "code", "variant": "token-system-code", "test_ids": ["hapi-code-membership", "hapi-code-date-window"] },
+        { "resource_type": "Observation", "parameter": "date", "variant": "effective-interval-ge-lt", "test_ids": ["hapi-code-date-window", "hapi-date-lower-discrimination", "hapi-date-upper-discrimination"] }
+      ],
+      "tested_sorts": [],
+      "tested_continuations": [],
+      "test_ids": ["hapi-code-membership", "hapi-code-date-window", "hapi-date-lower-discrimination", "hapi-date-upper-discrimination"],
+      "note": "Qualified 2026-10-23 (G-BACKEND) by root's re-run of scripts/qualify-hapi-search-profile.ts against HAPI FHIR Server 8.12.0 (image hapiproject/hapi:v8.12.0-2, digest pinned; an operator attestation) loaded with the pinned synthetic external corpus, both eras, every arm. Proves only Observation system-qualified code tokens and ge/lt date bounds; no sorts and no continuations are proved (HAPI's opaque continuations stay unverified). Bound to software name/version, capability revision, corpus and task hashes; raw reports in the gitignored .local/gbackend-qualification-root/."
+    }
+  ]
+}

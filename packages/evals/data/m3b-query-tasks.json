@@ -1,0 +1,1228 @@
+{
+  "schema_version": "m3b-tasks/1",
+  "tasks": [
+    {
+      "id": "discover-observation-search-types",
+      "category": "discovery",
+      "question": "Typed SearchParameter discovery for Observation code, date and subject.",
+      "steps": [
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "topic": "search_parameter",
+            "resource_type": "Observation"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "dataPath",
+          "id": "d1",
+          "step": 0,
+          "path": "resource_type",
+          "equals": "Observation"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 2
+      }
+    },
+    {
+      "id": "repair-code-text-discovery",
+      "category": "repair",
+      "question": "Unsupported code:text refuses with typed-discovery repair and no clinical fetch.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code:text",
+                "value": "diabetes"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "callOutcome",
+          "id": "r1",
+          "step": 0,
+          "outcome": "application_error",
+          "code": "UNSUPPORTED_MODIFIER"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 2
+      }
+    },
+    {
+      "id": "patient-link-bare-id-denied",
+      "category": "confinement",
+      "question": "A bare id on polymorphic Patient link is refused before any clinical request.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Patient",
+            "params": [
+              {
+                "name": "link",
+                "value": "eval-patient-b"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "callOutcome",
+          "id": "p1",
+          "step": 0,
+          "outcome": "application_error",
+          "code": "POLICY_DENIED"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 2
+      }
+    },
+    {
+      "id": "support-before-first-query",
+      "category": "support",
+      "question": "Support matrix is readable before any clinical query.",
+      "steps": [
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "topic": "support"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "dataPath",
+          "id": "s1",
+          "step": 0,
+          "path": "workflow",
+          "equals": "recent-labs-v1"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 2
+      }
+    },
+    {
+      "id": "query-complete-proven",
+      "category": "query-evidence",
+      "question": "Exhausted HbA1c query under the tested synthetic profile is complete_for_query.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "queryEvidence",
+          "id": "q1",
+          "step": 0,
+          "state": "complete_for_query",
+          "query_exhausted": true
+        },
+        {
+          "kind": "sortEvidence",
+          "id": "q2",
+          "step": 0,
+          "requested": [
+            "-date"
+          ],
+          "effective": [
+            "-date"
+          ],
+          "order": "verified_by_adapter"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "query-echo-only-unknown",
+      "category": "query-evidence",
+      "question": "The same query on generic-r4 stays unknown despite a perfect self link.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "queryEvidence",
+          "id": "q3",
+          "step": 0,
+          "state": "unknown",
+          "query_exhausted": true,
+          "reasons_include": [
+            "FILTER_EXECUTION_UNVERIFIED"
+          ]
+        },
+        {
+          "kind": "sortEvidence",
+          "id": "q4",
+          "step": 0,
+          "requested": [
+            "-date"
+          ],
+          "effective": null,
+          "order": "requested_unverified"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "discover-unknown-and-conflicting-definition",
+      "category": "discovery",
+      "question": "Unknown and conflicting SearchParameter definitions list as unresolved/conflict and stay unexecutable (root seeds a conflicting capability).",
+      "steps": [
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "topic": "search_parameter",
+            "resource_type": "Observation"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "dataPath",
+          "id": "d1",
+          "step": 0,
+          "path": "resource_type",
+          "equals": "Observation"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 2
+      }
+    },
+    {
+      "id": "discovery-snapshot-drain",
+      "category": "discovery",
+      "question": "Discovery snapshot drains via continuation cursors with every row exactly once and no skips.",
+      "steps": [
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "topic": "search_parameter",
+            "resource_type": "Observation",
+            "limit": 3
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "dataPath",
+          "id": "d1",
+          "step": 0,
+          "path": "resource_type",
+          "equals": "Observation"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 2
+      }
+    },
+    {
+      "id": "support-source-policy-intersection",
+      "category": "support",
+      "question": "Effective support is the intersection of manifest policy, source advertisement and resolved confinement.",
+      "steps": [
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "topic": "support",
+            "resource_type": "Observation"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "dataPath",
+          "id": "s1",
+          "step": 0,
+          "path": "workflow",
+          "equals": "recent-labs-v1"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 2
+      }
+    },
+    {
+      "id": "lab-reference-no-hydration",
+      "category": "support",
+      "question": "DiagnosticReport result references stay provenance and are never hydrated into clinical bodies.",
+      "steps": [
+        {
+          "tool": "fhir_read",
+          "input": {
+            "resource_type": "DiagnosticReport",
+            "id": "report-1"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "fact",
+          "id": "r1",
+          "step": 0,
+          "resource": "report-1",
+          "path": "result.0.reference",
+          "equals": "Observation/obs-hba1c-1"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 2
+      }
+    },
+    {
+      "id": "contained-unclassified-parent-denied",
+      "category": "confinement",
+      "question": "A parent containing an unclassified resource is denied uniformly as not-found.",
+      "steps": [
+        {
+          "tool": "fhir_read",
+          "input": {
+            "resource_type": "Observation",
+            "id": "obs-contained-b"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "callOutcome",
+          "id": "c1",
+          "step": 0,
+          "outcome": "application_error",
+          "code": "NOT_FOUND"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 2
+      }
+    },
+    {
+      "id": "shared-instance-positive-negative",
+      "category": "support",
+      "question": "Conditional shared types expose their instance policy; type membership alone never permits access.",
+      "steps": [
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "topic": "support",
+            "resource_type": "Medication"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "dataPath",
+          "id": "s1",
+          "step": 0,
+          "path": "workflow",
+          "equals": "recent-labs-v1"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 2
+      }
+    },
+    {
+      "id": "query-ignore-code",
+      "category": "query-evidence",
+      "question": "A source that echoes but ignores code is contradicted under the tested profile: UNVERIFIED_QUERY, no completeness.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "callOutcome",
+          "id": "q1",
+          "step": 0,
+          "outcome": "application_error",
+          "code": "UNVERIFIED_QUERY"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      },
+      "fixtureMode": "self-link-claims-unapplied-filter"
+    },
+    {
+      "id": "query-ignore-date-lower",
+      "category": "query-evidence",
+      "question": "A source ignoring the lower date bound returns an early decoy and is contradicted (requires root fragment behavior ignoring the lower bound).",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "callOutcome",
+          "id": "q1",
+          "step": 0,
+          "outcome": "application_error",
+          "code": "UNVERIFIED_QUERY"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "query-ignore-date-upper",
+      "category": "query-evidence",
+      "question": "A source ignoring the upper date bound returns a late decoy and is contradicted (requires root fragment behavior ignoring the upper bound).",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "callOutcome",
+          "id": "q1",
+          "step": 0,
+          "outcome": "application_error",
+          "code": "UNVERIFIED_QUERY"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "query-ignore-sort",
+      "category": "query-evidence",
+      "question": "Ignored sort downgrades order to requested_unverified without changing set completeness (requires root ignore-sort behavior).",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "sortEvidence",
+          "id": "q1",
+          "step": 0,
+          "requested": [
+            "-date"
+          ],
+          "effective": null,
+          "order": "requested_unverified"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "query-cross-page-sort",
+      "category": "query-evidence",
+      "question": "Descending date order verified on every page across page boundaries under the tested profile (four HbA1c records, page_size 1: one search and three continuations, exactly the four-call budget).",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ],
+            "page_size": 1
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "sortEvidence",
+          "id": "q1",
+          "step": 0,
+          "response_index": "all",
+          "requested": [
+            "-date"
+          ],
+          "effective": [
+            "-date"
+          ],
+          "order": "verified_by_adapter"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "query-empty-page-with-next",
+      "category": "query-evidence",
+      "question": "An empty page that still has a next link is partial, never terminal exhaustion.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "queryEvidence",
+          "id": "q1",
+          "step": 0,
+          "state": "partial",
+          "query_exhausted": false
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "query-invalid-next-safe-first-page",
+      "category": "query-evidence",
+      "question": "An invalid next link keeps the safe first page partial with unknown exhaustion.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "queryEvidence",
+          "id": "q1",
+          "step": 0,
+          "state": "partial",
+          "query_exhausted": null
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "query-opaque-evidence",
+      "category": "query-evidence",
+      "question": "Opaque source evidence on generic-r4 stays unknown with FILTER_EXECUTION_UNVERIFIED.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "queryEvidence",
+          "id": "q1",
+          "step": 0,
+          "state": "unknown",
+          "query_exhausted": true,
+          "reasons_include": [
+            "FILTER_EXECUTION_UNVERIFIED"
+          ]
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "retained-not-query-complete",
+      "category": "query-evidence",
+      "question": "Retained inspection is never query-complete, however the originating search ended.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ]
+          }
+        },
+        {
+          "tool": "fhir_result",
+          "input": {
+            "handle": "{{handle:0}}",
+            "action": "inspect"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "queryEvidence",
+          "id": "q1",
+          "step": 1,
+          "state": "partial",
+          "query_exhausted": null
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "query-token-escaped-comma",
+      "category": "query-evidence",
+      "question": "A.8 escaped-comma token matches the local,hba1c record and excludes the other-system hba1c decoy.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4,http://example.test/codes|local\\,hba1c"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "resourceAbsent",
+          "id": "q1",
+          "step": 0,
+          "resource": "q-decoy-hba1c-other-system"
+        },
+        {
+          "kind": "fact",
+          "id": "q2",
+          "step": 0,
+          "resource": "q-local-comma",
+          "path": "code.coding.0.code",
+          "equals": "local,hba1c"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "query-token-systemless",
+      "category": "query-evidence",
+      "question": "Token |4548-4 matches only the coding with no system, never a coded system.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "|4548-4"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "resourceIds",
+          "id": "q1",
+          "step": 0,
+          "equals": [
+            "q-systemless"
+          ]
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "query-date-instant",
+      "category": "query-evidence",
+      "question": "Clinical date search matches an effectiveInstant record inside the range (its own code keeps it out of the sort-proof pool).",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|17856-6"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "fact",
+          "id": "q1",
+          "step": 0,
+          "resource": "q-instant",
+          "path": "effectiveInstant",
+          "equals": "2025-06-15T08:00:00Z"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "retained-offset-multi-record",
+      "category": "retained",
+      "question": "Retained page, project and omission inspection use local offsets over a multi-record slice.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "page_size": 100
+          },
+          "drainPages": false
+        },
+        {
+          "tool": "fhir_result",
+          "input": {
+            "handle": "{{handle:0}}",
+            "action": "page",
+            "offset": 0,
+            "limit": 1
+          }
+        },
+        {
+          "tool": "fhir_result",
+          "input": {
+            "handle": "{{handle:0}}",
+            "action": "project",
+            "offset": 0,
+            "limit": 1,
+            "fields": [
+              "status"
+            ]
+          }
+        },
+        {
+          "tool": "fhir_result",
+          "input": {
+            "handle": "{{handle:0}}",
+            "action": "inspect",
+            "offset": 0,
+            "limit": 1
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "dataPath",
+          "id": "page-offset",
+          "step": 1,
+          "path": "next_offset",
+          "equals": 1
+        },
+        {
+          "kind": "envelopePath",
+          "id": "page-more",
+          "step": 1,
+          "path": "pagination.has_more",
+          "equals": true
+        },
+        {
+          "kind": "dataPath",
+          "id": "project-offset",
+          "step": 2,
+          "path": "next_offset",
+          "equals": 1
+        },
+        {
+          "kind": "envelopePath",
+          "id": "project-more",
+          "step": 2,
+          "path": "pagination.has_more",
+          "equals": true
+        },
+        {
+          "kind": "dataPath",
+          "id": "inspect-offset",
+          "step": 3,
+          "path": "next_offset",
+          "equals": 1
+        },
+        {
+          "kind": "dataPath",
+          "id": "inspect-scope",
+          "step": 3,
+          "path": "scope",
+          "equals": "retained_upstream_page"
+        }
+      ],
+      "budget": {
+        "maxBytes": 131072,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 4
+      },
+      "perCallBytes": 24576
+    },
+    {
+      "id": "query-ignore-sort-proven",
+      "category": "query-evidence",
+      "question": "A source that echoes but ignores _sort returns an order the tested profile can check; the contradiction refuses with UNVERIFIED_QUERY instead of a quietly unverified page (fixture ignore-sort scenario, four HbA1c records in insertion order).",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "callOutcome",
+          "id": "q1",
+          "step": 0,
+          "outcome": "application_error",
+          "code": "UNVERIFIED_QUERY"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "query-cross-page-sort-generic",
+      "category": "query-evidence",
+      "question": "Honesty oracle for the cross-page drain under generic-r4 (four HbA1c records, page_size 1): every page reports requested_unverified order, the first page is partial, and the drained fourth page is partial with an unverified continuation (a remainder of unknown extent), never complete_for_query.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ],
+            "page_size": 1
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "sortEvidence",
+          "id": "q1",
+          "step": 0,
+          "response_index": "all",
+          "requested": [
+            "-date"
+          ],
+          "effective": null,
+          "order": "requested_unverified"
+        },
+        {
+          "kind": "envelopePath",
+          "id": "q2",
+          "step": 0,
+          "response_index": 0,
+          "path": "coverage.state",
+          "equals": "partial"
+        },
+        {
+          "kind": "envelopePath",
+          "id": "q3",
+          "step": 0,
+          "response_index": 3,
+          "path": "coverage.state",
+          "equals": "partial"
+        },
+        {
+          "kind": "envelopePath",
+          "id": "q4",
+          "step": 0,
+          "response_index": 3,
+          "path": "coverage.query_evidence",
+          "equals": "unverified_continuation"
+        },
+        {
+          "kind": "envelopePath",
+          "id": "q5",
+          "step": 0,
+          "response_index": "all",
+          "path": "coverage.authorization_limited",
+          "equals": true
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "query-empty-page-with-next-proven",
+      "category": "query-evidence",
+      "question": "Negative control for the proved continuation form: a source whose first page is empty while its next link jumps to offset 20 skips every match, so the drained page stays partial with an unverified continuation and no completeness claim even under the tested profile (review finding 1).",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "envelopePath",
+          "id": "q1",
+          "step": 0,
+          "response_index": 0,
+          "path": "coverage.state",
+          "equals": "partial"
+        },
+        {
+          "kind": "queryEvidence",
+          "id": "q2",
+          "step": 0,
+          "response_index": 1,
+          "state": "partial",
+          "query_exhausted": null,
+          "reasons_include": [
+            "CONTINUATION_QUERY_UNVERIFIED"
+          ]
+        },
+        {
+          "kind": "envelopePath",
+          "id": "q3",
+          "step": 0,
+          "response_index": 1,
+          "path": "coverage.query_evidence",
+          "equals": "unverified_continuation"
+        },
+        {
+          "kind": "envelopePath",
+          "id": "q4",
+          "step": 0,
+          "response_index": 1,
+          "path": "coverage.sort.order",
+          "equals": "requested_unverified"
+        }
+      ],
+      "budget": {
+        "maxBytes": 24576,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    }
+  ]
+}

@@ -1,0 +1,222 @@
+{
+  "schema": 1,
+  "identity": {
+    "name": "fireboat-quickstart",
+    "version": "0.2.0-alpha.1",
+    "bin": {
+      "fireboat-quickstart": "dist/examples/quickstart/main.js"
+    }
+  },
+  "files": [
+    {
+      "path": "compose.quickstart.yaml",
+      "size": 895,
+      "mode": 420,
+      "sha256": "9f71979cfa7e0c46b0a45b0c726c80b7e12a77dbaf675740271d2d416f698e97"
+    },
+    {
+      "path": "dist/examples/quickstart/backend-evidence.json",
+      "size": 17850,
+      "mode": 420,
+      "sha256": "b632d91e2a08ea6f1aac9db6fbda5ad2e71386efa52fddee73e5d65ddcd938f5"
+    },
+    {
+      "path": "dist/examples/quickstart/backend.js",
+      "size": 1259,
+      "mode": 420,
+      "sha256": "caca7245beb6c18709d25ad510ee6b0444ee3c90f25343e5fb42a53de6eac39d"
+    },
+    {
+      "path": "dist/examples/quickstart/client.js",
+      "size": 18552,
+      "mode": 420,
+      "sha256": "b45e5e03a9642328a40382432a6f3bfb802814308d3f6830773c1a4853b3a777"
+    },
+    {
+      "path": "dist/examples/quickstart/configs.js",
+      "size": 2021,
+      "mode": 420,
+      "sha256": "2d6a055b7291255944d35f5fef11cc07411958752fcdb5d25a9cd1ff357cc3e9"
+    },
+    {
+      "path": "dist/examples/quickstart/docker.js",
+      "size": 17429,
+      "mode": 420,
+      "sha256": "058e49ee475262204c49d21b55e3e4fcef0f5bcb665fe517ffe4272322da0963"
+    },
+    {
+      "path": "dist/examples/quickstart/down.js",
+      "size": 3684,
+      "mode": 420,
+      "sha256": "91f62f150055441b279ec7eab0fa9cbd6b8c014828260ff70a3727cf7dc69536"
+    },
+    {
+      "path": "dist/examples/quickstart/generator-pins.json",
+      "size": 2612,
+      "mode": 420,
+      "sha256": "d101bd6ee39c7ed1c61015795d48c7df8ed37aee24d5b9ac394a391391664781"
+    },
+    {
+      "path": "dist/examples/quickstart/guards.js",
+      "size": 1675,
+      "mode": 420,
+      "sha256": "8eb1399a42e6c816734f04bf78823750c47af041dc1c71f376186a60a3ec6d73"
+    },
+    {
+      "path": "dist/examples/quickstart/instance.js",
+      "size": 3152,
+      "mode": 420,
+      "sha256": "9756bce3e545f7256b1045e5e457e353b54df1b7a2fb493784506da2495e7bed"
+    },
+    {
+      "path": "dist/examples/quickstart/main.js",
+      "size": 5596,
+      "mode": 493,
+      "sha256": "104ecdefed74acf7497e5ab3465dd44c3ce3b1ed2e2f8c5d70c73a544990d9b0"
+    },
+    {
+      "path": "dist/examples/quickstart/manifest.js",
+      "size": 6201,
+      "mode": 420,
+      "sha256": "7671848a795194f3f44a0fbd01e29c41f710342e24c8a222b897d128edd440b8"
+    },
+    {
+      "path": "dist/examples/quickstart/prepare.js",
+      "size": 8346,
+      "mode": 420,
+      "sha256": "8ab62e55ed794bf3f6bd6547a092f73ea2121e00c147b8d2a2927bcad26b1c0f"
+    },
+    {
+      "path": "dist/examples/quickstart/request-observer.js",
+      "size": 3592,
+      "mode": 420,
+      "sha256": "7c674c20d9f2ba520121028808be04aca075829f72d75afab954e066b084759b"
+    },
+    {
+      "path": "dist/examples/quickstart/run-state.js",
+      "size": 4775,
+      "mode": 420,
+      "sha256": "5a0c15dcd31d2cd1c1c7ee0dbd7231ad64da6b24131a686ed022d7634ddce1cc"
+    },
+    {
+      "path": "dist/examples/quickstart/seed-http.js",
+      "size": 10444,
+      "mode": 420,
+      "sha256": "348c1fe8f176206e177a7616214b6e5b5096fc127379024dbc9c229eaaa72635"
+    },
+    {
+      "path": "dist/examples/quickstart/setup-oracle.js",
+      "size": 5595,
+      "mode": 420,
+      "sha256": "e1281be571b3f7ac3b214885cb527cb6186c96d8a25c457641f0c942d16846aa"
+    },
+    {
+      "path": "dist/examples/quickstart/timing.js",
+      "size": 6105,
+      "mode": 420,
+      "sha256": "a47b36f0e923e0c69cd99d72fcaa7d520577013f0ea85c155d112c8d567a19b6"
+    },
+    {
+      "path": "dist/examples/quickstart/verify.js",
+      "size": 54022,
+      "mode": 420,
+      "sha256": "4741c27dd82c06b1b008c0cada938acb200591a48ee70f6dfd2c5c3978eea09b"
+    },
+    {
+      "path": "dist/packages/core/src/decimal.js",
+      "size": 5973,
+      "mode": 420,
+      "sha256": "a0421bd77447a293afc5206ae0c49e0b8dee42bc5ea35452ac001bc0cf87916d"
+    },
+    {
+      "path": "dist/packages/evals/src/check-contracts.js",
+      "size": 154,
+      "mode": 420,
+      "sha256": "ccbdd220d0800b7a4cf1f64f6e3ce8925f1b1fc85ffff3df1028236770b97e0a"
+    },
+    {
+      "path": "dist/packages/evals/src/evidence-oracle.js",
+      "size": 47136,
+      "mode": 420,
+      "sha256": "f5c08e985277fa4b8271f2fbcaee21ca4f7c5a78dad10163bdd19d8052bf82ff"
+    },
+    {
+      "path": "dist/packages/evals/src/package-tasks.js",
+      "size": 18503,
+      "mode": 420,
+      "sha256": "2ae3bcd75e21822443783665484da6da3acfa89739a52445c24d537f4f95ac82"
+    },
+    {
+      "path": "examples/quickstart/backend-evidence.json",
+      "size": 17794,
+      "mode": 420,
+      "sha256": "3fc3f53c61452bc1c7cc1b7504622c50fb585998722cb9b13eb24db5729a9e2e"
+    },
+    {
+      "path": "examples/quickstart/config.json",
+      "size": 177,
+      "mode": 420,
+      "sha256": "e3c0f5eec2ec5c54767c8d3c070430ee6eca2c3e58e18aa1573be01f3e026fa3"
+    },
+    {
+      "path": "examples/quickstart/generator-pins.json",
+      "size": 2316,
+      "mode": 420,
+      "sha256": "e7ca05ab34e4ba0b42b05bd638d176e3c02f379bce698fd6ba1c7791525c02c2"
+    },
+    {
+      "path": "examples/quickstart/host-config.example.json",
+      "size": 2408,
+      "mode": 420,
+      "sha256": "3f42296338ce2395ce26ac776245ff75eb3ab3dcdb02d6a550964b0e5a40f0a2"
+    },
+    {
+      "path": "examples/quickstart/seed-manifest.json",
+      "size": 64338,
+      "mode": 420,
+      "sha256": "57dfb62ea88a629fbcd578d3b34cc5bfdec79085d8db86986abf3346b569a710"
+    },
+    {
+      "path": "fireboat-timing.mjs",
+      "size": 6105,
+      "mode": 493,
+      "sha256": "a47b36f0e923e0c69cd99d72fcaa7d520577013f0ea85c155d112c8d567a19b6"
+    },
+    {
+      "path": "package-lock.json",
+      "size": 5691,
+      "mode": 420,
+      "sha256": "b9b2b59bb0c0b70c97209e373187c534bb8e3e93309c2a1d4fff3c0b40a6e606"
+    },
+    {
+      "path": "package.json",
+      "size": 468,
+      "mode": 420,
+      "sha256": "565017421febdf49a8a08c2a8c4977da0da6b7819590bc1b642188964d62fb35"
+    },
+    {
+      "path": "packages/evals/fixtures/quickstart/edges.json",
+      "size": 3851,
+      "mode": 420,
+      "sha256": "8bc7c69255cdfd8944c5bac22a1a3f9ea0ccf6312a967d42178c0d4d8d370ccc"
+    },
+    {
+      "path": "packages/evals/fixtures/quickstart/generation.properties",
+      "size": 562,
+      "mode": 420,
+      "sha256": "8a3818c75432194c59f813e4dd08515cfd82f2abbb7550f7ec506d0df3743551"
+    },
+    {
+      "path": "packages/evals/fixtures/quickstart/resources.ndjson",
+      "size": 235272,
+      "mode": 420,
+      "sha256": "5209c70f591f0b78654d1f0c42c4c9c6e691d795cec3bade843f061f37126b7b"
+    },
+    {
+      "path": "packages/evals/fixtures/quickstart/seed-manifest.json",
+      "size": 64878,
+      "mode": 420,
+      "sha256": "808ee732d626e98a89558cc0c785d43a64ba77ea26ab11c44b421a3c92790ac9"
+    }
+  ]
+}

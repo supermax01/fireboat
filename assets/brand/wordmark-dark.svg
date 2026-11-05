@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1072" height="256" viewBox="0 0 1072 256" role="img" aria-labelledby="title desc">
+  <title id="title">fireboat</title>
+  <desc id="desc">Lowercase custom lettering: fire in a warm accent and boat in a neutral. Independent angular-sail vessel mark.</desc>
+  <g transform="translate(16 16) scale(.4375)"><rect width="512" height="512" rx="112" fill="#202936"/>
+  <path d="M256 64L416 320H96Z" fill="#D84A2B"/>
+  <path d="M256 64L416 320H256Z" fill="#FFB547"/>
+  <path d="M48 352H464L416 416Q394 448 352 448H160Q118 448 96 416Z" fill="#FFF4E8"/></g>
+  <g transform="translate(286 30) scale(1.35)" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <g stroke="#FFB547"><path d="M24 110V44Q24 18 48 18H56M8 50H48"/>
+      <path transform="translate(78)" d="M18 54V110"/>
+      <path transform="translate(114)" d="M10 54V110M10 74Q10 48 44 52"/>
+      <path transform="translate(170)" d="M10 80H58Q58 50 34 50T10 80Q10 110 34 110Q47 110 54 104"/></g>
+    <g stroke="#FFF4E8"><path transform="translate(246)" d="M10 16V110M10 80Q10 50 34 50T58 80Q58 110 34 110T10 80"/>
+      <path transform="translate(316)" d="M58 80Q58 50 34 50T10 80Q10 110 34 110T58 80Z"/>
+      <path transform="translate(386)" d="M58 54V110M58 80Q58 50 34 50T10 80Q10 110 34 110T58 80"/>
+      <path transform="translate(462)" d="M28 26V90Q28 110 48 110H52M10 54H48"/></g>
+  </g>
+  <g transform="translate(286 30) scale(1.35)">
+    <circle cx="96" cy="28" r="7" fill="#FFB547"/>
+  </g>
+</svg>

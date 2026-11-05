@@ -1,0 +1,396 @@
+name: CI
+# Manual runs only until the release candidate (owner instruction, 2026-10-21):
+# development checkpoints are verified locally, and one CI run is planned on the
+# frozen release candidate. Restore push/pull_request/schedule triggers only with
+# owner approval.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  unit-and-mcp:
+    runs-on: ubuntu-latest
+    # 15 min: the 24.22.0 cell also runs the isolation suite (about 100 s locally; hosted timing unmeasured).
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # 24.22.0 is the pinned reference; 24.21.0 keeps the Readable.toWeb regression
+        # (nodejs/node#64529) covered; 26.10.0 is the separately tested current cell.
+        node: ['24.22.0', '24.21.0', '26.10.0']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - if: matrix.node == '24.22.0'
+        run: npm run test:isolation
+      - if: always() && matrix.node == '24.22.0'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: isolation-v1-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/isolation-v1-report.json
+          if-no-files-found: ignore
+          retention-days: 14
+      # --check asserts outcomes (tools, confined search, paging, denial, retained inspect) and exits non-zero on any deviation.
+      - run: npm run demo -- --check
+      - run: node dist/examples/demo.js --check
+      # Negative control against the compiled CLI: succeeds only if --check detects a deliberately mis-trusted patient.
+      - run: node dist/examples/demo.js --check --negative-control
+      - run: npm audit --omit=dev --audit-level=high
+  catalog-tokens:
+    # Required on every candidate. Provisioning may use the network; the actual
+    # gate and its missing-cache control run in separate offline containers.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CATALOG_ROOT: ${{ github.workspace }}/artifacts/catalog-tokens
+      PIP_CONFIG_FILE: /dev/null
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PIP_NO_CACHE_DIR: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          # The workspace is bind-mounted into the measurement containers; keep the token out of .git.
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.22.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Capture compiled production factory, both eras and selectable profiles
+        run: node --import tsx scripts/capture-tool-catalog.ts "$CATALOG_ROOT/captures"
+      - name: Read immutable tokenizer pins
+        id: tokenizer-pins
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync, mkdirSync, copyFileSync } from 'node:fs';
+          import assert from 'node:assert/strict';
+          const lock = JSON.parse(readFileSync('packages/evals/data/tokenizers.lock.json', 'utf8'));
+          assert.match(lock.python.image, /^python:\d+\.\d+\.\d+-slim@sha256:[0-9a-f]{64}$/);
+          assert.match(lock.python.version, /^\d+\.\d+\.\d+$/);
+          appendFileSync(process.env.GITHUB_OUTPUT, `image=${lock.python.image}\npython=${lock.python.version}\n`);
+          const dir = `${process.env.CATALOG_ROOT}/inputs`;
+          mkdirSync(dir, { recursive: true });
+          for (const file of ['scripts/capture-tool-catalog.ts', 'scripts/measure-tool-catalog.py', 'scripts/requirements-tokenizers.txt', 'packages/evals/data/tokenizers.lock.json', '.github/workflows/ci.yml']) {
+            copyFileSync(file, `${dir}/${file.split('/').at(-1)}`);
+          }
+          JS
+      - name: Provision hash-verified wheels, encodings and pinned image (network allowed)
+        id: tokenizer-provision
+        env:
+          TOKENIZER_IMAGE: ${{ steps.tokenizer-pins.outputs.image }}
+          PYTHON_PATCH: ${{ steps.tokenizer-pins.outputs.python }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$CATALOG_ROOT/wheelhouse" "$CATALOG_ROOT/cache" "$CATALOG_ROOT/provision"
+          python3 -m pip download --require-hashes --only-binary=:all: \
+            --implementation cp --abi cp313 --python-version "$PYTHON_PATCH" \
+            --platform manylinux_2_28_x86_64 --platform manylinux2014_x86_64 --platform manylinux_2_17_x86_64 \
+            --dest "$CATALOG_ROOT/wheelhouse" -r scripts/requirements-tokenizers.txt
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, platform, urllib.request
+          root = pathlib.Path(os.environ['CATALOG_ROOT'])
+          lock_path = pathlib.Path('packages/evals/data/tokenizers.lock.json')
+          lock = json.loads(lock_path.read_text())
+          digest = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+          assert digest(pathlib.Path('scripts/requirements-tokenizers.txt')) == lock['requirements']['sha256']
+          assert {p.name for p in (root / 'wheelhouse').iterdir()} == {w['filename'] for w in lock['wheels']}
+          wheels = []
+          for wheel in lock['wheels']:
+              path = root / 'wheelhouse' / wheel['filename']
+              assert digest(path) == wheel['sha256'], wheel['filename']
+              wheels.append({'filename': path.name, 'sha256': digest(path), 'bytes': path.stat().st_size})
+          encodings = []
+          for encoding in lock['encodings']:
+              assert hashlib.sha1(encoding['source_url'].encode()).hexdigest() == encoding['cache_filename']
+              with urllib.request.urlopen(encoding['source_url'], timeout=60) as response:
+                  data = response.read()
+              assert hashlib.sha256(data).hexdigest() == encoding['sha256'] and len(data) == encoding['bytes']
+              path = root / 'cache' / encoding['cache_filename']
+              path.write_bytes(data)
+              encodings.append({**encoding, 'verified': True})
+          (root / 'provision' / 'hashes.json').write_text(json.dumps({
+              'host_python': platform.python_version(), 'image': lock['python'],
+              'requirements_sha256': lock['requirements']['sha256'], 'lock_sha256': digest(lock_path),
+              'wheels': wheels, 'encodings': encodings,
+          }, indent=2) + '\n')
+          PY
+          docker pull --platform linux/amd64 "$TOKENIZER_IMAGE" > "$CATALOG_ROOT/provision/docker-pull.log" 2>&1
+          docker version > "$CATALOG_ROOT/provision/docker-version.txt"
+          docker info --format '{{json .}}' > "$CATALOG_ROOT/provision/docker-info.json"
+          docker image inspect "$TOKENIZER_IMAGE" > "$CATALOG_ROOT/provision/image-inspect.json"
+          python3 - <<'PY'
+          import json, os, pathlib
+          root = pathlib.Path(os.environ['CATALOG_ROOT'])
+          lock = json.loads(pathlib.Path('packages/evals/data/tokenizers.lock.json').read_text())
+          images = json.loads((root / 'provision' / 'image-inspect.json').read_text())
+          assert len(images) == 1
+          image = images[0]
+          pins = lock['python']
+          identity_kinds = {pins['config_digest']: 'config', pins['index_digest']: 'index',
+                            pins['manifest_digest']: 'linux/amd64 manifest'}
+          assert image['Id'] in identity_kinds, 'image ID is not a pinned config/index/platform manifest'
+          assert image['Architecture'] == 'amd64' and image['Os'] == 'linux'
+          assert [entry for entry in image['Config']['Env'] if entry.startswith('PYTHON_VERSION=')] == ['PYTHON_VERSION=' + pins['version']]
+          assert any(ref.endswith('@' + pins['index_digest']) for ref in image['RepoDigests'])
+          info = json.loads((root / 'provision' / 'docker-info.json').read_text())
+          driver_type = dict(info.get('DriverStatus') or []).get('driver-type')
+          identity_kind = identity_kinds[image['Id']]
+          if driver_type:
+              assert ('containerd' in driver_type) == (identity_kind != 'config'), f'image store {driver_type!r} and identity kind {identity_kind!r} disagree'
+          # Classic stores expose the config ID; containerd stores expose the
+          # pinned index/manifest ID. Retain the daemon's independent store data.
+          detected_store = 'containerd' if driver_type and 'containerd' in driver_type else (
+              'classic' if identity_kind == 'config' else 'containerd-compatible')
+          (root / 'provision' / 'image-identity.json').write_text(json.dumps({
+              'image': pins['image'], 'id': image['Id'], 'identity_kind': identity_kind,
+              'detected_store': detected_store, 'driver': info.get('Driver'), 'driver_type': driver_type,
+              'platform': image['Os'] + '/' + image['Architecture'], 'python_version': pins['version'],
+              'repo_digests': image['RepoDigests'],
+          }, indent=2) + '\n')
+          PY
+      - name: Reference measurement (network none, immutable inputs/cache)
+        id: catalog-measurement
+        env:
+          TOKENIZER_IMAGE: ${{ steps.tokenizer-pins.outputs.image }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$CATALOG_ROOT/report"
+          set +e
+          docker run --rm --pull never --platform linux/amd64 --network none --read-only \
+            --user "$(id -u):$(id -g)" --cap-drop ALL --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,exec,nosuid,size=256m --env HOME=/tmp --env PYTHONDONTWRITEBYTECODE=1 \
+            --env PIP_CONFIG_FILE=/dev/null --env PIP_DISABLE_PIP_VERSION_CHECK=1 --env PIP_NO_CACHE_DIR=1 \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/repo,readonly" \
+            --mount "type=bind,src=$CATALOG_ROOT/captures,dst=/catalog,readonly" \
+            --mount "type=bind,src=$CATALOG_ROOT/wheelhouse,dst=/wheelhouse,readonly" \
+            --mount "type=bind,src=$CATALOG_ROOT/cache,dst=/encoding-cache,readonly" \
+            --mount "type=bind,src=$CATALOG_ROOT/report,dst=/output" \
+            --env "TOKENIZER_IMAGE=$TOKENIZER_IMAGE" "$TOKENIZER_IMAGE" sh -eu -c '
+              python -m venv /tmp/venv
+              /tmp/venv/bin/python -m pip install --require-hashes --no-index --find-links /wheelhouse \
+                -r /repo/scripts/requirements-tokenizers.txt > /output/install.log 2>&1
+              exec /tmp/venv/bin/python /repo/scripts/measure-tool-catalog.py \
+                --catalog /catalog --lock /repo/packages/evals/data/tokenizers.lock.json \
+                --requirements /repo/scripts/requirements-tokenizers.txt --cache /encoding-cache \
+                --wheelhouse /wheelhouse --out /output --image-reference "$TOKENIZER_IMAGE"
+            ' > "$CATALOG_ROOT/report/container.log" 2>&1
+          status=$?
+          set -e
+          printf '%s\n' "$status" > "$CATALOG_ROOT/report/container-exit-code.txt"
+          exit "$status"
+      - name: Missing-cache negative control (separate copy, must fail specifically)
+        # Also run if catalog caps breach; provisioning must have succeeded.
+        if: ${{ !cancelled() && steps.tokenizer-provision.outcome == 'success' && steps.catalog-measurement.outcome != 'skipped' }}
+        env:
+          TOKENIZER_IMAGE: ${{ steps.tokenizer-pins.outputs.image }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$CATALOG_ROOT/negative-cache" "$CATALOG_ROOT/negative-control"
+          cp -a "$CATALOG_ROOT/cache/." "$CATALOG_ROOT/negative-cache/"
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          root = pathlib.Path(os.environ['CATALOG_ROOT'])
+          lock = json.loads(pathlib.Path('packages/evals/data/tokenizers.lock.json').read_text())
+          missing = next(e for e in lock['encodings'] if e['name'] == 'cl100k_base')
+          (root / 'negative-cache' / missing['cache_filename']).unlink()
+          evidence = {'removed_from_copy_only': missing, 'shared_cache_before': {
+              e['cache_filename']: hashlib.sha256((root / 'cache' / e['cache_filename']).read_bytes()).hexdigest()
+              for e in lock['encodings']}}
+          (root / 'negative-control' / 'setup.json').write_text(json.dumps(evidence, indent=2) + '\n')
+          PY
+          set +e
+          docker run --rm --pull never --platform linux/amd64 --network none --read-only \
+            --user "$(id -u):$(id -g)" --cap-drop ALL --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,exec,nosuid,size=256m --env HOME=/tmp --env PYTHONDONTWRITEBYTECODE=1 \
+            --env PIP_CONFIG_FILE=/dev/null --env PIP_DISABLE_PIP_VERSION_CHECK=1 --env PIP_NO_CACHE_DIR=1 \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/repo,readonly" \
+            --mount "type=bind,src=$CATALOG_ROOT/captures,dst=/catalog,readonly" \
+            --mount "type=bind,src=$CATALOG_ROOT/wheelhouse,dst=/wheelhouse,readonly" \
+            --mount "type=bind,src=$CATALOG_ROOT/negative-cache,dst=/encoding-cache,readonly" \
+            --mount "type=bind,src=$CATALOG_ROOT/negative-control,dst=/output" \
+            --env "TOKENIZER_IMAGE=$TOKENIZER_IMAGE" "$TOKENIZER_IMAGE" sh -eu -c '
+              python -m venv /tmp/venv
+              /tmp/venv/bin/python -m pip install --require-hashes --no-index --find-links /wheelhouse \
+                -r /repo/scripts/requirements-tokenizers.txt > /output/install.log 2>&1
+              exec /tmp/venv/bin/python /repo/scripts/measure-tool-catalog.py \
+                --catalog /catalog --lock /repo/packages/evals/data/tokenizers.lock.json \
+                --requirements /repo/scripts/requirements-tokenizers.txt --cache /encoding-cache \
+                --wheelhouse /wheelhouse --out /output --image-reference "$TOKENIZER_IMAGE"
+            ' > "$CATALOG_ROOT/negative-control/container.log" 2>&1
+          status=$?
+          set -e
+          printf '%s\n' "$status" > "$CATALOG_ROOT/negative-control/container-exit-code.txt"
+          test "$status" = 2
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          root = pathlib.Path(os.environ['CATALOG_ROOT'])
+          lock = json.loads(pathlib.Path('packages/evals/data/tokenizers.lock.json').read_text())
+          report = json.loads((root / 'negative-control' / 'report.json').read_text())
+          assert report['status'] == 'unmeasured'
+          assert report['error'] == {'code': 'CACHE_MISSING', 'detail': 'cl100k_base'}
+          after = {e['cache_filename']: hashlib.sha256((root / 'cache' / e['cache_filename']).read_bytes()).hexdigest()
+                   for e in lock['encodings']}
+          assert after == {e['cache_filename']: e['sha256'] for e in lock['encodings']}
+          assert after == json.loads((root / 'negative-control' / 'setup.json').read_text())['shared_cache_before']
+          missing = next(e for e in lock['encodings'] if e['name'] == 'cl100k_base')
+          assert not (root / 'negative-cache' / missing['cache_filename']).exists()
+          (root / 'negative-control' / 'verified.json').write_text(json.dumps({
+              'expected_failure': True, 'exit_code': 2, 'shared_cache_after': after,
+              'missing_cache_not_replaced': True,
+          }, indent=2) + '\n')
+          PY
+      - name: Hash evidence and require fully measured reference and negative control
+        if: ${{ always() }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          root = pathlib.Path(os.environ['CATALOG_ROOT'])
+          root.mkdir(parents=True, exist_ok=True)
+          files = sorted(p for p in root.rglob('*') if p.is_file() and p.name != 'SHA256SUMS')
+          (root / 'SHA256SUMS').write_text(''.join(
+              hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + str(p.relative_to(root)) + '\n' for p in files))
+          report = json.loads((root / 'report' / 'report.json').read_text())
+          assert report['status'] == 'pass' and report['execution'] == 'reference offline container'
+          assert report['measurements'] and report['checks'] and all(c['pass'] for c in report['checks'])
+          assert (root / 'report' / 'container-exit-code.txt').read_text().strip() == '0'
+          negative = json.loads((root / 'negative-control' / 'verified.json').read_text())
+          assert negative['expected_failure'] is True and negative['missing_cache_not_replaced'] is True
+          assert (root / 'negative-control' / 'container-exit-code.txt').read_text().strip() == '2'
+          # Bind the capture to this exact commit and to the repository's own listing pins, so CI and local evidence cannot drift apart silently.
+          manifest = json.loads((root / 'captures' / 'manifest.json').read_text())
+          assert manifest['candidate']['dirty'] == '' and manifest['candidate']['commit'] == os.environ['GITHUB_SHA'], manifest['candidate']
+          assert manifest['upstream_attempts'] == 0
+          pins = json.loads(pathlib.Path('tests/fixtures/s58-release-catalog.json').read_text())
+          captured = {c['id']: c for c in manifest['captures']}
+          for era in ('modern', 'legacy'):
+              assert captured[era + '-0-full-text-v1']['complete']['sha256'] == pins[era]['completeSha256'], era
+          PY
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: catalog-tokens-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/catalog-tokens
+          if-no-files-found: error
+          retention-days: 14
+  retrieval-evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['24.22.0', '24.21.0', '26.10.0']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run eval:retrieval -- --out artifacts/retrieval-eval-v0.json
+      - run: npm run eval:retrieval -- --era legacy --out artifacts/retrieval-eval-legacy.json
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: retrieval-conformance-v0-node-${{ matrix.node }}
+          path: |
+            artifacts/retrieval-eval-v0.json
+            artifacts/retrieval-eval-legacy.json
+          if-no-files-found: error
+          retention-days: 14
+  mutation-shards:
+    # A skipped check is never acceptance evidence. Candidate checkpoints require a
+    # workflow_dispatch run that actually executes every shard. The schedule condition is
+    # kept for when the nightly trigger is restored; it is inert while triggers are manual-only.
+    # Fourteen shards: at four, hosted shards took 19-24 min of 25 (run 39291035939); at eight
+    # with 145 mutants, 10-16 min (run 39297459198). S5.8b now has 474 mutants (34 per shard);
+    # a local shard took 906 s on 12 CPUs, so hosted timing must be remeasured before relying on 25 min.
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.22.0
+          cache: npm
+      - run: npm ci
+      - run: node scripts/mutation-guards.mjs --shard ${{ matrix.shard }}/14 --out mutation-results
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutation-shard-${{ matrix.shard }}-of-14
+          path: mutation-results/mutation-shard-${{ matrix.shard }}-of-14.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 14
+  mutation-aggregate:
+    # A missing/cancelled shard is a failed gate. Reports must also match this
+    # exact revision, input/survivor hashes, runtime and workflow attempt.
+    # Use "Re-run all jobs": re-running only failed jobs would mix attempts.
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') }}
+    needs: [mutation-shards]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.22.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: mutation-shard-*-of-14
+          path: mutation-results
+          merge-multiple: true
+      - run: node scripts/mutation-guards.mjs --aggregate mutation-results --shards 14
+      - if: ${{ always() }}
+        env:
+          SHARDS_RESULT: ${{ needs.mutation-shards.result }}
+        run: test "$SHARDS_RESULT" = success
+  hapi-r4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.22.0
+          cache: npm
+      - run: npm ci
+      - run: docker compose up -d
+      - run: npm run test:hapi
+      - if: failure()
+        run: docker compose logs --tail=120
+      - if: always()
+        run: docker compose down --volumes
+  medplum-r4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.22.0
+          cache: npm
+      - run: npm ci
+      - run: docker compose -f compose.medplum.yaml up -d
+      - run: npm run test:medplum
+      - if: failure()
+        run: docker compose -f compose.medplum.yaml logs --tail=100
+      - if: always()
+        run: docker compose -f compose.medplum.yaml down --volumes

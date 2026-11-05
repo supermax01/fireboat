@@ -1,0 +1,100 @@
+name: npm alpha publication DESIGN ONLY
+# Deliberately inert. This file is a reviewable design, not an enabled publisher.
+# Enabling it requires an owner-approved implementation/review of every step in
+# docs/RELEASE.md. Do not dispatch it during development or the S12 verification run.
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_commit:
+        description: Owner-approved frozen 40-character public source commit
+        type: string
+        required: true
+      version:
+        description: Owner-approved immutable prerelease version
+        type: string
+        required: true
+      tar_sha256:
+        description: Owner-approved SHA-256 of the publishable tar
+        type: string
+        required: true
+      packet_artifact_id:
+        description: Immutable reviewed release packet artifact ID and digest reference
+        type: string
+        required: true
+      release_ci_run_id:
+        description: The single successful frozen-candidate S12 verification CI run
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  installed-artifact-design:
+    # DESIGN ONLY, disabled like the publisher: the frozen candidate's Linux
+    # installed-package cell. It has no executable steps until owner approval.
+    if: ${{ false }}
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - name: Inert design interlock
+        run: |
+          echo 'DESIGN ONLY: installed-artifact implementation and owner approval are missing.' >&2
+          exit 1
+    # Future implementation, not executable steps:
+    # 1. Same owner-approved candidate_commit, tar_sha256 and packet_artifact_id
+    #    as the publisher; a missing or mismatched input fails, never skips.
+    #    Check out EXACT candidate_commit with full-commit-pinned actions.
+    #    Node 24.22.0; assert npm 11.19.1 (no floating npm upgrade).
+    # 2. Acquire the reviewed tar, npm pack JSON, npm-files.json, helper-files.json,
+    #    helper lock and standalone timing wrapper from the immutable packet by
+    #    artifact ID; hash each against the packet binding before use. Never repack.
+    # 3. Pre-pull the pinned HAPI index digest for linux/arm64 only. Use the runner's
+    #    local unix-socket daemon with 127.0.0.1:18080 free; run the installed
+    #    helper's prepare into a new run directory.
+    # 4. npm run test:package-installed with every FIREBOAT_PACKAGE_* input bound to
+    #    those exact files; require PACKAGE_INSTALLED_OK naming tar_sha256. Always run
+    #    the installed helper's down afterwards, including on failure.
+    # 5. Retain report/timing/evidence hashes, never raw resource bodies or patient
+    #    identifiers in logs. Record the cell as linux/arm64 / Node 24.22.0 only;
+    #    linux/amd64 and every other cell stay explicitly unverified.
+  publish-design:
+    if: ${{ false }}
+    # A skipped or failed installed-artifact job also skips the publisher.
+    needs: installed-artifact-design
+    runs-on: ubuntu-24.04
+    environment: npm-alpha
+    permissions:
+      contents: read
+      id-token: write
+    timeout-minutes: 15
+    steps:
+      - name: Inert design interlock
+        run: |
+          echo 'DESIGN ONLY: publisher implementation and owner approval are missing.' >&2
+          exit 1
+    # Future implementation, not executable steps:
+    # 1. Check out EXACT candidate_commit. Pin actions to reviewed full commits.
+    #    Existing repository pins (re-review when enabling):
+    #    actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+    #    actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+    #    Node 24.22.0; assert npm 11.19.1 (no floating npm upgrade).
+    # 2. Acquire reviewed immutable packet by artifact ID, not an arbitrary URL.
+    #    Hash its bytes before extraction; verify all manifest files/bindings,
+    #    candidate_commit/version/tar_sha256, independent review and all gates.
+    #    Validate release_ci_run_id repository/head/workflow/conclusion and exact
+    #    tested tar/input digests. An unrelated green run supplies no evidence.
+    # 3. Protected npm-alpha environment: owner reviewers, no self approval,
+    #    no bypass, restricted approved refs, and concrete digest in approval UI.
+    #    Configure npm trusted publisher for the final public repository and this
+    #    exact workflow/environment. id-token:write only here; no stored npm token.
+    # 4. Verify package repository URL matches public source/provenance and
+    #    mcpName namespace is owner controlled. Require already publishable bytes.
+    #    No editing private/repository/version/mcpName, repack, build, or lifecycle.
+    # 5. Publish ONLY the reviewed tar path with OIDC provenance, ignored scripts,
+    #    public access and alpha dist-tag. Provenance must identify these bytes.
+    #    npm publish <verified-tar> --ignore-scripts --access public --tag alpha --provenance
+    #    First-publish bootstrap is an explicit owner decision; never token fallback.
+    # 6. Fetch exact published metadata/tar, compare SRI/SHA-256/version/dist-tag,
+    #    verify provenance/signatures/source binding, then clean-install and test.
+    #    Retain observations in the release packet. No Registry or OCI side effect.

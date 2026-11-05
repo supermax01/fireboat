@@ -1,0 +1,436 @@
+{
+  "schema": 1,
+  "dependencies": [
+    {
+      "name": "@modelcontextprotocol/client",
+      "version": "2.3.1",
+      "integrity": "sha512-mIGZXpHsjnZ6lD+gD/WCMpR5k8yVQQ8nNFH1N0Srf7AvnwTUMYD6pvTY8ng2+He5FfV7YMZLmrjL7cLa/cc3dQ==",
+      "license": "Apache-2.0",
+      "components": [
+        "quickstart"
+      ],
+      "requiredTexts": [
+        {
+          "source": "LICENSE",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "LICENSE",
+          "kind": "license",
+          "path": "licenses/dependencies/modelcontextprotocol__client/LICENSE",
+          "bytes": 12227,
+          "sha256": "0382b0057770ca05e9c350a50aa3b1c1fea84da0bc81d723bf00b9aa841be58a"
+        }
+      ]
+    },
+    {
+      "name": "@modelcontextprotocol/core",
+      "version": "2.3.1",
+      "integrity": "sha512-laVmIhPGpWi7rG9q+0UigblRN0Hws/Yjlb6qLFtVqryXVLkc4h+yN8z731POD2LnAGQlFe7/tXhUm7Bi0YB91g==",
+      "license": "Apache-2.0",
+      "components": [
+        "gateway",
+        "quickstart"
+      ],
+      "requiredTexts": [
+        {
+          "source": "LICENSE",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "LICENSE",
+          "kind": "license",
+          "path": "licenses/dependencies/modelcontextprotocol__core/LICENSE",
+          "bytes": 12227,
+          "sha256": "0382b0057770ca05e9c350a50aa3b1c1fea84da0bc81d723bf00b9aa841be58a"
+        }
+      ]
+    },
+    {
+      "name": "@modelcontextprotocol/server",
+      "version": "2.3.1",
+      "integrity": "sha512-e59MfWuSssj6DoQ96JCTqdW1AXT5/XtnTl0WWd6MU1Ka434fFUGGosCLJbGNySDhHGvxQWoRWK137FXYFkYNWw==",
+      "license": "Apache-2.0",
+      "components": [
+        "gateway"
+      ],
+      "requiredTexts": [
+        {
+          "source": "LICENSE",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "LICENSE",
+          "kind": "license",
+          "path": "licenses/dependencies/modelcontextprotocol__server/LICENSE",
+          "bytes": 12227,
+          "sha256": "0382b0057770ca05e9c350a50aa3b1c1fea84da0bc81d723bf00b9aa841be58a"
+        }
+      ]
+    },
+    {
+      "name": "cross-spawn",
+      "version": "7.0.6",
+      "integrity": "sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==",
+      "license": "MIT",
+      "components": [
+        "quickstart"
+      ],
+      "requiredTexts": [
+        {
+          "source": "LICENSE",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "LICENSE",
+          "kind": "license",
+          "path": "licenses/dependencies/cross-spawn/LICENSE",
+          "bytes": 1105,
+          "sha256": "aaa78451b6fecd1b9c4594c796c133c0e90cad100372ff8bc6de615e9ef9adf1"
+        }
+      ]
+    },
+    {
+      "name": "eventsource",
+      "version": "3.0.7",
+      "integrity": "sha512-CRT1WTyuQoD771GW56XEZFQ/ZoSfWid1alKGDYMmkt2yl8UXrVR4pspqWNEcqKvVIzg6PAltWjxcSSPrboA4iA==",
+      "license": "MIT",
+      "components": [
+        "quickstart"
+      ],
+      "requiredTexts": [
+        {
+          "source": "LICENSE",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "LICENSE",
+          "kind": "license",
+          "path": "licenses/dependencies/eventsource/LICENSE",
+          "bytes": 1087,
+          "sha256": "f683a72ffe6a9675b5507af22fe0f448d8c8de3da1e14f139d370a7e6a54a23e"
+        }
+      ]
+    },
+    {
+      "name": "eventsource-parser",
+      "version": "3.1.1",
+      "integrity": "sha512-EKN1vKAMcZ8MlYMpaNuxN6R9yakzH6uajHcHVTqWJzvu5pWw9DyhbP35HH8MVBQ+dZjAfDxk+A8NiR9KWaXiyQ==",
+      "license": "MIT",
+      "components": [
+        "quickstart"
+      ],
+      "requiredTexts": [
+        {
+          "source": "LICENSE",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "LICENSE",
+          "kind": "license",
+          "path": "licenses/dependencies/eventsource-parser/LICENSE",
+          "bytes": 1098,
+          "sha256": "835eb611a23301b27115ca1be9f754c876e643ceb7fe63049c6b50609a1cafeb"
+        }
+      ]
+    },
+    {
+      "name": "isexe",
+      "version": "2.0.0",
+      "integrity": "sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==",
+      "license": "ISC",
+      "components": [
+        "quickstart"
+      ],
+      "requiredTexts": [
+        {
+          "source": "LICENSE",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "LICENSE",
+          "kind": "license",
+          "path": "licenses/dependencies/isexe/LICENSE",
+          "bytes": 765,
+          "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b"
+        }
+      ]
+    },
+    {
+      "name": "jose",
+      "version": "6.2.12",
+      "integrity": "sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==",
+      "license": "MIT",
+      "components": [
+        "quickstart"
+      ],
+      "requiredTexts": [
+        {
+          "source": "LICENSE.md",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "LICENSE.md",
+          "kind": "license",
+          "path": "licenses/dependencies/jose/LICENSE.md",
+          "bytes": 1079,
+          "sha256": "8078b0829d6c3e9ecde2f003e1966e4cad3efc6e7a640efbab0313cc166b1af1"
+        }
+      ]
+    },
+    {
+      "name": "path-key",
+      "version": "3.1.1",
+      "integrity": "sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q==",
+      "license": "MIT",
+      "components": [
+        "quickstart"
+      ],
+      "requiredTexts": [
+        {
+          "source": "license",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "license",
+          "kind": "license",
+          "path": "licenses/dependencies/path-key/license",
+          "bytes": 1109,
+          "sha256": "48da2f39e100d4085767e94966b43f4fa95ff6a0698fba57ed460914e35f94a0"
+        }
+      ]
+    },
+    {
+      "name": "pkce-challenge",
+      "version": "5.0.1",
+      "integrity": "sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==",
+      "license": "MIT",
+      "components": [
+        "quickstart"
+      ],
+      "requiredTexts": [
+        {
+          "source": "LICENSE",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "LICENSE",
+          "kind": "license",
+          "path": "licenses/dependencies/pkce-challenge/LICENSE",
+          "bytes": 1057,
+          "sha256": "feb87a2e0c305de3464cc44077da5393c52d8ca6362d37427157d04ec6f4510d"
+        }
+      ]
+    },
+    {
+      "name": "shebang-command",
+      "version": "2.0.0",
+      "integrity": "sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==",
+      "license": "MIT",
+      "components": [
+        "quickstart"
+      ],
+      "requiredTexts": [
+        {
+          "source": "license",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "license",
+          "kind": "license",
+          "path": "licenses/dependencies/shebang-command/license",
+          "bytes": 1116,
+          "sha256": "69dee148a2cc470554dfa7142e830662062394d0fe67cddd379aba90dc60d6b3"
+        }
+      ]
+    },
+    {
+      "name": "shebang-regex",
+      "version": "3.0.0",
+      "integrity": "sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==",
+      "license": "MIT",
+      "components": [
+        "quickstart"
+      ],
+      "requiredTexts": [
+        {
+          "source": "license",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "license",
+          "kind": "license",
+          "path": "licenses/dependencies/shebang-regex/license",
+          "bytes": 1109,
+          "sha256": "48da2f39e100d4085767e94966b43f4fa95ff6a0698fba57ed460914e35f94a0"
+        }
+      ]
+    },
+    {
+      "name": "which",
+      "version": "2.0.2",
+      "integrity": "sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==",
+      "license": "ISC",
+      "components": [
+        "quickstart"
+      ],
+      "requiredTexts": [
+        {
+          "source": "LICENSE",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "LICENSE",
+          "kind": "license",
+          "path": "licenses/dependencies/which/LICENSE",
+          "bytes": 765,
+          "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b"
+        }
+      ]
+    },
+    {
+      "name": "zod",
+      "version": "4.6.7",
+      "integrity": "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==",
+      "license": "MIT",
+      "components": [
+        "gateway",
+        "quickstart"
+      ],
+      "requiredTexts": [
+        {
+          "source": "LICENSE",
+          "kind": "license"
+        }
+      ],
+      "texts": [
+        {
+          "source": "LICENSE",
+          "kind": "license",
+          "path": "licenses/dependencies/zod/LICENSE",
+          "bytes": 1072,
+          "sha256": "3f1189b28e3866e0d979968d466b78f813f76827cfdca1fbb124cc0a5c8841f8"
+        }
+      ]
+    }
+  ],
+  "seed": {
+    "path": "quickstart/packages/evals/fixtures/quickstart/resources.ndjson",
+    "sha256": "5209c70f591f0b78654d1f0c42c4c9c6e691d795cec3bade843f061f37126b7b",
+    "bytes": 235272,
+    "resources": 282,
+    "origins": {
+      "natural": 277,
+      "edge": 5
+    },
+    "generator": {
+      "name": "Synthea",
+      "tag": "v4.0.0",
+      "commit": "0185c09ea9d10a822c6f5f3ef9bdcbcbe960c813",
+      "jarSha256": "ed43c20ad40ba5c3bc724503a5af032715fe3c491620b766148e7c2361e6ecc1",
+      "distributed": false,
+      "sourceLicense": "Apache-2.0",
+      "rightsReview": "pending-owner-review"
+    },
+    "terminology": [
+      {
+        "system": "http://loinc.org",
+        "codes": 67,
+        "displays": 67,
+        "rightsReview": "pending-owner-review"
+      },
+      {
+        "system": "http://snomed.info/sct",
+        "codes": 5,
+        "displays": 5,
+        "rightsReview": "pending-owner-review"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+        "codes": 1,
+        "displays": 1,
+        "rightsReview": "pending-owner-review"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+        "codes": 1,
+        "displays": 1,
+        "rightsReview": "pending-owner-review"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+        "codes": 1,
+        "displays": 1,
+        "rightsReview": "pending-owner-review"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+        "codes": 1,
+        "displays": 1,
+        "rightsReview": "pending-owner-review"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+        "codes": 2,
+        "displays": 0,
+        "rightsReview": "pending-owner-review"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "codes": 1,
+        "displays": 1,
+        "rightsReview": "pending-owner-review"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+        "codes": 1,
+        "displays": 1,
+        "rightsReview": "pending-owner-review"
+      },
+      {
+        "system": "http://unitsofmeasure.org",
+        "codes": 18,
+        "displays": 0,
+        "rightsReview": "pending-owner-review"
+      },
+      {
+        "system": "urn:ietf:bcp:47",
+        "codes": 1,
+        "displays": 1,
+        "rightsReview": "pending-owner-review"
+      }
+    ],
+    "notices": "licenses/SEED_NOTICES.md",
+    "runtimeData": {
+      "source": "HL7 FHIR R4 core 4.0.1",
+      "declaredLicense": "CC0-1.0",
+      "notices": "THIRD_PARTY_NOTICES.md"
+    }
+  }
+}

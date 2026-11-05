@@ -1,0 +1,5 @@
+{
+  "mode": "synthetic",
+  "source": { "alias": "local-synthetic", "baseUrl": "http://127.0.0.1:8080/fhir" },
+  "patientId": "synthetic-patient-a"
+}

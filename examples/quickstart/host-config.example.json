@@ -1,0 +1,74 @@
+{
+  "claudeDesktop": {
+    "mcpServers": {
+      "fireboat": {
+        "command": "/ABSOLUTE/PATH/TO/node",
+        "args": [
+          "/ABSOLUTE/PATH/TO/fireboat/dist/packages/server/src/cli.js",
+          "--config",
+          "/ABSOLUTE/PATH/TO/fireboat/examples/quickstart/config.json"
+        ]
+      }
+    }
+  },
+  "cursor": {
+    "mcpServers": {
+      "fireboat": {
+        "command": "/ABSOLUTE/PATH/TO/node",
+        "args": [
+          "/ABSOLUTE/PATH/TO/fireboat/dist/packages/server/src/cli.js",
+          "--config",
+          "/ABSOLUTE/PATH/TO/fireboat/examples/quickstart/config.json"
+        ]
+      }
+    }
+  },
+  "vsCode": {
+    "servers": {
+      "fireboat": {
+        "type": "stdio",
+        "command": "/ABSOLUTE/PATH/TO/node",
+        "args": [
+          "/ABSOLUTE/PATH/TO/fireboat/dist/packages/server/src/cli.js",
+          "--config",
+          "/ABSOLUTE/PATH/TO/fireboat/examples/quickstart/config.json"
+        ]
+      }
+    }
+  },
+  "claudeCode": {
+    "argv": [
+      "claude",
+      "mcp",
+      "add",
+      "--transport",
+      "stdio",
+      "--scope",
+      "local",
+      "fireboat",
+      "--",
+      "/ABSOLUTE/PATH/TO/node",
+      "/ABSOLUTE/PATH/TO/fireboat/dist/packages/server/src/cli.js",
+      "--config",
+      "/ABSOLUTE/PATH/TO/fireboat/examples/quickstart/config.json"
+    ],
+    "command": "'claude' 'mcp' 'add' '--transport' 'stdio' '--scope' 'local' 'fireboat' '--' '/ABSOLUTE/PATH/TO/node' '/ABSOLUTE/PATH/TO/fireboat/dist/packages/server/src/cli.js' '--config' '/ABSOLUTE/PATH/TO/fireboat/examples/quickstart/config.json'",
+    "entry": {
+      "command": "/ABSOLUTE/PATH/TO/node",
+      "args": [
+        "/ABSOLUTE/PATH/TO/fireboat/dist/packages/server/src/cli.js",
+        "--config",
+        "/ABSOLUTE/PATH/TO/fireboat/examples/quickstart/config.json"
+      ]
+    }
+  },
+  "guidance": {
+    "claudeDesktop": "Review the mcpServers entry in Claude Desktop settings; restart, then connect.",
+    "cursor": "Review the mcpServers entry in Cursor MCP settings; restart, then connect.",
+    "vsCode": "Review the servers entry in VS Code mcp.json; restart the server, then connect.",
+    "claudeCode": "Review the argv vector and entry; run the registration command, restart, then connect.",
+    "delivery": "full-text-v1",
+    "verification": "unverified",
+    "evidence": "Generated forms do not verify any host version or protocol-era cell."
+  }
+}

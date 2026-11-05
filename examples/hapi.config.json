@@ -1,0 +1,5 @@
+{
+  "mode": "synthetic",
+  "source": { "alias": "local-hapi", "baseUrl": "http://127.0.0.1:18080/fhir" },
+  "patientId": "synthetic-patient-a"
+}

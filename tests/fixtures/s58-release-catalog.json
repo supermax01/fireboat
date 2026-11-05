@@ -1,0 +1,12 @@
+{
+  "modern": {
+    "completeSha256": "a0e3be02d806b8f01e820a1385af0278e58222a06307f01c6c31ec612e9bb8c7",
+    "discoverySha256": "d1775bbb5c9858c3508f3d5b5654ec5cdddd4c95c712d6715edb8075ea8c00e8",
+    "listingSha256": "2900c6ec9801d95efd3c0d69b3f5ee73b910c103ab90380013f5183e2416558e"
+  },
+  "legacy": {
+    "completeSha256": "6e12103b9bc05609d1e3b3c8ebb24fef9d95eedbc42452c63e4e19e5e37a1c8f",
+    "discoverySha256": "117333ad717c34dc1ab314e1e14ed00aa8c8060b7020c5afe4ffa488ab554b0a",
+    "listingSha256": "fc0cf686e02ff8a36ea498083a74be8566e70b9b0a41f820a2a246d44bef6ee4"
+  }
+}

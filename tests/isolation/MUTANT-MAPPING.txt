@@ -1,0 +1,97 @@
+B2 v1 diagnostic mutant mapping (historical table; superseded for execution by
+tests/isolation/kill-matrix.json, which tests/isolation/mutants.mjs judges row by row
+through the family shards and records in artifacts/b2/<run>/kills.json bound to the
+candidate inputs digest; report.ts credits a kill only on the same digest).
+
+The six all-lane diagnostic rows below were compiled and run twice in each of
+core, sdk-modern and sdk-legacy on fresh fixtures (B2 v1; the matrix marks them
+executed_all_lane_kill). All temporary trees were removed. These kills do not qualify B2.
+All other listed IDs are the seeded matrix rows; a case's critical_mutants must equal
+its killing rows (loader code kill-ref) once it is counted in B2-1.
+A dash means no existing independent mutant is admitted for this case; the manifest
+retains its fault intent. The 68-case diagnostic is not the complete critical-mutant gate.
+The 99 b2m-* registry mutants (kill-matrix verifier_challenges) target the counting
+machinery itself. The supplied three-worker self-check matched every anchor once,
+typechecked every mutant, and observed every assigned behavioral test fail. See the
+full table in docs/B2-STATUS.md and the finding record in docs/B2-ROUND2-VERIFICATION.md.
+The old ledger-alias-counted strengthening and redundant alias-cycle fault were
+replaced by declared-count and alias-chain admission weaknesses. Complete fixtures
+prove the shard/empty-selection and gate weaknesses. machinery-witnesses.json maps
+all IDs to their weakening and observing test. This is diagnostic proof, not the
+root-owned official mutation aggregate.
+
+Case | existing mutant IDs | diagnostic witness status
+--- | --- | ---
+B2-SEL-01 | foreign-veto-removed, outbound-confinement-dropped | all-lane diagnostic kill (6/6 cells): outbound-confinement-dropped
+B2-SEL-02 | confinement-append-skipped-subject | not executed/admitted
+B2-SEL-03 | patient-id-selector, confinement-append-skipped-patient-id | not executed/admitted
+B2-SEL-04 | j17-bare-id-selector, q-bare-id-selector | not executed/admitted
+B2-SEL-05 | j17-bare-id-selector | not executed/admitted
+B2-SEL-06 | q2-overflow-empty-list | not executed/admitted
+B2-SEL-15 | conditional-patientlike | not executed/admitted
+B2-SEL-16 | conditional-patientlike | not executed/admitted
+B2-SEL-19 | reviewer T19 escape parser | not executed/admitted
+B2-SEL-23 | g2-deny-set-removed | not executed/admitted
+B2-SEL-24 | g2-deny-set-removed | not executed/admitted
+B2-SEL-25 | g2-deny-set-removed | not executed/admitted
+B2-SEL-33 | g2-deny-set-removed | not executed/admitted
+B2-HPP-01 | - | not executed/admitted
+B2-HPP-02 | - | not executed/admitted
+B2-PTH-07 | strict-parse-skipped | not executed/admitted
+B2-PTH-09 | strict-parse-skipped | not executed/admitted
+B2-PTH-11 | strict-parse-skipped | not executed/admitted
+B2-PTH-16 | - | not executed/admitted
+B2-PTH-01 | - | not executed/admitted
+B2-PTH-03 | source-alias | all-lane diagnostic kill (6/6 cells): source-alias
+B2-CNT-01 | validate-origin | not executed/admitted
+B2-CNT-02 | continuation-multiset | not executed/admitted
+B2-CNT-06 | continuation-multiset | not executed/admitted
+B2-CNT-12 | encoded-segments | not executed/admitted
+B2-PTH-02 | encoded-segments | not executed/admitted
+B2-CNT-16 | read-redirect-nondisclosure | not executed/admitted
+B2-CNT-22 | patient-reference-deny | not executed/admitted
+B2-CNT-23 | continuation-multiset | not executed/admitted
+B2-CUR-04 | - | not executed/admitted
+B2-HND-01 | - | not executed/admitted
+B2-CUR-06 | strict-parse-skipped | not executed/admitted
+B2-CUR-09 | - | not executed/admitted
+B2-CUR-10 | - | not executed/admitted
+B2-HND-03 | - | not executed/admitted
+B2-CUR-08 | - | not executed/admitted
+B2-CLS-01 | patient-reference-deny | not executed/admitted
+B2-CLS-03 | patient-reference-deny | not executed/admitted
+B2-CLS-23 | subject-linkage | all-lane diagnostic kill (6/6 cells): subject-linkage
+B2-CLS-02 | contained-patient | all-lane diagnostic kill (6/6 cells): contained-patient
+B2-CLS-19 | patient-reference-deny | not executed/admitted
+B2-CLS-04 | include-mode | all-lane diagnostic kill (6/6 cells): include-mode
+B2-NUM-03 | include-mode | not executed/admitted
+B2-CLS-05 | - | not executed/admitted
+B2-ERR-05 | - | not executed/admitted
+B2-REF-01 | conditional-patientlike | not executed/admitted
+B2-REF-02 | - | not executed/admitted
+B2-NUM-01 | total-publication | not executed/admitted
+B2-NUM-02 | total-publication | not executed/admitted
+B2-ERR-01 | - | not executed/admitted
+B2-ERR-02 | - | not executed/admitted
+B2-ERR-03 | content-type | all-lane diagnostic kill (6/6 cells): content-type
+B2-PAY-01 | reviewer T11 payload mask | not executed/admitted
+B2-LOG-02 | - | not executed/admitted
+B2-LOG-05 | patient-reference-deny | not executed/admitted
+B2-OUT-03 | - | not executed/admitted
+B2-MET-03 | - | not executed/admitted
+B2-MET-08 | g5-custom-name-echo | not executed/admitted
+B2-INJ-02 | - | not executed/admitted
+B2-INJ-03 | scheme-screen | not executed/admitted
+B2-ADM-04 | - | not executed/admitted
+
+Excluded by binding design: outcome-execution-failure; credential-reinvalidate;
+render-cancel-guard. No survivor waiver is inferred.
+
+Run: node tests/isolation/mutants.mjs [--mutants id,id] [--run <id>]
+Evidence: artifacts/b2/<id>/kills.json (ignored); credited only by validated row evidence bound to the same run and attempt.
+Initial content-type attempt survived because the test body had the wrong id;
+the corrected exact-id fixture produced the valid two-run kill. History is hashed
+and retained in the mutant report; the first attempt is not counted as a kill.
+
+Added v1.1: BAS-01 (T03), XRF-01 (T01), REF-11 (T02), SHR-05/06/17 and DIR-01 (T06).
+Reviewer trials are not pre-existing admitted critical mutants. See round-1 results.

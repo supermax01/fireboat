@@ -1,0 +1,7 @@
+{
+  "schema_version": "host-profiles/1",
+  "workflow": "recent-labs-v1",
+  "entry_shape": ["id", "version", "host{name,version,client_stack,client_stack_version}", "era", "transport:stdio", "workflow:recent-labs-v1", "delivery_profile", "verification:verified|unverified|fixture_only", "trace_sha256", "model_input_sha256", "tests", "checked_at"],
+  "entries": [],
+  "status": "Zero verified structured-delivery cells ship in M3b. G-HOST records real-host wire frames and transcripts for Claude Code 2.1.309 in the modern era against the synthetic fixture and HAPI FHIR 8.12.0 (docs/evidence/g-host-claude-code-2026-10-23.md); these are smoke captures of the cffddc7 schema-0.2 artifact, not an approved paired wire/model-input verification or a verified structured-delivery registry cell. structured-evidence-v1 is reachable only through the test-only registry override (labelled UNVERIFIED_DELIVERY_PROFILE); public config without a verified entry fails startup with UNVERIFIED_HOST_PROFILE and full-text-v1 remains the default. No verified cell is invented here."
+}

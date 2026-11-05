@@ -1,0 +1,8 @@
+{
+  "mode": "synthetic",
+  "source": {
+    "alias": "quickstart-hapi",
+    "baseUrl": "http://127.0.0.1:18080/fhir"
+  },
+  "patientId": "d44d0c9c-ccd8-7945-3968-d043ff9a5805"
+}

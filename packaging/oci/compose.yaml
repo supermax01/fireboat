@@ -1,0 +1,19 @@
+# Overlay the ORIGINAL helper-owned compose file; never use `up` on this overlay.
+# Use `run --no-deps --rm gateway` only after the helper's prepare completed.
+services:
+  gateway:
+    image: "${FIREBOAT_OCI_IMAGE:?verified local image digest required}"
+    platform: linux/arm64
+    pull_policy: never
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    network_mode: service:hapi
+    stdin_open: true
+    tty: false
+    volumes:
+      - "${FIREBOAT_OCI_CONFIG:?verified container config required}:/run/fireboat/config.json:ro"
+    command: ["--config", "/run/fireboat/config.json"]
+    logging:
+      driver: none

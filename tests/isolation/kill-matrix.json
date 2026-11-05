@@ -1,0 +1,508 @@
+{
+ "schema_version": "b2-kill-matrix/1",
+ "scope": "B2-0 seed: mapped existing registry mutants per manifest case; kills are declared, not yet verified per row except the six all-lane diagnostic kills",
+ "excluded": [
+  "outcome-execution-failure",
+  "credential-reinvalidate",
+  "render-cancel-guard"
+ ],
+ "rows": [
+  {
+   "mutant_id": "conditional-patientlike",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-SEL-15",
+     "oracle": "output_structured:b2.sel-15.terminal"
+    },
+    {
+     "case_id": "B2-SEL-16",
+     "oracle": "output_structured:b2.sel-16.terminal"
+    },
+    {
+     "case_id": "B2-REF-01",
+     "oracle": "output_structured:b2.ref-01.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "confinement-append-skipped-patient-id",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-SEL-03",
+     "oracle": "output_structured:b2.sel-03.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "confinement-append-skipped-subject",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-SEL-02",
+     "oracle": "output_structured:b2.sel-02.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "contained-patient",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-CLS-02",
+     "oracle": "output_structured:b2.cls-02.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": true
+  },
+  {
+   "mutant_id": "content-type",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-ERR-03",
+     "oracle": "output_structured:b2.err-03.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": true
+  },
+  {
+   "mutant_id": "continuation-multiset",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-CNT-02",
+     "oracle": "output_structured:b2.cnt-02.terminal"
+    },
+    {
+     "case_id": "B2-CNT-06",
+     "oracle": "output_structured:b2.cnt-06.terminal"
+    },
+    {
+     "case_id": "B2-CNT-23",
+     "oracle": "output_structured:b2.cnt-23.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "encoded-segments",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-CNT-12",
+     "oracle": "output_structured:b2.cnt-12.terminal"
+    },
+    {
+     "case_id": "B2-PTH-02",
+     "oracle": "output_structured:b2.pth-02.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "foreign-veto-removed",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-SEL-01",
+     "oracle": "output_structured:b2.sel-01.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "g2-deny-set-removed",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-SEL-23",
+     "oracle": "output_structured:b2.sel-23.terminal"
+    },
+    {
+     "case_id": "B2-SEL-24",
+     "oracle": "output_structured:b2.sel-24.terminal"
+    },
+    {
+     "case_id": "B2-SEL-25",
+     "oracle": "output_structured:b2.sel-25.terminal"
+    },
+    {
+     "case_id": "B2-SEL-33",
+     "oracle": "output_structured:b2.sel-33.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "g5-custom-name-echo",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-MET-08",
+     "oracle": "output_structured:b2.met-08.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "include-mode",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-CLS-04",
+     "oracle": "output_structured:b2.cls-04.terminal"
+    },
+    {
+     "case_id": "B2-NUM-03",
+     "oracle": "output_structured:b2.num-03.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": true
+  },
+  {
+   "mutant_id": "j17-bare-id-selector",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-SEL-04",
+     "oracle": "output_structured:b2.sel-04.terminal"
+    },
+    {
+     "case_id": "B2-SEL-05",
+     "oracle": "output_structured:b2.sel-05.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "outbound-confinement-dropped",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-SEL-01",
+     "oracle": "output_structured:b2.sel-01.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": true
+  },
+  {
+   "mutant_id": "patient-id-selector",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-SEL-03",
+     "oracle": "output_structured:b2.sel-03.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "patient-reference-deny",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-CNT-22",
+     "oracle": "output_structured:b2.cnt-22.terminal"
+    },
+    {
+     "case_id": "B2-CLS-01",
+     "oracle": "output_structured:b2.cls-01.terminal"
+    },
+    {
+     "case_id": "B2-CLS-03",
+     "oracle": "output_structured:b2.cls-03.terminal"
+    },
+    {
+     "case_id": "B2-CLS-19",
+     "oracle": "output_structured:b2.cls-19.terminal"
+    },
+    {
+     "case_id": "B2-LOG-05",
+     "oracle": "output_structured:b2.log-05.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "q-bare-id-selector",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-SEL-04",
+     "oracle": "output_structured:b2.sel-04.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "q2-overflow-empty-list",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-SEL-06",
+     "oracle": "output_structured:b2.sel-06.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "read-redirect-nondisclosure",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-CNT-16",
+     "oracle": "output_structured:b2.cnt-16.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "scheme-screen",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-INJ-03",
+     "oracle": "output_structured:b2.inj-03.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "source-alias",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-PTH-03",
+     "oracle": "output_structured:b2.pth-03.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": true
+  },
+  {
+   "mutant_id": "strict-parse-skipped",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-PTH-07",
+     "oracle": "output_structured:b2.pth-07.terminal"
+    },
+    {
+     "case_id": "B2-PTH-09",
+     "oracle": "output_structured:b2.pth-09.terminal"
+    },
+    {
+     "case_id": "B2-PTH-11",
+     "oracle": "output_structured:b2.pth-11.terminal"
+    },
+    {
+     "case_id": "B2-CUR-06",
+     "oracle": "output_structured:b2.cur-06.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "subject-linkage",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-CLS-23",
+     "oracle": "output_structured:b2.cls-23.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": true
+  },
+  {
+   "mutant_id": "total-publication",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-NUM-01",
+     "oracle": "output_structured:b2.num-01.terminal"
+    },
+    {
+     "case_id": "B2-NUM-02",
+     "oracle": "output_structured:b2.num-02.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "validate-origin",
+   "intent": "mapped existing mutant; fault intent to be authored per case in B2-1",
+   "kills": [
+    {
+     "case_id": "B2-CNT-01",
+     "oracle": "output_structured:b2.cnt-01.terminal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "s7a-error-evidence-reverted",
+   "intent": "Errors must expose none while preserving the exact uniform refusal.",
+   "kills": [
+    {
+     "case_id": "B2-ERR-01",
+     "oracle": "output_structured:pre-authorization fault uniform NOT_FOUND"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "s7a-server-topic-bypass",
+   "intent": "Server discovery cursors cannot cross metadata topics or clinical stores.",
+   "kills": [
+    {
+     "case_id": "B2-CUR-10",
+     "oracle": "output_structured:S7a server cursor topic refusal"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  },
+  {
+   "mutant_id": "s7a-patient-output-wrong",
+   "intent": "Authorized server metadata must disclose exactly the configured binding.",
+   "kills": [
+    {
+     "case_id": "B2-MET-03",
+     "oracle": "output_structured:real discovery remains useful"
+    }
+   ],
+   "spares": [],
+   "executed_all_lane_kill": false
+  }
+ ],
+ "verifier_challenges": [
+  "b2m-aggregate-missing-shard",
+  "b2m-alias-chain-unchecked",
+  "b2m-anchor-cross-file",
+  "b2m-anchor-multi-match",
+  "b2m-anchor-nonproduction",
+  "b2m-anchor-siblings-unchecked",
+  "b2m-anchor-unchanged",
+  "b2m-assertions-unknown",
+  "b2m-attempt-unbound",
+  "b2m-blocking-conjunct-dropped",
+  "b2m-budget-post-stub",
+  "b2m-budget-provenance-skipped",
+  "b2m-budget-provenance-unverified",
+  "b2m-build-assets-ignored",
+  "b2m-build-config-chain-ignored",
+  "b2m-build-output-unchecked",
+  "b2m-build-unverified-admitted",
+  "b2m-capture-hash-invalid",
+  "b2m-capture-stack-unwound",
+  "b2m-capture-version-ignored",
+  "b2m-case-repeat-unchecked",
+  "b2m-case-verdict-trusted",
+  "b2m-cell-budget-unchecked",
+  "b2m-cell-counts-unchecked",
+  "b2m-cell-era-unchecked",
+  "b2m-cell-pass-failures",
+  "b2m-cell-repeat-digest-unchecked",
+  "b2m-channel-scan-short-circuited",
+  "b2m-child-reference-forgotten",
+  "b2m-cli-verdict-trusted",
+  "b2m-control-contract-unchecked",
+  "b2m-count-condition-dropped",
+  "b2m-coverage-self-declared",
+  "b2m-dependency-binding-unchecked",
+  "b2m-discriminating-row-unchecked",
+  "b2m-earned-counts-inconclusive",
+  "b2m-earned-ignores-qualifying",
+  "b2m-empty-selection-accepted",
+  "b2m-eras-duplicated",
+  "b2m-excluded-survivor-admitted",
+  "b2m-extra-control-unexecuted",
+  "b2m-family-spares-unchecked",
+  "b2m-fault-tokens-unnormalized",
+  "b2m-gate-known-failure-admitted",
+  "b2m-gate-matrix-conjunct-dropped",
+  "b2m-gate-noncounted-failure-admitted",
+  "b2m-gate-unproven-budget-admitted",
+  "b2m-half-open-driver-unregistered",
+  "b2m-identical-edits-independent",
+  "b2m-intent-nonascii-admitted",
+  "b2m-intent-novelty-weakened",
+  "b2m-intent-stopword-duplicates",
+  "b2m-kill-anchors-unchecked",
+  "b2m-kill-baseline-unchecked",
+  "b2m-kill-compile-unchecked",
+  "b2m-kill-oracle-unchecked",
+  "b2m-kill-ref-unchecked",
+  "b2m-kill-rows-unvalidated",
+  "b2m-kill-spares-unchecked",
+  "b2m-kill-summary-trusted",
+  "b2m-kills-lanes-unchecked",
+  "b2m-kills-run-unbound",
+  "b2m-ledger-declared-counts-unchecked",
+  "b2m-ledger-design-unchecked",
+  "b2m-ledger-shape-unchecked",
+  "b2m-malformed-json-admitted",
+  "b2m-malformed-shape-admitted",
+  "b2m-matrix-alias-cover",
+  "b2m-matrix-complete-ignored",
+  "b2m-matrix-universe-shrunk",
+  "b2m-na-single-axis",
+  "b2m-na-unbounded",
+  "b2m-oracle-case-unbound",
+  "b2m-oracle-late-arguments",
+  "b2m-oracle-substring",
+  "b2m-outer-skip-build-ignored",
+  "b2m-pre-close-scan-skipped",
+  "b2m-prerequisites-binding-unchecked",
+  "b2m-prohibited-checks-masked",
+  "b2m-prohibited-classes-narrowed",
+  "b2m-provenance-binding-unchecked",
+  "b2m-provenance-cells-unchecked",
+  "b2m-provenance-status-unchecked",
+  "b2m-repeat-work-ignored",
+  "b2m-report-shape-open",
+  "b2m-secondary-driver-uncounted",
+  "b2m-shard-binding-unchecked",
+  "b2m-shard-content-unbound",
+  "b2m-skip-build-qualifies",
+  "b2m-stale-known-failure-silent",
+  "b2m-startup-after-cancel",
+  "b2m-stub-kinds-duplicated",
+  "b2m-teardown-scan-skipped",
+  "b2m-template-fault-accepted",
+  "b2m-total-upstream-unenforced",
+  "b2m-transition-punctuation",
+  "b2m-watchdog-expiry-passes",
+  "b2m-watchdog-late-completion-credited",
+  "b2m-watchdog-scan-skipped"
+ ]
+}

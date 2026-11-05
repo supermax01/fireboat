@@ -1,0 +1,20 @@
+# Cached linux/arm64 HAPI only. See examples/quickstart/backend-evidence.json.
+# H2 is in memory; stopping/removing the container discards its data. No mounts.
+services:
+  hapi:
+    image: hapiproject/hapi@sha256:0ff86aac4c7bd13a1ee226444a70263bb46ed1c28ef543c30a44f865b80ca04e
+    platform: linux/arm64
+    pull_policy: never
+    ports:
+      - "127.0.0.1:18080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:h2:mem:test_mem
+      SPRING_DATASOURCE_DRIVERCLASSNAME: org.h2.Driver
+      SPRING_DATASOURCE_USERNAME: sa
+      HIBERNATE_DIALECT: ca.uhn.fhir.jpa.model.dialect.HapiFhirH2Dialect
+    labels:
+      io.fireboat.quickstart.run: "${FIREBOAT_QS_RUN:?helper run required}"
+      io.fireboat.quickstart.creation: "${FIREBOAT_QS_CREATION:?helper nonce required}"
+      io.fireboat.quickstart.compose: "${FIREBOAT_QS_COMPOSE:?compose hash required}"
+    logging:
+      driver: none

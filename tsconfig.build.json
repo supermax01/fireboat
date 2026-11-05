@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "declaration": true, "sourceMap": true },
+  "include": ["packages/**/*.ts", "examples/**/*.ts", "package.json"],
+  "exclude": ["tests", "scripts"]
+}

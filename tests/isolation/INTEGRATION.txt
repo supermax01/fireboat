@@ -1,0 +1,110 @@
+Applied root-owned package.json entry (B2-0):
+
+  "test:isolation": "node tests/isolation/run.mjs"
+
+run.mjs sets one B2_RUN_ID and a fresh random B2_ATTEMPT_ID (exclusive attempt.json),
+runs every tests/isolation/*.test.ts (the prerequisites in
+isolation.test.ts, the counting machinery in counting.test.ts, the oracles, and one
+family shard per cases-<fam>.test.ts), then runs tests/isolation/aggregate.ts, which
+joins artifacts/b2/<run>/prerequisites.json with one shard per selected family, refuses
+any file whose recorded start or end binding (candidate/run/attempt digest, source
+and emitted build, pins, dependency hashes, selection environment and the end
+case-report digest) differs from its own, verifies the manifest pins and the ledger's design
+digest, computes the gate on the candidate inputs digest, and writes
+artifacts/b2/<run>/report.json plus artifacts/isolation-v1-report.json. Either step
+failing fails the run. Do not edit tracked files while a run is in progress: the end
+bindings would differ and the aggregate would refuse the run.
+
+Kill evidence: `node tests/isolation/run.mjs --with-kills` judges the kill-matrix rows
+and runs the diagnostic under the same random attempt. A reused run directory is
+refused. `node tests/isolation/mutants.mjs --run <id>` remains a standalone diagnostic;
+its output cannot be relabelled into another run/attempt for credit. The aggregate
+validates row anchors, compilation, baseline, designated oracle failures and spares;
+summary-only KILLED labels never earn credit. A failed kill child fails --with-kills.
+
+Budget provenance: a counted case's budget_source names artifacts/b2/<run_id>/report.json
+by run id, report SHA-256 and binding SHA-256; keep those verified six-cell measurement
+reports, which the aggregator re-reads and validates.
+
+The registry judge (scripts/mutation-guards.mjs) runs the isolation files as ordinary
+node tests: an INCONCLUSIVE case is a named failure of its case test there, while the
+B2 report and mutants.mjs keep INCONCLUSIVE distinct from FAIL (D10).
+
+Proposed root-owned CI job (TEXT ONLY; not applied):
+
+  isolation-diagnostic:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run synthetic isolation diagnostic with loopback-only networking
+        # Prerequisite: root provisions an immutable image digest and its pinned
+        # Node 24.22.0/dependencies locally on the runner before this job.
+        # The image has /opt/fireboat/node_modules; this step installs nothing.
+        env:
+          ISOLATION_IMAGE: ${{ vars.FHIR_ISOLATION_IMAGE }}
+        run: |
+          test -n "$ISOLATION_IMAGE"
+          mkdir -p artifacts
+          docker image inspect "$ISOLATION_IMAGE" >/dev/null
+          docker run --rm --pull never --network none \
+            --mount type=bind,source="$PWD",target=/workspace \
+            --workdir /workspace "$ISOLATION_IMAGE" \
+            sh -ec 'test -e node_modules || ln -s /opt/fireboat/node_modules node_modules; B2_RUN_ID=ci node tests/isolation/run.mjs'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: isolation-v1-diagnostic
+          path: artifacts/b2/ci/
+          if-no-files-found: error
+
+Root should pin action revisions and the image digest under its normal CI policy.
+Do not treat this job as an acceptance/release gate. A failing diagnostic exits
+nonzero; continue-on-error is the explicit CI policy, never an xfail in the suite.
+The image must already contain all pinned dependencies; no npm install or public
+network access occurs during execution. All backend and sink listeners bind to
+127.0.0.1 inside the same container/network namespace. No ports are published.
+The macOS execution is diagnostic and does not establish OS-level egress denial.
+A separate root-owned Linux egress-enforcement check is still required.
+
+The test entry builds the actual CLI to ignored dist/ before running. It does not
+use a source/tsx CLI fallback. Source assets, the tsconfig chain and emitted dist
+tree are attested. The two SDK lanes use the real SDK client against that built
+stdio CLI, with pinned 2026-07-28 and 2025-11-25 negotiation. The cli
+view reuses their raw stdout/stderr captures; it is not a fourth independent run.
+Core reads public auditEvents and structurally reads existing private stores;
+CLI audit/state are explicitly N/A. No production observation seam is added.
+
+Focused debugging (never acceptance; the run is non-qualifying and only the selected
+families write shards; counting.test.ts clears these variables for itself):
+  B2_CORE_ONLY=1 node tests/isolation/run.mjs
+  B2_CASE_IDS=B2-SEL-01 node tests/isolation/run.mjs
+
+Mutation diagnostics (fresh scratch copies; the checkout remains unchanged):
+  node tests/isolation/mutants.mjs [--mutants id,id] [--run <id>]
+
+Ignored reports:
+  artifacts/b2/<run>/{attempt.json,prerequisites.json,shard-<FAM>.json,report.json,kills.json}
+  artifacts/isolation-v1-report.json (compatibility copy of the latest aggregate)
+
+The earlier B2-0 integration changed package.json (test:isolation). Round-two
+hardening changes scripts/mutation-guards.mjs (the b2m-* machinery mutants),
+docs/B2-STATUS.md, docs/B2-ROUND2-VERIFICATION.md and this directory; it changes
+no dependency manifest or package runtime source.
+
+The v1.2 manifest carries the same 68 frozen diagnostic IDs (all executable; CUR-09 and
+CUR-10 run as attack/control cells; the PendingObligation type in runner.ts/scenarios.ts
+is never thrown by any scenario). Nothing is counted: `counted` is false on every record,
+and the per-case `counts_toward_b2` is computed by report.ts in the aggregate, never
+stored. The required independent-case bar remains 200 and the ledger denominator 216
+(tests/isolation/ledger-v1.json).
+
+Regenerate the manifest after a reviewed scenario/fixture change:
+  node --import tsx tests/isolation/generate-manifest.mjs
+Refresh only the pins after a harness, registry or kill-matrix edit (hashes last):
+  node --import tsx tests/isolation/generate-manifest.mjs --hashes-only
+
+Re-run reviewer trials from their original external definitions, in all lanes:
+  node tests/isolation/reviewer-trials.mjs /tmp/b2harn/trials.mjs
+The scratch definitions are an external review prerequisite, not vendored policy.
+The requested node_modules setup symlink is untracked; do not stage it.

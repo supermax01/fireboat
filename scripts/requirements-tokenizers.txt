@@ -1,0 +1,37 @@
+# Linux x86_64 / CPython 3.13.7 only. No extras or source distributions.
+# pip-compile --generate-hashes style; pip-compile was not installed/run.
+# Method: read PyPI JSON Requires-Dist, close the no-extras dependency set,
+# pip download --only-binary=:all: --implementation cp --abi cp313
+#   --python-version 3.13.7 --platform manylinux_2_28_x86_64
+#   --platform manylinux2014_x86_64 --platform manylinux_2_17_x86_64,
+# compare downloaded wheel SHA-256s with PyPI JSON, then python3 -m pip hash.
+# Exact filenames and PyPI URLs are in packages/evals/data/tokenizers.lock.json.
+# Installation MUST use --require-hashes --no-index --find-links <wheelhouse>.
+
+certifi==2026.10.19 \
+    --hash=sha256:42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b
+    # via requests
+
+charset-normalizer==3.5.2 \
+    --hash=sha256:7218e8f32b0956cfcd048fd42d9d5779809745ca1d86113ca56f66e7ae1549c4
+    # via requests
+
+idna==3.20 \
+    --hash=sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c
+    # via requests
+
+regex==2026.9.29 \
+    --hash=sha256:d49c18f1ea294cf4adde2e5ac256e98c82ea9d708462ce4bf799dffa7cfe8a2c
+    # via tiktoken
+
+requests==2.34.2 \
+    --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0
+    # via tiktoken
+
+tiktoken==0.12.0 \
+    --hash=sha256:4a1a4fcd021f022bfc81904a911d3df0f6543b9e7627b51411da75ff2fe7a1be
+    # via tokenizer gate (direct)
+
+urllib3==2.8.0 \
+    --hash=sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3
+    # via requests

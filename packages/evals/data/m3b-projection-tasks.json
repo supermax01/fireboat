@@ -1,0 +1,461 @@
+{
+  "schema_version": "m3b-tasks/1",
+  "tasks": [
+    {
+      "id": "p-guidance-date-pair",
+      "category": "m3b-property-guidance",
+      "question": "Retrieve the fixed synthetic HbA1c interval; do not claim latest without ordering proof.",
+      "steps": [
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "topic": "search_parameter",
+            "resource_type": "Observation",
+            "name": "date"
+          }
+        },
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              },
+              {
+                "name": "_sort",
+                "value": "-date"
+              }
+            ],
+            "page_size": 20
+          },
+          "drainPages": true
+        }
+      ],
+      "checks": [
+        {
+          "kind": "upstreamConstraint",
+          "id": "date-lower",
+          "step": 1,
+          "name": "date",
+          "value": "ge2020-01-01"
+        },
+        {
+          "kind": "upstreamConstraint",
+          "id": "date-upper",
+          "step": 1,
+          "name": "date",
+          "value": "lt2026-01-01"
+        },
+        {
+          "kind": "upstreamConstraint",
+          "id": "code-kept",
+          "step": 1,
+          "name": "code",
+          "value": "http://loinc.org|4548-4"
+        },
+        {
+          "kind": "queryEvidence",
+          "id": "generic-unknown",
+          "step": 1,
+          "state": "unknown",
+          "query_exhausted": true
+        },
+        {
+          "kind": "sortEvidence",
+          "id": "generic-not-latest",
+          "step": 1,
+          "requested": [
+            "-date"
+          ],
+          "effective": null,
+          "order": "requested_unverified"
+        },
+        {
+          "kind": "citationTuple",
+          "id": "citation",
+          "step": 1,
+          "resource_type": "Observation",
+          "id_value": "obs-hba1c-1",
+          "source": "eval-fixture",
+          "version": "1"
+        }
+      ],
+      "budget": {
+        "maxBytes": 196608,
+        "maxUpstreamCalls": 10,
+        "maxToolCalls": 4
+      },
+      "perCallBytes": 24576,
+      "fields": [
+        "code",
+        "status",
+        "effectiveDateTime",
+        "valueQuantity"
+      ]
+    },
+    {
+      "id": "p-guidance-field-recovery",
+      "category": "m3b-property-guidance",
+      "question": "Inspect the retained page, then recover blood-pressure components under a larger allowed wire ceiling.",
+      "steps": [
+        {
+          "tool": "fhir_read",
+          "input": {
+            "resource_type": "Observation",
+            "id": "obs-bp-1"
+          },
+          "maxBytes": 4096
+        },
+        {
+          "tool": "fhir_result",
+          "input": {
+            "handle": "{{handle:0}}",
+            "action": "inspect",
+            "offset": 0,
+            "limit": 20
+          }
+        },
+        {
+          "tool": "fhir_result",
+          "input": {
+            "handle": "{{handle:0}}",
+            "action": "project",
+            "fields": [
+              "code",
+              "status",
+              "effectiveDateTime",
+              "component"
+            ]
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "dataPath",
+          "id": "inline-manifest",
+          "step": 0,
+          "path": "manifest.reason",
+          "equals": "RESOURCE_EXCEEDS_INLINE_BUDGET"
+        },
+        {
+          "kind": "dataPath",
+          "id": "slice-scope",
+          "step": 1,
+          "path": "scope",
+          "equals": "retained_upstream_page"
+        },
+        {
+          "kind": "envelopePath",
+          "id": "inspect-local",
+          "step": 1,
+          "path": "budget.upstream_calls",
+          "equals": 0
+        },
+        {
+          "kind": "envelopePath",
+          "id": "project-local",
+          "step": 2,
+          "path": "budget.upstream_calls",
+          "equals": 0
+        },
+        {
+          "kind": "fact",
+          "id": "systolic",
+          "step": 2,
+          "resource": "obs-bp-1",
+          "version": "1",
+          "path": "component.0.valueQuantity.value",
+          "equals": 118
+        },
+        {
+          "kind": "fact",
+          "id": "diastolic",
+          "step": 2,
+          "resource": "obs-bp-1",
+          "version": "1",
+          "path": "component.1.valueQuantity.value",
+          "equals": 76
+        },
+        {
+          "kind": "citationTuple",
+          "id": "recovered-citation",
+          "step": 2,
+          "resource_type": "Observation",
+          "id_value": "obs-bp-1",
+          "source": "eval-fixture",
+          "version": "1"
+        }
+      ],
+      "budget": {
+        "maxBytes": 196608,
+        "maxUpstreamCalls": 2,
+        "maxToolCalls": 3
+      },
+      "perCallBytes": 24576,
+      "fields": [
+        "code",
+        "status",
+        "effectiveDateTime",
+        "component"
+      ]
+    },
+    {
+      "id": "p-guidance-cursor-drain",
+      "category": "m3b-property-guidance",
+      "question": "Drain only this fixed heart-rate query; use every returned opaque search cursor unchanged.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|8867-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2025-02-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2025-03-01"
+              }
+            ],
+            "page_size": 2
+          },
+          "drainPages": true
+        }
+      ],
+      "checks": [
+        {
+          "kind": "envelopePath",
+          "id": "first-has-more",
+          "step": 0,
+          "path": "pagination.has_more",
+          "equals": true,
+          "response_index": 0
+        },
+        {
+          "kind": "envelopePath",
+          "id": "sixth-exhausted",
+          "step": 0,
+          "path": "pagination.has_more",
+          "equals": null,
+          "response_index": 5
+        },
+        {
+          "kind": "queryEvidence",
+          "id": "sixth-unknown",
+          "step": 0,
+          "response_index": 5,
+          "state": "partial",
+          "query_exhausted": null
+        },
+        {
+          "kind": "upstreamConstraint",
+          "id": "drain-code",
+          "step": 0,
+          "name": "code",
+          "value": "http://loinc.org|8867-4"
+        },
+        {
+          "kind": "upstreamConstraint",
+          "id": "drain-lower",
+          "step": 0,
+          "name": "date",
+          "value": "ge2025-02-01"
+        },
+        {
+          "kind": "upstreamConstraint",
+          "id": "drain-upper",
+          "step": 0,
+          "name": "date",
+          "value": "lt2025-03-01"
+        },
+        {
+          "kind": "totalWithheldWhileMore",
+          "id": "no-early-total",
+          "step": 0
+        }
+      ],
+      "budget": {
+        "maxBytes": 196608,
+        "maxUpstreamCalls": 10,
+        "maxToolCalls": 6
+      },
+      "perCallBytes": 24576,
+      "fields": [
+        "code",
+        "status",
+        "effectiveDateTime",
+        "valueQuantity"
+      ]
+    },
+    {
+      "id": "p-guidance-expired-handle",
+      "category": "m3b-property-guidance",
+      "question": "After the test wrapper expires the issued retained handle, repeat the original read in the same trusted context.",
+      "steps": [
+        {
+          "tool": "fhir_read",
+          "input": {
+            "resource_type": "Observation",
+            "id": "obs-bp-1"
+          }
+        },
+        {
+          "tool": "fhir_result",
+          "input": {
+            "handle": "{{handle:0}}",
+            "action": "inspect"
+          }
+        },
+        {
+          "tool": "fhir_read",
+          "input": {
+            "resource_type": "Observation",
+            "id": "obs-bp-1"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "callOutcome",
+          "id": "expired-outcome",
+          "step": 1,
+          "outcome": "application_error",
+          "code": "RESULT_EXPIRED"
+        },
+        {
+          "kind": "envelopePath",
+          "id": "expiry-local",
+          "step": 1,
+          "path": "budget.upstream_calls",
+          "equals": 0
+        },
+        {
+          "kind": "envelopePath",
+          "id": "repeat-advice",
+          "step": 1,
+          "path": "error.repair.action",
+          "equals": "repeat_original_query"
+        },
+        {
+          "kind": "citationTuple",
+          "id": "fresh-repeat-citation",
+          "step": 2,
+          "resource_type": "Observation",
+          "id_value": "obs-bp-1",
+          "source": "eval-fixture",
+          "version": "1"
+        }
+      ],
+      "budget": {
+        "maxBytes": 196608,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 3
+      },
+      "perCallBytes": 24576,
+      "allowedErrors": [
+        "RESULT_EXPIRED"
+      ],
+      "fields": [
+        "code",
+        "status",
+        "component"
+      ]
+    },
+    {
+      "id": "p-guidance-unsupported-code-text",
+      "category": "m3b-property-guidance",
+      "question": "Refuse unsupported code:text before a clinical fetch; discover base code syntax without silently changing the query.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code:text",
+                "value": "HbA1c"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              }
+            ]
+          },
+          "drainPages": false
+        },
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "topic": "search_parameter",
+            "resource_type": "Observation",
+            "name": "code"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "callOutcome",
+          "id": "modifier-refused",
+          "step": 0,
+          "outcome": "application_error",
+          "code": "UNSUPPORTED_MODIFIER"
+        },
+        {
+          "kind": "envelopePath",
+          "id": "blocked-before-send",
+          "step": 0,
+          "path": "budget.upstream_calls",
+          "equals": 1
+        },
+        {
+          "kind": "upstreamWork",
+          "id": "no-clinical-request",
+          "step": 0,
+          "clinical": 0
+        },
+        {
+          "kind": "envelopePath",
+          "id": "discover-advice",
+          "step": 0,
+          "path": "error.repair.action",
+          "equals": "discover_search_parameter"
+        },
+        {
+          "kind": "envelopePath",
+          "id": "repair-base-name",
+          "step": 0,
+          "path": "error.repair.parameter",
+          "equals": "code"
+        }
+      ],
+      "budget": {
+        "maxBytes": 196608,
+        "maxUpstreamCalls": 2,
+        "maxToolCalls": 2
+      },
+      "perCallBytes": 24576,
+      "allowedErrors": [
+        "UNSUPPORTED_MODIFIER"
+      ]
+    }
+  ]
+}

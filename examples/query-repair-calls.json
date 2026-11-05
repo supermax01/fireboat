@@ -1,0 +1,82 @@
+{
+  "schema_version": "query-repair-examples/1",
+  "status": "Authoritative query-repair input recipes, executed by tests/s58-release.test.ts in both protocol eras. Literal SDK input/result captures live in examples/tool-calls.json; these recipes contain no fabricated results. Placeholders resolve to issued handles/cursors.",
+  "fixture": "gate-F eval fixture, source alias eval-fixture, trusted patient eval-patient-a, HbA1c interval [2020-01-01, 2026-01-01)",
+  "calls": [
+    {
+      "id": "typed-discovery",
+      "note": "Discover the typed date parameter before issuing the clinical query.",
+      "tool": "fhir_capabilities",
+      "input": { "topic": "search_parameter", "resource_type": "Observation", "name": "date" }
+    },
+    {
+      "id": "hba1c-search",
+      "tool": "fhir_search",
+      "input": {
+        "resource_type": "Observation",
+        "params": [
+          { "name": "code", "value": "http://loinc.org|4548-4" },
+          { "name": "date", "value": "ge2020-01-01" },
+          { "name": "date", "value": "lt2026-01-01" },
+          { "name": "_sort", "value": "-date" }
+        ],
+        "page_size": 20
+      }
+    },
+    {
+      "id": "unsupported-code-text",
+      "note": "Expected UNSUPPORTED_MODIFIER with discover_search_parameter repair; the modifier is never silently dropped.",
+      "tool": "fhir_search",
+      "input": {
+        "resource_type": "Observation",
+        "params": [
+          { "name": "code:text", "value": "HbA1c" },
+          { "name": "date", "value": "ge2020-01-01" },
+          { "name": "date", "value": "lt2026-01-01" }
+        ]
+      }
+    },
+    {
+      "id": "observed-code-scan",
+      "note": "Separate exploratory query after NO_MATCHES (observed-code-scan-v1 limits); omits only the original code constraint, keeps the window and trusted binding.",
+      "tool": "fhir_search",
+      "input": {
+        "resource_type": "Observation",
+        "params": [
+          { "name": "date", "value": "ge2020-01-01" },
+          { "name": "date", "value": "lt2026-01-01" }
+        ],
+        "page_size": 100,
+        "output": { "format": "fhir", "fields": ["code"] }
+      }
+    },
+    {
+      "id": "escaped-or-requery",
+      "note": "Addendum A.8 vector: second code is the single literal string local,hba1c. Pass the raw FHIR-escaped value unchanged as params[].value; the gateway URL-encodes it once. Two alternatives, not three.",
+      "tool": "fhir_search",
+      "input": {
+        "resource_type": "Observation",
+        "params": [
+          { "name": "code", "value": "http://loinc.org|4548-4,http://example.test/codes|local\\,hba1c" },
+          { "name": "date", "value": "ge2020-01-01" },
+          { "name": "date", "value": "lt2026-01-01" }
+        ]
+      }
+    },
+    {
+      "id": "cursor-drain",
+      "tool": "fhir_page",
+      "input": { "cursor": "{{cursor:hba1c-search}}" }
+    },
+    {
+      "id": "retained-inspect-then-project",
+      "tool": "fhir_result",
+      "input": { "handle": "{{handle:hba1c-search}}", "action": "inspect", "offset": 0, "limit": 20 }
+    },
+    {
+      "id": "retained-project",
+      "tool": "fhir_result",
+      "input": { "handle": "{{handle:hba1c-search}}", "action": "project", "fields": ["code", "status", "effectiveDateTime", "component"] }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+# P wiring checklist (completed integration record)
+
+Promoted at S7 from the projection lane's draft wiring list (formerly `examples/drafts/P-WIRING.md`). Each item names where the wiring now lives and what checks it. Status as of application schema 0.3 (S7a). Synthetic-only prototype.
+
+| # | Item | Status | Where and how it is checked |
+| --- | --- | --- | --- |
+| 1 | Projection in render: `projectSanitized(record, format, fields)` per delivered record; recipe ids, structural indices and omissions copied into `transform` | Done | `FhirGateway` delivery in `packages/core/src/index.ts` calls `projectSanitized` and `collectRecipeIds`; the strict gate validates `transform.recipe_ids` and `structural_resource_indices`; `tests/compact-labs.test.ts`, `tests/s5-projection-v2.test.ts` |
+| 2 | Indexed provenance after refused records are removed, one entry per delivered resource | Done | `indexedProvenance` in the delivery path; the strict gate requires the provenance length to equal the delivered count; `tests/s5-projection-v2.test.ts` |
+| 3 | Retained inspection rows from `retainedOmissions(records, format, fields)` | Done | `fhir_result` inspection in `packages/core/src/index.ts`; `tests/s5-projection-v2.test.ts` |
+| 4 | `NO_MATCHES` after the coverage decision, only for filtered, zero-delivered, exhausted chains | Done | `noMatchesWarning` in the gateway after `coverageForSnapshot`; `noMatchesEligible` in the strict gate (error-only `none` is never eligible); `tests/no-matches.test.ts`; documented in [Query repair](QUERY-REPAIR.md) |
+| 5 | Delivered-profile label set from the text actually rendered, before fitting | Done | `evidenceRender` in `packages/core/src/delivery.ts`, used by the gateway before fit; whole-result fallback renders `full-text-v1`; `tests/m3b-integration-drafts.test.ts` |
+| 6 | Adapter forwards only the recorded per-era delivery context | Done | `deliveryProfileForEra` resolved per call in `FhirGateway.execute`; `packages/server/src/index.ts` passes the era; real SDK calls in both eras in `tests/mcp.integration.test.ts` |
+| 7 | Catalog flip to the v2 instructions, descriptions and listed input schemas | Done | `packages/server/src/index.ts` registers `SERVER_INSTRUCTIONS_V2` and the v2 listed schemas; catalog revision `m3b-catalog/3` since S7a; listing equality and byte caps in `tests/m3b-catalog-v2.test.ts` and `tests/fixtures/s58-release-catalog.json` |
+| 8 | Collapse identical key-only `withheld_payloads` entries in the structured envelope; attachment manifests never merge | Done (S5b) | `collapseWithheld` (`packages/core/src/withheld.ts`) in the delivery path; `proposals/m3b-s5b-design.md`; `tests/s5b-withheld-collapse.test.ts`, including the attachment distinctions |
+| 9 | Public surface: whether the projection, repair and delivery helpers stay on the public entry or move to an internal one | Open | The helpers are still re-exported from `packages/core/src/index.ts`. The decision is taken with the packaging inventory (S9: the exact `files` allowlist and the published entry points; `proposals/m3b-s8s9-design.md` slice 10). |
+| 10 | Gateway-level integration cases (NO_MATCHES, tuple equality, both-era SDK delivery) | Done | `tests/m3b-integration-drafts.test.ts` holds them as ordinary tests (no `todo` remains) |

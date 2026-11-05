@@ -1,0 +1,165 @@
+{
+  "format": "fireboat-tokenizers/1",
+  "tiktoken_version": "0.12.0",
+  "python": {
+    "version": "3.13.7",
+    "implementation": "CPython",
+    "platform": "linux/amd64",
+    "image": "python:3.13.7-slim@sha256:5f55cdf0c5d9dc1a415637a5ccc4a9e18663ad203673173b8cda8f8dcacef689",
+    "index_digest": "sha256:5f55cdf0c5d9dc1a415637a5ccc4a9e18663ad203673173b8cda8f8dcacef689",
+    "manifest_digest": "sha256:2be5d3cb08aa616c6e38d922bd7072975166b2de772004f79ee1bae59fe983dc",
+    "config_digest": "sha256:7b444340715da1bb14bdb39c8557e0195455f5f281297723c693a51bc38a2c4a",
+    "source_sha256": "5462f9099dfd30e238def83c71d91897d8caa5ff6ebc7a50f14d4802cdaaa79a",
+    "resolution_method": "Docker Hub token + registry v2 tag/index, linux/amd64 child manifest and config. Each response body SHA-256 equals its descriptor/header digest; config Env PYTHON_VERSION is 3.13.7.",
+    "registry": "https://registry-1.docker.io/v2/library/python",
+    "tag": "3.13.7-slim",
+    "provenance": {
+      "source_urls": {
+        "index": "https://registry-1.docker.io/v2/library/python/manifests/sha256:5f55cdf0c5d9dc1a415637a5ccc4a9e18663ad203673173b8cda8f8dcacef689",
+        "tag": "https://registry-1.docker.io/v2/library/python/manifests/3.13.7-slim",
+        "linux_amd64_manifest": "https://registry-1.docker.io/v2/library/python/manifests/sha256:2be5d3cb08aa616c6e38d922bd7072975166b2de772004f79ee1bae59fe983dc",
+        "config": "https://registry-1.docker.io/v2/library/python/blobs/sha256:7b444340715da1bb14bdb39c8557e0195455f5f281297723c693a51bc38a2c4a"
+      },
+      "retrieved_at_utc": "2026-10-21T20:13:15+00:00",
+      "verification": "Registry v2 tag and digest GETs; SHA-256 of raw index/manifest/config bytes checked against headers and descriptor chain; config PYTHON_VERSION checked. No Docker execution."
+    }
+  },
+  "requirements": {
+    "path": "scripts/requirements-tokenizers.txt",
+    "sha256": "ef0bb8334aba683eb0892a2cb5548ddb52ccac1689144cb49eb12dc95a144e67",
+    "method": "No pip-compile installation. PyPI JSON Requires-Dist and downloaded wheel METADATA, no extras; pip cross-platform download of the complete seven-package closure, SHA-256 compared to PyPI and pip hash. Hashes cover only Linux x86_64 CPython 3.13 wheels; no macOS acceptance claim.",
+    "verified_at_utc": "2026-10-21T20:13:29+00:00"
+  },
+  "wheels": [
+    {
+      "name": "certifi",
+      "version": "2026.10.19",
+      "filename": "certifi-2026.10.19-py3-none-any.whl",
+      "sha256": "42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b",
+      "url": "https://files.pythonhosted.org/packages/c4/51/29046e48f693c54e5b7412216d447a1d8362c9653148d98c02cdf65fa733/certifi-2026.10.19-py3-none-any.whl",
+      "requires_dist": [],
+      "metadata_url": "https://pypi.org/pypi/certifi/2026.10.19/json",
+      "retrieved_at_utc": "2026-10-21T20:13:16+00:00",
+      "verification": "Downloaded wheel SHA-256 matched PyPI release JSON and pip hash; Linux x86_64 CPython 3.13 wheel only."
+    },
+    {
+      "name": "charset-normalizer",
+      "version": "3.5.2",
+      "filename": "charset_normalizer-3.5.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "7218e8f32b0956cfcd048fd42d9d5779809745ca1d86113ca56f66e7ae1549c4",
+      "url": "https://files.pythonhosted.org/packages/4b/85/41d27f234b82e47c167a5f6c0f62501dc0c640585ff4aba79e08a390336a/charset_normalizer-3.5.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "requires_dist": [],
+      "metadata_url": "https://pypi.org/pypi/charset-normalizer/3.5.2/json",
+      "retrieved_at_utc": "2026-10-21T20:13:17+00:00",
+      "verification": "Downloaded wheel SHA-256 matched PyPI release JSON and pip hash; Linux x86_64 CPython 3.13 wheel only."
+    },
+    {
+      "name": "idna",
+      "version": "3.20",
+      "filename": "idna-3.20-py3-none-any.whl",
+      "sha256": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c",
+      "url": "https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl",
+      "requires_dist": [
+        "ruff >= 0.16.0 ; extra == \"all\"",
+        "mypy >= 1.11.2 ; extra == \"all\"",
+        "ty >= 0.0.37 ; extra == \"all\"",
+        "pytest >= 8.3.2 ; extra == \"all\"",
+        "hypothesis >= 6.141.1 ; extra == \"all\"",
+        "coverage >= 7.10.0 ; extra == \"all\""
+      ],
+      "metadata_url": "https://pypi.org/pypi/idna/3.20/json",
+      "retrieved_at_utc": "2026-10-21T20:13:16+00:00",
+      "verification": "Downloaded wheel SHA-256 matched PyPI release JSON and pip hash; Linux x86_64 CPython 3.13 wheel only."
+    },
+    {
+      "name": "regex",
+      "version": "2026.9.29",
+      "filename": "regex-2026.9.29-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "d49c18f1ea294cf4adde2e5ac256e98c82ea9d708462ce4bf799dffa7cfe8a2c",
+      "url": "https://files.pythonhosted.org/packages/9a/8e/c1ed81f55f992f6aa0b699a592a50c1ce9e6d44ff1aee2c14c0537dcef9c/regex-2026.9.29-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "requires_dist": [],
+      "metadata_url": "https://pypi.org/pypi/regex/2026.9.29/json",
+      "retrieved_at_utc": "2026-10-21T20:13:17+00:00",
+      "verification": "Downloaded wheel SHA-256 matched PyPI release JSON and pip hash; Linux x86_64 CPython 3.13 wheel only."
+    },
+    {
+      "name": "requests",
+      "version": "2.34.2",
+      "filename": "requests-2.34.2-py3-none-any.whl",
+      "sha256": "2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0",
+      "url": "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl",
+      "requires_dist": [
+        "charset_normalizer<4,>=2",
+        "idna<4,>=2.5",
+        "urllib3<3,>=1.26",
+        "certifi>=2023.5.7",
+        "PySocks!=1.5.7,>=1.5.6; extra == \"socks\"",
+        "chardet<8,>=3.0.2; extra == \"use-chardet-on-py3\""
+      ],
+      "metadata_url": "https://pypi.org/pypi/requests/2.34.2/json",
+      "retrieved_at_utc": "2026-10-21T20:13:17+00:00",
+      "verification": "Downloaded wheel SHA-256 matched PyPI release JSON and pip hash; Linux x86_64 CPython 3.13 wheel only."
+    },
+    {
+      "name": "tiktoken",
+      "version": "0.12.0",
+      "filename": "tiktoken-0.12.0-cp313-cp313-manylinux_2_28_x86_64.whl",
+      "sha256": "4a1a4fcd021f022bfc81904a911d3df0f6543b9e7627b51411da75ff2fe7a1be",
+      "url": "https://files.pythonhosted.org/packages/0c/da/c028aa0babf77315e1cef357d4d768800c5f8a6de04d0eac0f377cb619fa/tiktoken-0.12.0-cp313-cp313-manylinux_2_28_x86_64.whl",
+      "requires_dist": [
+        "regex>=2022.1.18",
+        "requests>=2.26.0",
+        "blobfile>=2; extra == \"blobfile\""
+      ],
+      "metadata_url": "https://pypi.org/pypi/tiktoken/0.12.0/json",
+      "retrieved_at_utc": "2026-10-21T20:13:18+00:00",
+      "verification": "Downloaded wheel SHA-256 matched PyPI release JSON and pip hash; Linux x86_64 CPython 3.13 wheel only."
+    },
+    {
+      "name": "urllib3",
+      "version": "2.8.0",
+      "filename": "urllib3-2.8.0-py3-none-any.whl",
+      "sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3",
+      "url": "https://files.pythonhosted.org/packages/92/9d/c4e665119135114480843e7ab388fa94d8480650450e6f8e26b70d323a4c/urllib3-2.8.0-py3-none-any.whl",
+      "requires_dist": [
+        "brotli>=1.2.0; (platform_python_implementation == 'CPython') and extra == 'brotli'",
+        "brotlicffi>=1.2.0.0; (platform_python_implementation != 'CPython') and extra == 'brotli'",
+        "h2<5,>=4; extra == 'h2'",
+        "pysocks!=1.5.7,<2.0,>=1.5.6; extra == 'socks'",
+        "backports-zstd>=1.0.0; (python_version < '3.14') and extra == 'zstd'"
+      ],
+      "metadata_url": "https://pypi.org/pypi/urllib3/2.8.0/json",
+      "retrieved_at_utc": "2026-10-21T20:13:21+00:00",
+      "verification": "Downloaded wheel SHA-256 matched PyPI release JSON and pip hash; Linux x86_64 CPython 3.13 wheel only."
+    }
+  ],
+  "encodings": [
+    {
+      "name": "cl100k_base",
+      "source_url": "https://openaipublic.blob.core.windows.net/encodings/cl100k_base.tiktoken",
+      "sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+      "cache_filename": "9b5ad71b2ce5302211f9c61530b329a4922fc6a4",
+      "bytes": 1681126,
+      "format": "tiktoken BPE ranks",
+      "tiktoken_version": "0.12.0",
+      "retrieved_at_utc": "2026-10-21T20:13:21+00:00",
+      "verification": "Blob SHA-256 equals lock, existing cache and expected_hash in hash-verified tiktoken 0.12.0 wheel openai_public.py. Cache filename is SHA-1(source URL), matching wheel load.py."
+    },
+    {
+      "name": "o200k_base",
+      "source_url": "https://openaipublic.blob.core.windows.net/encodings/o200k_base.tiktoken",
+      "sha256": "446a9538cb6c348e3516120d7c08b09f57c36495e2acfffe59a5bf8b0cfb1a2d",
+      "cache_filename": "fb374d419588a4632f3f557e76b4b70aebbca790",
+      "bytes": 3613922,
+      "format": "tiktoken BPE ranks",
+      "tiktoken_version": "0.12.0",
+      "retrieved_at_utc": "2026-10-21T20:13:25+00:00",
+      "verification": "Blob SHA-256 equals lock, existing cache and expected_hash in hash-verified tiktoken 0.12.0 wheel openai_public.py. Cache filename is SHA-1(source URL), matching wheel load.py."
+    }
+  ],
+  "tokenization": {
+    "api": "Encoding.encode_ordinary",
+    "unicode": "UTF-8, no normalization; JSON.stringify ordered compact capture bytes, no newline",
+    "boundaries": "guidance section 5: complete advertised context/catalog; each tool; empty-tools context wrapper; original context prefix/suffix and comma separators independently; no cross-segment merge credit. Discovery/SDK response metadata and JSON-RPC/LF framing measured separately."
+  }
+}

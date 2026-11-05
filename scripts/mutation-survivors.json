@@ -1,0 +1,10 @@
+[
+  {
+    "id": "outcome-execution-failure",
+    "justification": "The explicit execution-failure throw in classifyOutcomeIssues is currently subsumed by the fallthrough throw: EXECUTION_FAILURE_CODES and FILTER_CLASS_CODES are disjoint, so every execution-failure code at error/fatal severity throws UNVERIFIED_QUERY either way. The explicit branch is kept because the V-9 contract states the rule directly; if a code ever joins both sets this survivor must be re-reviewed."
+  },
+  {
+    "id": "credential-reinvalidate",
+    "justification": "Removing CREDENTIAL_INVALIDATED from the credentialFault exempt list changes nothing today: the provider always raises that fault as retryable, so the V-29 retryable short-circuit returns the identical retryable GatewayFault before any invalidate() call. The exempt-list entry is kept so the never-re-invalidate rule stays explicit if provider retryability ever changes."
+  }
+]
