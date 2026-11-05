@@ -83,6 +83,14 @@ This amends `proposals/m3b-integration-plan.md` A3/A4 and the "exact-tree full C
 - **Deferred for the preview,** and stated as pending in the README: B2 ≥200, a passing official aggregate on the final tree, S11, G-HUMAN (recommended before the preview, not required), npm, OCI, Registry and the paper. These remain gates for the alpha and for the paper release.
 - **Amends** §2.1 (the source preview comes before any tag), A1 (no CI run) and §9 items 5 and 6. §2.2 does not apply to Stage A.
 
+**A12. B2 contract and first workflow (owner decisions, 2026-11-05).**
+- **B2:** the owner adopted a **corrected, versioned v2** contract on 2026-11-05, after two independent reviews that both recommended it. B2 v1 (≥200 counted of 216) stays reported as **unmet**, never relabelled.
+  - Before v2 is used for counting, its §12 item 1 is fixed: equivalence needs an independent semantic justification, survival only supports it, and no disposition is allowed once a mutant is critical.
+  - §12 item 2, the 90% share that would let some counted obligations stay unearned, needs a separate explicit owner decision. Until then the corrected v2 requires every counted obligation to be earned.
+  - The corrected contract is committed as its own file, and both versions are reported side by side.
+- **First workflow:** `recent-labs-v1`. Release claims, eval emphasis, the README walkthrough and the head-to-head comparisons centre on it.
+- **Consequence:** the alpha's B2 gate (§2.2) is read as "B2 v2 satisfied; v1 reported unmet".
+
 **A7. Small items.**
 - Engines floor: the `>=24.21.0` edit stays pending the owner's decision (§9, item 2). 24.21.0 is the known `Readable.toWeb` regression cell, so the floor is recommended.
 - Runner pinning: `catalog-tokens` is pinned to `ubuntu-24.04` (applied in `d79a71d`). The other jobs are pinned when the release-candidate workflow is prepared, as one reviewed change.
@@ -153,7 +161,7 @@ Never claim at the first launch, absent the separately required evidence:
 4. **Public history:** full reviewed history, or a curated export, after the inventory in §6.
 5. **Release-time CI route:** **decided 2026-11-05**: no GitHub Actions; local verification only (A11).
 6. **First public step:** **decided 2026-10-31**: the Stage A source preview, with the pinned alpha after S12 (A11).
-7. **First workflow and partner**, then **first SMART path** (GPT §6 recommendations: validate `recent-labs-v1` first; choose one SMART path from the validated workflow).
+7. **First workflow:** **decided 2026-11-05**: `recent-labs-v1`, the recent laboratory evidence workflow that `doctor` already reports, is the named workflow that the alpha's claims, evals and comparisons centre on (A12). Partner and **first SMART path** are still open: SMART backend first, after the npm alpha.
 8. **Comparative benchmark permission** (keep the current prohibition for now).
 9. **Maintenance, rights and review budget** before the public alpha.
 
