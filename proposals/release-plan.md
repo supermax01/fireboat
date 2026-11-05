@@ -86,7 +86,7 @@ This amends `proposals/m3b-integration-plan.md` A3/A4 and the "exact-tree full C
 **A12. B2 contract and first workflow (owner decisions, 2026-11-05).**
 - **B2:** the owner adopted a **corrected, versioned v2** contract on 2026-11-05, after two independent reviews that both recommended it. B2 v1 (≥200 counted of 216) stays reported as **unmet**, never relabelled.
   - Before v2 is used for counting, its §12 item 1 is fixed: equivalence needs an independent semantic justification, survival only supports it, and no disposition is allowed once a mutant is critical.
-  - §12 item 2, the 90% share that would let some counted obligations stay unearned, needs a separate explicit owner decision. Until then the corrected v2 requires every counted obligation to be earned.
+  - §12 item 2 is **decided by the owner on 2026-11-05: no 90% share.** Every counted obligation must be earned under v2, as under v1. The corrected v2 changes how obligations are defined and counted, not whether a counted case must earn its credit.
   - The corrected contract is committed as its own file, and both versions are reported side by side.
 - **First workflow:** `recent-labs-v1`. Release claims, eval emphasis, the README walkthrough and the head-to-head comparisons centre on it.
 - **Consequence:** the alpha's B2 gate (§2.2) is read as "B2 v2 satisfied; v1 reported unmet".
