@@ -12,12 +12,12 @@ mutation-results/
 .DS_Store
 
 # Personal and agent-tool files: never commit these
-.claude/
+.claude/*
+!.claude/skills
 .codex/
 .muse/
 .t3/
 .cursor/
-CLAUDE.md
 CLAUDE.local.md
 *.local.md
 .idea/
