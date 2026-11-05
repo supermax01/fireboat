@@ -10,3 +10,15 @@ mutation-results/
 *.log
 *.tsbuildinfo
 .DS_Store
+
+# Personal and agent-tool files: never commit these
+.claude/
+.codex/
+.muse/
+.t3/
+.cursor/
+CLAUDE.md
+CLAUDE.local.md
+*.local.md
+.idea/
+.vscode/
