@@ -95,6 +95,10 @@ This amends `proposals/m3b-integration-plan.md` A3/A4 and the "exact-tree full C
     - root defines the disposition evidence schemas, an independent reviewer checks them, and the owner approves them with the implementation;
     - only independently verified Tier-2 N/A rules are proposed, and the owner signs them off as one batch;
     - the v2 classification ledger lives in `tests/isolation/ledger-v2.json`, bound to the hash of the frozen v1 design.
+  - **Q3 amended by the owner on 2026-11-06** (amendment A1, v2 contract v2.1 §10 and §13):
+    - critical labels in a kill matrix or an admission history stay kill-only, including the six seeds that already had kill rows;
+    - the 21 seeds labelled critical only in the `3d679d0` seed registry, whose kills were declared but never verified, are pre-freeze candidates. Each gets an actual kill or one reviewed depth, equivalent or unreached disposition before the v2 critical freeze, relied on only after the evidence schemas are approved;
+    - a disposition is never counted as a kill or earned credit, and every disposed seed is disclosed by name and type in each v2 report.
 - **First workflow:** `recent-labs-v1`. Release claims, eval emphasis, the README walkthrough and the head-to-head comparisons centre on it.
 - **Consequence:** the alpha's B2 gate (§2.2) is read as "B2 v2 satisfied; v1 reported unmet".
 
