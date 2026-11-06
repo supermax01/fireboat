@@ -88,6 +88,13 @@ This amends `proposals/m3b-integration-plan.md` A3/A4 and the "exact-tree full C
   - Before v2 is used for counting, its §12 item 1 is fixed: equivalence needs an independent semantic justification, survival only supports it, and no disposition is allowed once a mutant is critical.
   - §12 item 2 is **decided by the owner on 2026-11-05: no 90% share.** Every counted obligation must be earned under v2, as under v1. The corrected v2 changes how obligations are defined and counted, not whether a counted case must earn its credit.
   - The corrected contract is committed as its own file, and both versions are reported side by side.
+  - **The contract's remaining questions were decided on 2026-11-05** (v2 contract §10):
+    - confirmed defaults: at least 100 counted obligations; tuple-grain coverage; internal-channel and witness-vector kills uncapped but reported separately; the nine protocol-only core-N/A IDs; internal non-author review, with G-HUMAN kept separate;
+    - a post-freeze exit from counted fails that campaign. The failed run is published, and only then may a fresh, disclosed preregistration start another. There is no silent reset;
+    - anything ever labelled critical is critical, and gets no disposition;
+    - root defines the disposition evidence schemas, an independent reviewer checks them, and the owner approves them with the implementation;
+    - only independently verified Tier-2 N/A rules are proposed, and the owner signs them off as one batch;
+    - the v2 classification ledger lives in `tests/isolation/ledger-v2.json`, bound to the hash of the frozen v1 design.
 - **First workflow:** `recent-labs-v1`. Release claims, eval emphasis, the README walkthrough and the head-to-head comparisons centre on it.
 - **Consequence:** the alpha's B2 gate (§2.2) is read as "B2 v2 satisfied; v1 reported unmet".
 
