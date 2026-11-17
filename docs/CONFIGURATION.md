@@ -27,7 +27,7 @@ Configuration is trusted operator input. No tool argument can change the patient
 | `mode` | Must be `"synthetic"`; no other mode is accepted yet. |
 | `source.alias` | A configured name, never a URL supplied by the model. |
 | `source.baseUrl` | The FHIR base URL; it must use a literal loopback address. |
-| `source.auth` | Optional outbound OAuth client credentials: `type: "client_credentials"`, `tokenUrl`, `clientId`, `clientSecretEnv`, and optional `scopes`. The secret comes from the named environment variable, never a tool argument. This is not SMART authorization. |
+| `source.auth` | Optional sign-in to the FHIR server. OAuth client credentials: `type: "client_credentials"`, `tokenUrl`, `clientId`, `clientSecretEnv`, and optional `scopes`. The secret comes from the named environment variable, never a tool argument. The two SMART on FHIR types, `smart_standalone_launch` and `smart_backend_services`, are described in [SMART on FHIR sign-in](SMART.md). |
 | `source.searchProfile` | Optional eligible search profile; see [qualified profiles and their limits](QUERY-EVIDENCE.md). |
 | `source.selfLinkOptional` | Optional boolean, default `false`. When `true`, a first search page without a self link is judged by its records instead of refused; see [pages without a self link](#pages-without-a-self-link). |
 | `source.continuationTokenParameter` | Optional name of the one opaque token a source adds to its next links, for example `"page"`; empty or omitted by default (off). See [pages without a self link](#pages-without-a-self-link). |
@@ -117,11 +117,16 @@ Usage from actual `--help` output:
 Usage:
   fireboat --config <path>          Serve MCP over stdio
   fireboat --doctor --config <path> Check config and source metadata
+  fireboat login --config <path> [--no-browser] [--timeout <s>]
+                                    SMART standalone launch sign-in; stores the grant
+  fireboat logout --config <path>   Delete the stored SMART grant
   fireboat --version                Show release, schema and runtime cell
   fireboat --help                   Show this help
 ```
 
 Config path precedence is `--config` > `FIREBOAT_CONFIG` > `FHIR_MCP_CONFIG`. The last `--config` wins. `FHIR_MCP_CONFIG` remains a deprecated alias for this release; selecting it emits one note on stderr without the path. An invalid higher-priority path fails instead of falling back.
+
+`login` and `logout` apply only to `smart_standalone_launch` sources; see [SMART on FHIR sign-in](SMART.md). They take the same `--config` precedence.
 
 During serving, stdout carries MCP protocol traffic only; diagnostics go to stderr. The compiled `node ...` command is the same stdio server as the `fireboat --config <path>` form.
 
@@ -155,11 +160,13 @@ Doctor checks configuration and source metadata. It prints:
 - the runtime cell;
 - the source alias, with its loopback check, auth type and data classification;
 - the FHIR version and metadata coverage;
-- the readiness of the `recent-labs-v1` workflow;
+- the readiness of the `recent-labs-v1` workflow (under SMART sign-in, this also needs Patient read and Observation search
+  in the granted scope);
 - the search-profile proof state;
 - the output limits;
 - the configured patient-identifier systems;
 - the hashes of the bundled data;
+- for SMART sources, a `smart:` line with discovery, PKCE support, whether a grant is stored, the patient match and how the granted scopes compare with the request (categories and counts only);
 - the ambient-proxy status, faults and scope.
 
 It does not print the source URL or the tool list. Healthy output includes `doctor: ready`, `faults: none` and a fixed `scope:` line. This is a metadata check, not clinical validation or a proof of filter execution.

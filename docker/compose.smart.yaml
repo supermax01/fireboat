@@ -1,0 +1,28 @@
+# HAPI FHIR behind SMART Launcher v2 for `npm run test:smart`. Loopback-only ports; synthetic data only.
+# scripts/test-smart.ts brings it up with a SECRET generated at run time and always tears it down:
+#   Up:   SMART_LAUNCHER_SECRET=<generated> docker compose -f docker/compose.smart.yaml up -d
+#   Down: docker compose -p fireboat-smart down -v   (no -f, so the SECRET is not needed)
+# The project name is fixed so it does not follow this folder's name and never collides with `fireboat`.
+name: fireboat-smart
+services:
+  hapi:
+    # Same digest as docker/compose.yaml.
+    image: hapiproject/hapi@sha256:0ff86aac4c7bd13a1ee226444a70263bb46ed1c28ef543c30a44f865b80ca04e
+    ports:
+      - "127.0.0.1:18211:8080"   # seeding only; never seed or write through the launcher
+    environment:
+      HAPI_FHIR_FHIR_VERSION: R4
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx1024m"
+  launcher:
+    # smartonfhir/smart-launcher-2:latest OCI index, pushed 2025-02-13 (linux/amd64 + linux/arm64).
+    image: smartonfhir/smart-launcher-2@sha256:72bd3e3c682ce4c74e6dddb605d89acad7c8aae446ae38079e8dfe8455b84793
+    depends_on: [hapi]
+    ports:
+      - "127.0.0.1:18210:80"     # clients use http://127.0.0.1:18210 so discovered endpoints are literal loopback
+    environment:
+      PORT: "80"
+      SECRET: ${SMART_LAUNCHER_SECRET:?set SMART_LAUNCHER_SECRET at run time}
+      FHIR_SERVER_R2: ""
+      FHIR_SERVER_R3: ""
+      FHIR_SERVER_R4: "http://hapi:8080/fhir"            # no trailing slash
+      FHIR_SERVER_R4_INTERNAL: "http://hapi:8080/fhir"   # no trailing slash (body rewrite is an exact string replace)

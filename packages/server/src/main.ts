@@ -9,24 +9,39 @@ import { createMcpServer } from './index.js';
 import { doctorReport, type DoctorFault, type DoctorInput } from './doctor.js';
 import { runtimeCell, type ReleaseMetadata } from './release.js';
 
-interface CliOptions { configPath?: string; doctor: boolean; deprecatedConfig: boolean }
-function parseArgs(argv: string[]): CliOptions {
-  const opts: CliOptions = { doctor: false, deprecatedConfig: false };
+export interface ConfigChoice { configPath?: string; deprecatedConfig: boolean }
+export const CONFIG_DEPRECATION_NOTE = 'fireboat: note: FHIR_MCP_CONFIG is deprecated; use FIREBOAT_CONFIG.\n';
+/**
+ * The one config-path rule for every command: `--config <path>` or `--config=<path>` (the last one wins) >
+ * FIREBOAT_CONFIG > FHIR_MCP_CONFIG (deprecated). `other` consumes any other argument and returns how many
+ * arguments it used; 0 refuses the argument. Throws on a refused argument.
+ */
+export function resolveConfig(argv: readonly string[], other: (arg: string, next: string | undefined) => number): ConfigChoice {
+  const choice: ConfigChoice = { deprecatedConfig: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? '';
-    if (arg === '--doctor') opts.doctor = true;
-    else if (arg === '--config') {
+    if (arg === '--config') {
       const next = argv[i + 1];
       if (!next) throw new Error();
-      opts.configPath = next; i += 1;
-    } else if (arg.startsWith('--config=')) opts.configPath = arg.slice('--config='.length);
-    else throw new Error();
+      choice.configPath = next; i += 1;
+    } else if (arg.startsWith('--config=')) choice.configPath = arg.slice('--config='.length);
+    else {
+      const used = other(arg, argv[i + 1]);
+      if (used < 1) throw new Error();
+      i += used - 1;
+    }
   }
-  if (opts.configPath === undefined) {
-    opts.configPath = process.env['FIREBOAT_CONFIG'] ?? process.env['FHIR_MCP_CONFIG'];
-    opts.deprecatedConfig = process.env['FIREBOAT_CONFIG'] === undefined && process.env['FHIR_MCP_CONFIG'] !== undefined;
+  if (choice.configPath === undefined) {
+    choice.configPath = process.env['FIREBOAT_CONFIG'] ?? process.env['FHIR_MCP_CONFIG'];
+    choice.deprecatedConfig = process.env['FIREBOAT_CONFIG'] === undefined && process.env['FHIR_MCP_CONFIG'] !== undefined;
   }
-  return opts;
+  return choice;
+}
+interface CliOptions extends ConfigChoice { doctor: boolean }
+function parseArgs(argv: string[]): CliOptions {
+  let doctor = false;
+  const choice = resolveConfig(argv, arg => { if (arg !== '--doctor') return 0; doctor = true; return 1; });
+  return { ...choice, doctor };
 }
 
 async function loadConfig(configPath: string): Promise<GatewayConfig> {
@@ -37,7 +52,7 @@ async function loadConfig(configPath: string): Promise<GatewayConfig> {
 }
 
 /** Names only; the controlled FHIR/token client uses explicit non-proxy agents. */
-function reportProxyRisk(): void {
+export function reportProxyRisk(): void {
   const risk = ambientProxyRisk();
   if (risk.risk) process.stderr.write(`fireboat: warning: ambient proxy risk (activated by ${risk.activatedBy.join(', ')}; variables ${risk.proxyVariables.join(', ')}). The controlled FHIR/token client ignores ambient proxies; unset them to silence this warning.\n`);
   else if (risk.enabled || risk.proxyVariables.length) process.stderr.write(`fireboat: note: proxy-related environment present (enabled=${risk.enabled}; variables ${risk.proxyVariables.join(', ') || 'none'}); controlled client ignores ambient proxies.\n`);
@@ -70,14 +85,18 @@ async function runDoctor(gateway: FhirGateway, config: GatewayConfig, release: R
     const observationView = await resourceView(gateway, 'Observation');
     const executable = (view: typeof patientView, interaction: string): boolean => !view.error
       && Array.isArray(view.data.implemented_interactions) && view.data.implemented_interactions.includes(interaction);
-    patient = executable(patientView, 'read') ? 'ready' : 'not-ready';
-    observation = executable(observationView, 'search-type') ? 'ready' : 'not-ready';
+    // Under SMART the grant must also permit each step: Patient read and Observation search. It is read from the grant
+    // acquired for the metadata check; no clinical request is sent.
+    patient = executable(patientView, 'read') && gateway.grantPermits('Patient', 'read') ? 'ready' : 'not-ready';
+    observation = executable(observationView, 'search-type') && gateway.grantPermits('Observation', 'search') ? 'ready' : 'not-ready';
   }
   const profile = gateway.describeSearchProfile();
   // Eligibility is registry-derived. An unknown/private profile is never copied through as a safe token.
   if (!profile.eligible || profile.private || !eligibleSearchProfileIds().includes(profile.id)) {
     process.stderr.write('fireboat: PROFILE_INVALID\n'); return 2;
   }
+  // SMART auth adds one closed line: discovery, PKCE, stored grant and scope relation, never URLs, scopes or tokens.
+  const smart = config.source.auth?.type.startsWith('smart_') ? await gateway.describeSmartStatus() : undefined;
   const cell = { node: process.versions.node, platform: process.platform, arch: process.arch };
   const report = doctorReport({
     release: { name: release.name, version: release.version, schema: release.schema, catalog: release.catalog },
@@ -88,7 +107,7 @@ async function runDoctor(gateway: FhirGateway, config: GatewayConfig, release: R
     output: gateway.describeOperatorPolicy(),
     artifacts: { r4IndexSha256: release.assets['r4-index'].sha256, r4SearchParametersSha256: release.assets['r4-search-parameters'].sha256, supportMatrixSha256: release.assets['support-matrix'].sha256 },
     privacy: { patientIdentifierSystems: config.privacy?.patientIdentifierSystems?.length ?? 0, sharedIdentifierSystems: config.privacy?.sharedIdentifierSystems?.length ?? 0, sharedProfiles: config.privacy?.sharedProfiles?.length ?? 0 },
-    proxy: ambientProxyRisk().risk ? 'present' : 'absent', faults,
+    proxy: ambientProxyRisk().risk ? 'present' : 'absent', ...(smart ? { smart } : {}), faults,
   });
   process.stdout.write(`${report.lines.join('\n')}\n`);
   return report.exitCode;
@@ -154,7 +173,7 @@ export async function main(argv: string[], release: ReleaseMetadata): Promise<nu
   let opts: CliOptions;
   try { opts = parseArgs(argv); }
   catch { process.stderr.write('fireboat: ARGUMENTS_INVALID\n'); return 2; }
-  if (opts.deprecatedConfig) process.stderr.write('fireboat: note: FHIR_MCP_CONFIG is deprecated; use FIREBOAT_CONFIG.\n');
+  if (opts.deprecatedConfig) process.stderr.write(CONFIG_DEPRECATION_NOTE);
   if (!opts.doctor) reportProxyRisk();
   if (!opts.configPath) {
     process.stderr.write('fireboat: CONFIG_INVALID\n'); return 2;

@@ -2,7 +2,7 @@
 
 This guide runs the `@fireboat/gateway` prototype (CLI `fireboat`) against a disposable, helper-owned HAPI FHIR server. The `fireboat-quickstart` helper prepares the checked-in synthetic Synthea seed and labelled edge fixtures, verifies scripted retrieval tasks, generates host registration forms and cleans up its instance. The gateway serves locally over MCP stdio and exposes read-only tools. Only the separate helper seeds its own fresh HAPI, using manifest-listed fixed-ID PUTs.
 
-Use synthetic data only. This is not a production release and makes no SMART authorization, clinical deployment readiness, vendor support or general protocol compatibility claim. The verification tasks use a scripted oracle, with no model or clinical reasoning assessment. A pass demonstrates the checked retrieval behavior for that run; it says nothing about clinical reasoning or an untested host, runtime or backend.
+Use synthetic data only. This is not a production release and makes no SMART certification, clinical deployment readiness, vendor support or general protocol compatibility claim. The verification tasks use a scripted oracle, with no model or clinical reasoning assessment. A pass demonstrates the checked retrieval behavior for that run; it says nothing about clinical reasoning or an untested host, runtime or backend.
 
 ## Prerequisites and the pinned image
 

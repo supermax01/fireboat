@@ -22,15 +22,15 @@
     },
     {
       "path": "README.md",
-      "size": 22219,
+      "size": 23746,
       "mode": 420,
-      "sha256": "6393c48265d6c6e58b29e4641f07f7089a4f47cf723199373efcf4931e82927b"
+      "sha256": "3296eb07f9012446682e081cfffc83f21130b3798bf8f854fc90f3de5ffd6254"
     },
     {
       "path": "SECURITY.md",
-      "size": 2888,
+      "size": 2990,
       "mode": 420,
-      "sha256": "461973f5109f7c34194c5219cd365d473e15e08b3562ef0f8ee7813080a75887"
+      "sha256": "812c484f1a36b815b106153b9770ce0f16249dfd9ffa0e9a560195eb656a454d"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -40,15 +40,69 @@
     },
     {
       "path": "dist/package.json",
-      "size": 5106,
+      "size": 5559,
       "mode": 420,
-      "sha256": "eaab5d5a95fc48980e452b077c9817b0c5c1d1e530fbf9ab6337af901efd1c28"
+      "sha256": "8feb2e70cf3eef29788b0198438bb66535c028dfa7e182db582821ace5dc6d55"
+    },
+    {
+      "path": "dist/packages/auth/src/client-assertion.js",
+      "size": 6179,
+      "mode": 420,
+      "sha256": "99c41fb51169e0d98ed2f1aa0e2611dd58e74a0ffacdf463f299ef83d7008298"
     },
     {
       "path": "dist/packages/auth/src/client-credentials.js",
-      "size": 18841,
+      "size": 4667,
       "mode": 420,
-      "sha256": "edc14530ba7cf8b4fb721963882bccac9d79ae8485b02e9b9f4e48bff27e0851"
+      "sha256": "659fa8037be7dbe30883c84ebffa2ea1c5a69920bd0a2699dc9f0f423fd3730b"
+    },
+    {
+      "path": "dist/packages/auth/src/index.js",
+      "size": 1095,
+      "mode": 420,
+      "sha256": "3324fce23b6ae72660a6454dd4b3986bb95f38d425113ff42692c76fe65965bb"
+    },
+    {
+      "path": "dist/packages/auth/src/pkce.js",
+      "size": 863,
+      "mode": 420,
+      "sha256": "feb7e317c01088a8c64229ea4e77d03d6b1bfe6e9a5cef7ce93d4688c24cf30c"
+    },
+    {
+      "path": "dist/packages/auth/src/smart-backend.js",
+      "size": 7528,
+      "mode": 420,
+      "sha256": "d68c2ac2eaf6013ef9565a4d21f7d217ce2c6582c4351491b3c9c5d501821011"
+    },
+    {
+      "path": "dist/packages/auth/src/smart-discovery.js",
+      "size": 7772,
+      "mode": 420,
+      "sha256": "20e7edd1bdfa2987d20f2f640424a60a6ac01d442dea1475d8d9e40cdf95f9a4"
+    },
+    {
+      "path": "dist/packages/auth/src/smart-scopes.js",
+      "size": 5148,
+      "mode": 420,
+      "sha256": "7dfcc39b4f48448194300868bbb23f4c684ab23077affcbfa4298da48fcfc726"
+    },
+    {
+      "path": "dist/packages/auth/src/smart-standalone.js",
+      "size": 22983,
+      "mode": 420,
+      "sha256": "7d89cd946092e1de0b53c35a4facea89a77485cc5d51d1b310656e032b1baf70"
+    },
+    {
+      "path": "dist/packages/auth/src/token-provider.js",
+      "size": 16648,
+      "mode": 420,
+      "sha256": "06f66c9092d6500150bca03dc9b8e6194117da7bad5563d099197f61e6f58e7f"
+    },
+    {
+      "path": "dist/packages/auth/src/token-store.js",
+      "size": 19138,
+      "mode": 420,
+      "sha256": "4499ef41fea3ad50e098886ad914bc6f2cc56a774a00c100e91a875467428fbf"
     },
     {
       "path": "dist/packages/core/src/catalog.js",
@@ -130,9 +184,9 @@
     },
     {
       "path": "dist/packages/core/src/index.js",
-      "size": 158629,
+      "size": 163636,
       "mode": 420,
-      "sha256": "197f72d74bf53e48df725e894814296090b0b0f9f86335032b795ba88d49820a"
+      "sha256": "0aefc72b0617ec860cb6e2e305a9a1fde1ffbe6401fa0e59b47e947b8057a384"
     },
     {
       "path": "dist/packages/core/src/privacy.js",
@@ -190,9 +244,9 @@
     },
     {
       "path": "dist/packages/core/src/transport.js",
-      "size": 22331,
+      "size": 22914,
       "mode": 420,
-      "sha256": "af6318ab22686a3c17893b144363e0b2970ac6b4d06e775fcb2ea0bd4b4a0f86"
+      "sha256": "91a7d28262334b0b12863badfbafedcd208c55616c699908c54a06a813453fc3"
     },
     {
       "path": "dist/packages/core/src/withheld.js",
@@ -202,15 +256,15 @@
     },
     {
       "path": "dist/packages/server/src/cli.js",
-      "size": 1334,
+      "size": 1702,
       "mode": 493,
-      "sha256": "29281a411d080292f87baa43440bb1673bdd43d9d9eb69c5f7571fe13d1529a6"
+      "sha256": "d50c9ffc135d4cc9cd8d03df80b0249801b05d6ba7bc54a2405dba3f7a7d8f05"
     },
     {
       "path": "dist/packages/server/src/doctor.js",
-      "size": 7346,
+      "size": 8269,
       "mode": 420,
-      "sha256": "77bad6400edae8996ef2064be5d88d6939c665faf4a48c9a71ce74e9da31dfc3"
+      "sha256": "980f47cf979a68aa42457b108528c9ab9ca99169462e7105496e0156d355976f"
     },
     {
       "path": "dist/packages/server/src/generated/release.json",
@@ -225,10 +279,16 @@
       "sha256": "9fe79ac3958c9146782a35f09038b077fc65a68fd9010a9d2571f83576750a73"
     },
     {
-      "path": "dist/packages/server/src/main.js",
-      "size": 11056,
+      "path": "dist/packages/server/src/login.js",
+      "size": 8963,
       "mode": 420,
-      "sha256": "47f6a69acb35632fc2f17f187cd169fe3bcf619678642cc065f51647a4305f02"
+      "sha256": "9af412b01ce074d4ecedda8948e96650cf054e56bdc9d79242730bc833e882d6"
+    },
+    {
+      "path": "dist/packages/server/src/main.js",
+      "size": 12253,
+      "mode": 420,
+      "sha256": "66d3645c80ed21c0811bd19e54e09e1e6bd964d81413af76a8f363a233350c1e"
     },
     {
       "path": "dist/packages/server/src/release.js",
@@ -238,51 +298,51 @@
     },
     {
       "path": "dist/packages/server/src/startup.js",
-      "size": 2638,
+      "size": 2941,
       "mode": 420,
-      "sha256": "39a8b6506f58aeeaef691caab488619e44d0d815be297bc885d3dc1758daab3c"
+      "sha256": "bf4a246e2291aabb27644c0eaa0ebe59e004a0c1893948157ec552a2710ceb13"
     },
     {
       "path": "docs/COMPACT-PROFILES.md",
       "size": 8495,
       "mode": 420,
-      "sha256": "9517eb918bfdc419b6f07e256f292b9477f3ab4a2c30bae09c05d817328af80e"
+      "sha256": "58c0f0098eb21b8265c2b344ecd56b84475951c79268a05a2e77849a882dc2e7"
     },
     {
       "path": "docs/HOST-PROFILES.md",
       "size": 1721,
       "mode": 420,
-      "sha256": "9cb11f89b88bab454b4cb5c62f73eb9f27a18f412ee9f47fc9707c6ac9788f9c"
+      "sha256": "e801f6948a35ef8890bb3e600b3889ef8b08245f48d8097915b55a765dfdb198"
     },
     {
       "path": "docs/LIMITS.md",
-      "size": 10870,
+      "size": 10887,
       "mode": 420,
-      "sha256": "e86065402ef997e6739f4cc64fae68f30d155cdcfb10f68f9de8f62626b9dae5"
+      "sha256": "b02fd287a31c6aee812b731011eb6c4525acd4d3698af42b4004177823f3bc9d"
     },
     {
       "path": "docs/QUERY-EVIDENCE.md",
       "size": 10102,
       "mode": 420,
-      "sha256": "53babd7176ac27f91abacb4003d7213a9a6d468547243cc184c9e4893420b064"
+      "sha256": "7ccc8709fe7187a3eb272edbfcf561d7f9040669425eebbf3850ec62619aca5e"
     },
     {
       "path": "docs/QUERY-REPAIR.md",
       "size": 6297,
       "mode": 420,
-      "sha256": "c7d4b5884bbbc65ffddbb55c52cff12864391ea56ad25a4061c16a0bb35c12c0"
+      "sha256": "4742c350fb9468f52153102cab929b160cee8089071e1648b9d801754c2bcd0e"
     },
     {
       "path": "docs/QUICKSTART.md",
       "size": 36401,
       "mode": 420,
-      "sha256": "224bd32d0803842faf6c98036e1982513b046c9ed487a7d2ecee97ecc2b6a60a"
+      "sha256": "fe81aebb8a4156bed779b8db7a578c5729ce56ae72a53f30114db8da1a36e38c"
     },
     {
       "path": "docs/SUPPORT-MATRIX.md",
       "size": 10797,
       "mode": 420,
-      "sha256": "7a38df97b7eaf51f8ea466dc992851e58cbbe6efdabb4d1d6cf558d338a5d38a"
+      "sha256": "b57f6214ae19e46f79efe765e65e79ee97872e9518225f1eab6108b4709eb722"
     },
     {
       "path": "docs/contracts/m3b-tools.json",
@@ -400,9 +460,9 @@
     },
     {
       "path": "package.json",
-      "size": 5106,
+      "size": 5559,
       "mode": 420,
-      "sha256": "eaab5d5a95fc48980e452b077c9817b0c5c1d1e530fbf9ab6337af901efd1c28"
+      "sha256": "8feb2e70cf3eef29788b0198438bb66535c028dfa7e182db582821ace5dc6d55"
     },
     {
       "path": "quickstart/dist/examples/quickstart/backend-evidence.json",

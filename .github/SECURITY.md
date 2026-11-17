@@ -2,7 +2,7 @@
 
 ## Scope
 
-This repository is a **synthetic-data prototype**: a read-only MCP gateway for one trusted patient's FHIR R4 records, served over local stdio to a loopback FHIR source. It is not for real patient data, is not clinically validated, and has no SMART authorization or remote serving. Security reports are welcome within that scope; reports about real-data deployments describe configurations the project does not support.
+This repository is a **synthetic-data prototype**: a read-only MCP gateway for one trusted patient's FHIR R4 records, served over local stdio to a loopback FHIR source. It is not for real patient data, is not clinically validated, and has no remote serving. Its SMART on FHIR sign-in is a loopback-only client, tested against a local SMART Launcher only, and is not SMART certified. Security reports are welcome within that scope; reports about real-data deployments describe configurations the project does not support.
 
 ## Reporting a vulnerability
 

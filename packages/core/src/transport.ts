@@ -14,7 +14,9 @@ export class GatewayFault extends Error {
 }
 
 /** Caller cancellation plus an optional absolute overall deadline (epoch ms). Every upstream request still keeps its own configured timeout: min(timeout, remaining budget). `epoch` is the gateway credential generation the request runs on (V-4); the transport itself ignores it. */
-export interface RequestBudget { signal?: AbortSignal; deadline?: number; epoch?: number }
+export interface RequestBudget { signal?: AbortSignal; deadline?: number; epoch?: number; permission?: RequiredPermission }
+/** The interaction a clinical request needs on its resource type. The transport checks it against the credential it is about to send. */
+export interface RequiredPermission { type: string; interaction: 'read' | 'search' }
 /** What the source said when it rejected a credentialed request. `generation` identifies the credential that made the request, when the provider exposes it. */
 export interface RejectionInfo { status: number; invalidToken: boolean; isMetadata: boolean; generation?: number }
 export interface TransportCredentials {
@@ -22,6 +24,8 @@ export interface TransportCredentials {
   authorizationWithGeneration?(url: URL, budget?: RequestBudget): Promise<{ authorization: string; generation: number }>;
   /** Called on 401/403 with structured info; zero-argument implementations remain valid. Returns true when the rejection concerned a superseded generation and nothing was invalidated. The transport itself changes no state. */
   onRejected(info?: RejectionInfo): void | boolean;
+  /** Whether the grant behind the credential most recently returned permits `interaction` on `type`. Without it, a request that names a permission is refused. */
+  allows?(type: string, interaction: RequiredPermission['interaction']): boolean;
 }
 
 /** RFC 6750: only a 401 or an authenticated Bearer `invalid_token` challenge shows the credential is unusable. A plain 403 (including a metadata 403) denies one request; it is not proof of an invalid token. Missing info keeps the legacy conservative answer. */
@@ -248,6 +252,12 @@ export class FhirTransport {
     let status: number | undefined;
     try {
       const { authorization, generation } = await this.authorize(url, bounds.signal, budget.deadline);
+      // Authorization may have renewed the credential and narrowed its grant, so the permission is checked here,
+      // against the credential this request carries, with nothing awaited between this check and dispatch.
+      const permission = budget.permission;
+      if (permission && this.credentials && !(this.credentials.allows?.(permission.type, permission.interaction) ?? false)) {
+        throw new GatewayFault('POLICY_DENIED', 'The granted scope does not permit this resource type.', false, undefined, 'SCOPE_NOT_GRANTED');
+      }
       bounds = this.bounds(budget);
       stats.calls++;
       // The same upstream allowance bounds both compressed input (metered raw inside the

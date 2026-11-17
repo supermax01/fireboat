@@ -2,7 +2,7 @@
 
 # Query repair guidance
 
-Synthetic-only prototype. Nothing here is a clinical-deployment, SMART-authorization, vendor-support or protocol-compatibility claim.
+Synthetic-only prototype. Nothing here is a clinical-deployment, SMART-certification, vendor-support or protocol-compatibility claim.
 
 Repair advice never echoes caller input, never names an unreviewed resource type or parameter, and never suggests weakening a constraint: patient confinement, budgets and policy are not negotiable through repairs.
 

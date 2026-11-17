@@ -2,7 +2,7 @@
 
 # Compact profiles
 
-Synthetic-only prototype. Nothing here is a clinical-deployment, SMART-authorization, vendor-support or protocol-compatibility claim.
+Synthetic-only prototype. Nothing here is a clinical-deployment, SMART-certification, vendor-support or protocol-compatibility claim.
 
 Schema `compact-profiles/1`, workflow `recent-labs-v1`, source release `hl7.fhir.r4.core@4.0.1`.
 

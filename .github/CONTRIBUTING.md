@@ -9,7 +9,7 @@ Thank you for considering a contribution. fireboat is a small, read-only MCP gat
 - **Read-only, one fixed patient.** No FHIR writes, no tool argument that selects another patient, no tool that accepts a URL, host or header, no remote unauthenticated serving, no hidden model calls, no tools beyond the five implemented ones.
 - **Keep the layers separate:** core policy, HTTP transport, output projection, the result store and the MCP adapter (`packages/core`, `packages/server`).
 - **Ordinary logs never contain** resource bodies, credentials or patient identifiers.
-- **No overclaiming.** Do not claim clinical readiness, SMART authorization, vendor compatibility or security guarantees that a recorded check does not support. See [AGENTS.md](../AGENTS.md) for the full list of boundaries.
+- **No overclaiming.** Do not claim clinical readiness, SMART certification or conformance, vendor compatibility or security guarantees that a recorded check does not support. See [AGENTS.md](../AGENTS.md) for the full list of boundaries.
 
 ## Set up
 

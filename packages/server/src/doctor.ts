@@ -8,7 +8,7 @@ export type DoctorFault = 'RUNTIME_UNSUPPORTED' | 'CONFIG_INVALID' | 'PROFILE_IN
 export interface DoctorInput {
   release: { name: string; version: string; schema: '0.4'; catalog: 'm3b-catalog/3' };
   runtime: { node: string; platform: string; arch: string; lossless: 'ok' | 'unsupported'; cell: 'recorded' | 'unverified' };
-  source: { alias: string; loopback: 'literal-ok'; auth: 'none' | 'client_credentials'; classification: 'operator-declared-synthetic' };
+  source: { alias: string; loopback: 'literal-ok'; auth: 'none' | 'client_credentials' | 'smart_backend_services' | 'smart_standalone_launch'; classification: 'operator-declared-synthetic' };
   metadata: { status: 'ready' | 'unavailable' | 'invalid'; fhir: '4.0.1' | 'other' | 'unknown';
     capabilityRevision?: string; summary: 'complete' | 'partial' | 'unknown'; typeCount?: number };
   workflow: { id: 'recent-labs-v1'; patient: 'ready' | 'not-ready'; observation: 'ready' | 'not-ready';
@@ -19,6 +19,12 @@ export interface DoctorInput {
   proxy: 'present' | 'absent';
   faults: readonly DoctorFault[];
 }
+/** The closed SMART summary: present exactly when `source.auth` is a SMART type. */
+export interface DoctorSmart {
+  discovery: 'ok' | 'unavailable' | 'invalid'; pkce: 'S256' | 'missing' | 'n/a'; grant: 'present' | 'absent' | 'expired' | 'invalid' | 'n/a';
+  patientContext: 'match' | 'n/a'; scope: 'exact' | 'broader' | 'narrower' | 'unknown'; grantedTypes?: number; servedTypes: number;
+}
+export type DoctorReportInput = DoctorInput & { smart?: DoctorSmart };
 export interface DoctorReport { lines: string[]; exitCode: 0 | 1 | 2 }
 const FAULTS = ['RUNTIME_UNSUPPORTED', 'CONFIG_INVALID', 'PROFILE_INVALID', 'ASSET_MISSING', 'ASSET_INVALID', 'DTO_INVALID',
   'METADATA_UNAVAILABLE', 'METADATA_INVALID', 'FHIR_VERSION_UNSUPPORTED', 'WORKFLOW_TYPE_UNAVAILABLE'] as const;
@@ -29,7 +35,7 @@ const resourceTypes = Object.values(r4Index.definitions).filter(definition => de
 const doctorSchema = z.strictObject({
   release: z.strictObject({ name: z.string().regex(/^[A-Za-z0-9._-]{1,80}$/), version: z.string().max(128).regex(SEMVER), schema: z.literal('0.4'), catalog: z.literal('m3b-catalog/3') }),
   runtime: z.strictObject({ node: z.string().max(32).regex(NODE_VERSION), platform: z.enum(PLATFORMS), arch: z.enum(ARCHITECTURES), lossless: z.enum(['ok', 'unsupported']), cell: z.enum(['recorded', 'unverified']) }),
-  source: z.strictObject({ alias: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/), loopback: z.literal('literal-ok'), auth: z.enum(['none', 'client_credentials']), classification: z.literal('operator-declared-synthetic') }),
+  source: z.strictObject({ alias: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/), loopback: z.literal('literal-ok'), auth: z.enum(['none', 'client_credentials', 'smart_backend_services', 'smart_standalone_launch']), classification: z.literal('operator-declared-synthetic') }),
   metadata: z.strictObject({ status: z.enum(['ready', 'unavailable', 'invalid']), fhir: z.enum(['4.0.1', 'other', 'unknown']),
     capabilityRevision: z.string().regex(/^[a-f0-9]{16}$/).optional(), summary: z.enum(['complete', 'partial', 'unknown']), typeCount: count(0, resourceTypes).optional() }),
   workflow: z.strictObject({ id: z.literal('recent-labs-v1'), patient: ready, observation: ready,
@@ -39,8 +45,11 @@ const doctorSchema = z.strictObject({
     .refine(output => output.defaultBytes <= output.maxBytes),
   artifacts: z.strictObject({ r4IndexSha256: z.string().regex(SHA256), r4SearchParametersSha256: z.string().regex(SHA256), supportMatrixSha256: z.string().regex(SHA256) }),
   privacy: z.strictObject({ patientIdentifierSystems: count(0, 32), sharedIdentifierSystems: count(0, 32), sharedProfiles: count(0, 32) }), proxy: z.enum(['present', 'absent']),
+  smart: z.strictObject({ discovery: z.enum(['ok', 'unavailable', 'invalid']), pkce: z.enum(['S256', 'missing', 'n/a']), grant: z.enum(['present', 'absent', 'expired', 'invalid', 'n/a']),
+    patientContext: z.enum(['match', 'n/a']), scope: z.enum(['exact', 'broader', 'narrower', 'unknown']), grantedTypes: count(0, 64).optional(), servedTypes: count(1, 64) })
+    .refine(smart => smart.grantedTypes === undefined || smart.grantedTypes <= smart.servedTypes).optional(),
   faults: z.array(z.enum(FAULTS)).max(FAULTS.length).readonly(),
-});
+}).refine(input => (input.smart !== undefined) === input.source.auth.startsWith('smart_'));
 
 // Reject non-JSON properties too: strictObject alone does not reject symbols, accessors or hidden extras.
 function plainDto(value: unknown, seen = new Set<object>()): boolean {
@@ -58,14 +67,14 @@ function plainDto(value: unknown, seen = new Set<object>()): boolean {
   seen.delete(value);
   return true;
 }
-function closedDoctorInput(input: unknown): input is DoctorInput {
+function closedDoctorInput(input: unknown): input is DoctorReportInput {
   return plainDto(input) && doctorSchema.safeParse(input).success;
 }
-const SCOPE = 'scope: local-stdio synthetic-only read-only metadata-only; no-SMART-authorization; classification=operator-declared-unverified';
+const SCOPE = 'scope: local-stdio synthetic-only read-only metadata-only; smart=client-flows-not-certified; classification=operator-declared-unverified';
 const invalidInput = (): DoctorReport => ({ lines: ['doctor: fault', 'faults: DTO_INVALID', SCOPE], exitCode: 2 });
 
 /** Pure, closed formatter. Neither raw config nor gateway results belong at this boundary. */
-export function doctorReport(input: DoctorInput): DoctorReport {
+export function doctorReport(input: DoctorReportInput): DoctorReport {
   try {
     if (!closedDoctorInput(input)) return invalidInput();
   } catch { return invalidInput(); }
@@ -89,6 +98,7 @@ export function doctorReport(input: DoctorInput): DoctorReport {
     `privacy: patient_identifier_systems=${input.privacy.patientIdentifierSystems}${input.privacy.patientIdentifierSystems === 0 ? ' residual=unlisted-patient-systems' : ''} shared_identifier_systems=${input.privacy.sharedIdentifierSystems}${input.privacy.sharedIdentifierSystems > 0 && input.privacy.patientIdentifierSystems === 0 ? ' warning=shared-systems-without-patient-systems' : ''} shared_profiles=${input.privacy.sharedProfiles}`,
     `artifacts: r4_index=${input.artifacts.r4IndexSha256.slice(0, 12)} r4_search_parameters=${input.artifacts.r4SearchParametersSha256.slice(0, 12)} support_matrix=${input.artifacts.supportMatrixSha256.slice(0, 12)}`,
     `proxy: ${input.proxy}`,
+    ...(input.smart ? [`smart: discovery=${input.smart.discovery} pkce=${input.smart.pkce} grant=${input.smart.grant} patient_context=${input.smart.patientContext} scope=${input.smart.scope} granted_types=${input.smart.grantedTypes ?? 'unknown'}/${input.smart.servedTypes}`] : []),
     `faults: ${codes.join(',') || 'none'}`,
     SCOPE,
   ] };

@@ -31,7 +31,7 @@ Some practical rules:
 | Mutation gate | `npm run mutation:guards` | Every registered weakening of guarded code is caught by a named test | `0 inconclusive`, only declared survivors, exit 0 |
 | Generator and contract checks | three `--check` commands, below | Generated docs, the contract and the checkable-path table match their inputs | `in sync` lines, exit 0 |
 | Package checks | `npm run test:package` | Shipped documents and licence files match the approved inventory | `fail 0` |
-| Live checks | `npm run test:hapi`, `npm run test:medplum` | The gateway behaves the same against a real local FHIR server | One JSON summary line, exit 0 |
+| Live checks | `npm run test:hapi`, `npm run test:medplum`, `npm run test:smart` | The gateway behaves the same against a real local FHIR server | One summary line (JSON for HAPI and Medplum), exit 0 |
 | Benchmark harness | `npm --prefix bench test` | The harness's own scoring and parsing tests pass | `fail 0` |
 
 The sections below describe each gate.
@@ -214,8 +214,11 @@ npm run test:medplum
 docker compose -f docker/compose.medplum.yaml down --volumes
 ```
 
+`npm run test:smart` starts and stops its own stack (`docker/compose.smart.yaml`). It does not pull images, so pull the two images named in that file first.
+
 - **HAPI.** `docker/compose.yaml` runs HAPI FHIR 8.12.0, pinned by digest, on `127.0.0.1:18080`. `scripts/test-hapi.ts` seeds two synthetic patients and checks paging, patient confinement, decoys that a single predicate excludes, the denial of the other patient's read and payload withholding. It prints one JSON line (`"target":"local-hapi"`, with request counts and pages) and exits 0.
 - **Medplum.** `docker/compose.medplum.yaml` runs a self-hosted Medplum R4 stack on `127.0.0.1:18103`. `scripts/test-medplum.ts` adds authenticated client credentials, a denied unauthenticated read and attachment withholding. It prints one JSON line (`"target":"local-medplum"`). See [Medplum testing](MEDPLUM-TESTING.md).
+- **SMART on FHIR.** `docker/compose.smart.yaml` runs HAPI FHIR and the SMART Launcher v2, both pinned by digest, on `127.0.0.1:18211` and `127.0.0.1:18210`. `scripts/test-smart.ts` seeds synthetic records straight into HAPI and never writes through the launcher. It signs in with a standalone patient launch through the built `fireboat login` command, with no human, then calls tools from an MCP client over stdio, forces one token refresh and checks that a wrong-patient sign-in stores nothing. It then signs in with Backend Services using a key generated for the run, checks that a type outside a narrower grant is refused before sending, and that a wrong-key assertion gets no token. A garbage bearer token must get 401. The launcher does not enforce scopes or patient context on its FHIR data, so this shows the client flows work, not that a server limits what it returns. See [SMART on FHIR sign-in](SMART.md).
 - **HAPI quickstart.** The [quickstart](QUICKSTART.md) prepares a helper-owned HAPI server from the synthetic seed, verifies the packaged tasks and generates host configurations. It is a checkout recipe, not a release.
 
 A live check covers that script and its synthetic seed only. Query proof is limited to the synthetic fixture and the narrow HAPI FHIR 8.12.0 search profile described in [query evidence](QUERY-EVIDENCE.md), with no HAPI sort or continuation proof.
@@ -235,20 +238,21 @@ The tests use synthetic data only; a few also check real data or generated files
 
 ## Results on this tree
 
-The table below records the gate results for this tree, run on 17 November 2026 (UTC) with Node 24.22.0 on an Apple-silicon Mac. A gate that has not been run on this tree is not claimed.
+The table below records the gate results for this tree, run on 17 November 2026 (UTC) with Node 24.22.0 on an Apple-silicon Mac. A gate that has not been run on this tree is not claimed. The full set ran on the source tree before the last documentation-only edits; after those edits, `npm run check`, `npm run test:package`, package staging, the generator and contract checks and the mutation anchors were run again and passed.
 
 | Gate | Result |
 | --- | --- |
-| `npm run check` | Passed, 2,597 of 2,597 tests (typecheck, suite and build). |
+| `npm run check` | Passed, 2,677 of 2,677 tests (typecheck, suite and build). |
 | `npm run demo -- --check` | Passed, 8 outcomes. |
 | `npm run eval:retrieval` (modern) | Passed: each arm (fhir, compact, selected) 85/85 tasks and 301/301 comparable checks. |
 | `npm run eval:retrieval -- --era legacy` | Passed, with the same counts as the modern era. |
 | `npm run test:isolation` | Passed: 139 of 139 tests, all 68 cases; `status=DIAGNOSTIC earned=0`, as designed. |
-| `npm run mutation:guards` (full, aggregated) | Passed: 1,541 mutants in two shards, each run exactly once. 1,538 killed and 3 declared survivors, with 0 inconclusive, 0 anchor errors and 0 timeout-only kills. The targeted pass decided 1,534 and the full path 7. The run was on the source tree before the last documentation-only edits, after one shard was repeated on a quiet machine because a loaded first attempt left one mutant inconclusive. After that run the repository root was reorganized; the 82 mutants anchored in the changed packaging and quickstart files were judged again with `--only` (all killed). An `--only` run is not a full pass. |
+| `npm run mutation:guards` (full, aggregated) | Passed: 1,636 mutants in two shards, each run exactly once. 1,633 killed and 3 declared survivors, with 0 inconclusive, 0 anchor errors and 0 timeout-only kills. The targeted pass decided 1,628 and the full path 8. |
 | Generator and contract checks | Passed: generated docs, tool contract and R4 checkable-path table in sync; every mutation anchor applies. |
-| `npm run test:package` | Passed, 19 of 19; `npm run licenses:release` passed. |
+| `npm run test:package` | Passed, 20 of 20; package staging passed against the approved inventory; `npm run licenses:release` passed. |
 | `npm run test:hapi` | Not run on this tree. |
 | `npm run test:medplum` | Not run on this tree. |
+| `npm run test:smart` | Passed against the SMART Launcher and HAPI FHIR in local Docker, with synthetic data: standalone launch, refresh and Backend Services worked; a token for another patient, a grant that is too narrow, a wrong signing key and a bad bearer token were all refused. |
 | Benchmark harness checks | Passed: typecheck; `npm test` 159 passed, 6 skipped (they need downloaded benchmark data), 0 failed; Python gold tests 127 passed. |
 
 ## What is not proven
@@ -261,7 +265,7 @@ The gates above are the evidence for how fireboat behaves. They do not establish
 - **Isolation.** The isolation suite counts no cases (`earned=0`), and its target of 200 independent counted cases is not met. Zero failures on synthetic data do not establish zero possible leaks, prompt-injection immunity or universal identifier redaction.
 - **Mutation coverage.** A passing mutation run covers only the guards with registered mutants, and only on the tree it ran on.
 - **Clinical use.** No clinical validation, clinical or production readiness, or regulatory compliance (HIPAA, GDPR, CMS, ONC) is claimed. Exhausting pages is not a complete clinical history, and an empty result is not clinically proven absence.
-- **Authorization and serving.** There is no SMART authorization, no enterprise-managed auth and no authenticated remote MCP service. The optional client-credentials OAuth is none of these.
+- **Authorization and serving.** The SMART client flows are tested only against a local SMART Launcher with synthetic data. There is no SMART certification, no EHR launch, no OpenID Connect sign-in, no test against any vendor's SMART server, no enterprise-managed auth and no authenticated remote MCP service.
 - **Efficiency.** No token, speed or cost saving is claimed. No token-efficiency study has been run, and the size of the tool catalog in tokens has not been measured.
 - **Distribution.** fireboat is not published to npm, as a container image or in a registry.
 - **Review.** No independent human security or clinical review has happened. Review by AI models is not human review.

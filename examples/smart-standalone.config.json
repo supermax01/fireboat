@@ -1,0 +1,15 @@
+{
+  "mode": "synthetic",
+  "source": {
+    "alias": "smart-launch-synthetic",
+    "baseUrl": "http://127.0.0.1:8080/fhir",
+    "auth": {
+      "type": "smart_standalone_launch",
+      "clientId": "synthetic-public-client",
+      "clientAuth": "public",
+      "offlineAccess": false,
+      "scopeSyntax": "v2"
+    }
+  },
+  "patientId": "synthetic-patient-a"
+}

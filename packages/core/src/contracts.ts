@@ -16,6 +16,14 @@ export interface GatewayConfig {
     /** The one opaque continuation token name the source adds to next links. Empty by default. */
     continuationTokenParameter?: string; auth?: {
     type: 'client_credentials'; tokenUrl: string; clientId: string; clientSecretEnv: string; scopes?: string[];
+  } | {
+    /** SMART Backend Services: signed-JWT client authentication; exactly one of `privateKeyEnv` or `privateKeyFile`. */
+    type: 'smart_backend_services'; clientId: string; keyId: string; privateKeyEnv?: string; privateKeyFile?: string;
+    scopes?: string[]; scopeSyntax?: 'v1' | 'v2'; endpoints?: { token?: string };
+  } | {
+    /** SMART standalone patient launch: `fireboat login` stores the grant; the server reads and refreshes it. */
+    type: 'smart_standalone_launch'; clientId: string; clientAuth?: 'public' | 'private_key_jwt'; keyId?: string; privateKeyEnv?: string; privateKeyFile?: string;
+    redirectPort?: number; offlineAccess?: boolean; tokenFile?: string; scopes?: string[]; scopeSyntax?: 'v1' | 'v2'; endpoints?: { authorization?: string; token?: string };
   } };
   patientId: string;
   /** Trusted operator policy; never supplied by tool arguments. Empty by default. */

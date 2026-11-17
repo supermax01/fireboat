@@ -8,6 +8,9 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import r4Index from '../packages/core/src/generated/r4-index.json' with { type: 'json' };
 import { startSyntheticFhirServer } from '../examples/synthetic-server.js';
+import { FhirGateway } from '../packages/core/src/index.js';
+import { listenLoopbackCallback } from '../packages/server/src/login.js';
+import { approve, KEY_ENV, smartConfig, standaloneConfig, startSmartStub } from './smart-helpers.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const CANARY = 'PRIVATE-CANARY-NEVER-PRINT';
@@ -166,4 +169,59 @@ test('doctor CLI: bundled synthetic source is ready with safe profile limitation
   const result = await invoke(['--doctor', '--config', config.path]);
   assert.equal(result.code, 0); assert.match(result.stdout, /^doctor: ready\n/);
   assert.match(result.stdout, /search_profile: generic-r4 proof=unproved filter-and-sort-execution=unknown/); privateOutput(result);
+});
+
+test('doctor CLI: a SMART standalone source reports discovery, PKCE and the stored grant on one closed line', async t => {
+  const stub = await startSmartStub(); t.after(stub.close);
+  const directory = await mkdtemp(join(tmpdir(), 'doctor-smart-')); t.after(() => rm(directory, { recursive: true, force: true }));
+  const config = standaloneConfig(stub, join(directory, 'grant.json'));
+  const path = join(directory, 'config.json'); await writeFile(path, JSON.stringify(config));
+  const absent = await invoke(['--doctor', '--config', path]);
+  assert.equal(absent.code, 1, absent.stderr);
+  assert.match(absent.stdout, /^faults: METADATA_UNAVAILABLE,WORKFLOW_TYPE_UNAVAILABLE$/m);
+  assert.match(absent.stdout, /^smart: discovery=ok pkce=S256 grant=absent patient_context=n\/a scope=unknown granted_types=unknown\/28$/m);
+  assert.match(absent.stdout, /^source: alias=smart-launch loopback=literal-ok auth=smart_standalone_launch /m);
+  privateOutput(absent);
+  const gateway = new FhirGateway(config as never);
+  let pending: Promise<unknown> = Promise.resolve();
+  try { await gateway.smartLogin({ listen: listenLoopbackCallback, timeoutMs: 5000, onAuthorizeUrl: url => { pending = approve(url.href); } }); }
+  finally { await pending; gateway.close(); }
+  const present = await invoke(['--doctor', '--config', path]);
+  assert.equal(present.code, 0, present.stderr);
+  assert.match(present.stdout, /^smart: discovery=ok pkce=S256 grant=present patient_context=match scope=exact granted_types=28\/28$/m);
+  assert.match(present.stdout, /^scope: local-stdio synthetic-only read-only metadata-only; smart=client-flows-not-certified; classification=operator-declared-unverified$/m);
+  privateOutput(present);
+});
+
+test('doctor CLI: a SMART Backend Services source reports the grant acquired for the metadata check', async t => {
+  const stub = await startSmartStub({ tokenReply: body => ({ ...body, scope: 'system/Patient.rs system/Observation.rs' }) }); t.after(stub.close);
+  const directory = await mkdtemp(join(tmpdir(), 'doctor-smart-')); t.after(() => rm(directory, { recursive: true, force: true }));
+  const path = join(directory, 'config.json'); await writeFile(path, JSON.stringify(smartConfig(stub)));
+  const result = await invoke(['--doctor', '--config', path], { [KEY_ENV]: stub.keys.pem });
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /^smart: discovery=ok pkce=n\/a grant=n\/a patient_context=n\/a scope=narrower granted_types=2\/28$/m);
+  privateOutput(result);
+});
+
+test('doctor CLI: under SMART, the workflow is ready only when the grant permits Patient read and Observation search', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'doctor-smart-')); t.after(() => rm(directory, { recursive: true, force: true }));
+  const cases: [string, 'ready' | 'not-ready', 'ready' | 'not-ready'][] = [
+    ['system/Patient.rs', 'ready', 'not-ready'],
+    ['system/Observation.rs', 'not-ready', 'ready'],
+    ['system/Patient.s system/Observation.r', 'not-ready', 'not-ready'],
+    ['system/Patient.r system/Observation.s', 'ready', 'ready'],
+  ];
+  for (const [scope, patient, observation] of cases) {
+    const stub = await startSmartStub({ tokenReply: body => ({ ...body, scope }) });
+    try {
+      const path = join(directory, 'config.json'); await writeFile(path, JSON.stringify(smartConfig(stub)));
+      const result = await invoke(['--doctor', '--config', path], { [KEY_ENV]: stub.keys.pem });
+      const ready = patient === 'ready' && observation === 'ready';
+      assert.equal(result.code, ready ? 0 : 1, `${scope}: ${result.stderr}`);
+      assert.match(result.stdout, new RegExp(`^workflow: recent-labs-v1 patient=${patient} observation=${observation}$`, 'm'), scope);
+      if (!ready) assert.match(result.stdout, /^faults: WORKFLOW_TYPE_UNAVAILABLE$/m, scope);
+      assert.deepEqual(stub.fhirRequests.map(r => r.url.pathname.slice(stub.basePath.length)), ['/metadata'], `${scope}: only the metadata request was sent`);
+      privateOutput(result);
+    } finally { await stub.close(); }
+  }
 });

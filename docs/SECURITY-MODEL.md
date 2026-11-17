@@ -102,11 +102,25 @@ An accepted page is labelled `gateway_checked_records`, and each checked constra
 
 The rule is general to any source without self links. fireboat still connects only to loopback and cannot sign requests for a cloud service itself, and no compatibility with any vendor service is claimed.
 
+### SMART on FHIR sign-in
+
+The optional SMART client flows (standalone patient launch and Backend Services, see [SMART on FHIR sign-in](SMART.md)) decide whether the source answers. They never widen what fireboat sends:
+
+- The configured `patientId` stays the only patient. A token's patient context is an extra precondition, never a selector: a standalone launch whose token names another patient, or none, stores nothing; a refresh that names another patient is refused.
+- Only read and search scopes are requested. A grant with any write permission is refused as a whole. A call on a type the grant does not cover is refused with `POLICY_DENIED` before any FHIR request is sent, and so is a search fireboat would make on its own to confirm a referenced record; scopes with query filters count as not granted.
+- Discovery, authorization and token endpoints must be literal loopback and on the source's origin unless pinned in configuration. Redirects are refused, and discovery responses are size-capped and counted in the request budget.
+- PKCE uses S256 only, and the sign-in state is compared in constant time. The redirect listener runs only inside `fireboat login`, binds `127.0.0.1`, checks the `Host` header, accepts only the callback carrying its own state and closes when the sign-in finishes. The redirect listener and the browser launcher are a separate module that the serving process never loads; a packaging check refuses a listener or child process anywhere in the serving module graph.
+- Client assertions use EC P-384 (ES384) or RSA of at least 2048 bits (RS384), expire after 2 minutes and carry a fresh `jti`.
+- Backend Services tokens are kept in memory. A standalone grant is stored in a `0600` file in a `0700` folder, bound to the source, token endpoint, client and patient; a symbolic link, a file readable by others or a binding that differs from the configuration is refused. Refreshes, sign-ins and deletions are serialized across processes with an exclusive lock file that a live holder keeps and that a holder who lost it can no longer write under, and a refresh token is stored and used only when `offlineAccess` is set. A new grant drops results retained under the old one.
+- Tokens, codes, PKCE verifiers, assertions and keys are never logged or returned.
+
+The live check (`npm run test:smart`) uses a SMART Launcher that does not enforce scopes or patient context on its FHIR data, so it shows that fireboat signs in correctly, not that a server limits what it returns. Server-side enforcement is the server's job; fireboat's own patient and record checks apply either way.
+
 ## Withholding, retention and logs
 
 Inline `Attachment.data`, `Binary.data` and detected protected links are withheld before model output and retention, with labelled manifests. Attachment metadata remains available. Results are sanitized and projected FHIR-shaped JSON, not complete, unmodified source content.
 
-Ordinary logs do not contain resource bodies, credentials or patient identifiers. The in-memory audit trail stores bounded metadata only; it is not a durable disclosure ledger. Outbound client credentials come from environment variables named in trusted configuration, never tool arguments.
+Ordinary logs do not contain resource bodies, credentials or patient identifiers. The in-memory audit trail stores bounded metadata only; it is not a durable disclosure ledger. Outbound client secrets come from environment variables named in trusted configuration, and a SMART private key from such a variable or an owner-only file named there; never from tool arguments.
 
 The optional `privacy.patientIdentifierSystems` list matches absolute Identifier-system URIs exactly. It does no case folding, prefix matching or URI normalization. An empty or omitted list leaves patient identity in unlisted absolute-URI systems unwithheld. The policy for standalone shared-instance responses does not extend into the content of resources linked to the configured patient. See [configuration](CONFIGURATION.md) for the full matching rules.
 
@@ -122,7 +136,7 @@ A configurable byte ceiling applies to every tool result, errors included, not j
 
 Local stdio does not mean data stays on the device: an AI host may send tool output to its model provider. Unlisted identifier systems, authorized prose, timing and topology signals remain residuals. Nothing here establishes zero possible leaks, prompt-injection immunity, universal identifier redaction or a security certification.
 
-No SMART authorization, authenticated remote MCP service, clinical or production readiness, clinical validation, regulatory compliance or general vendor compatibility is claimed. Synthetic results cannot establish those properties. The stricter patient-isolation test suite counts no cases, a mutation-gate result covers only the registered guards on the tree it ran on, and no independent human security or clinical review has happened. See [testing and evidence](TESTING.md).
+No SMART certification or conformance, SMART compatibility with any vendor, authenticated remote MCP service, clinical or production readiness, clinical validation, regulatory compliance or general vendor compatibility is claimed. The SMART client flows are tested only against a local SMART Launcher with synthetic data. Synthetic results cannot establish those properties. The stricter patient-isolation test suite counts no cases, a mutation-gate result covers only the registered guards on the tree it ran on, and no independent human security or clinical review has happened. See [testing and evidence](TESTING.md).
 
 Without its own recorded evidence, none of these is claimed either: SMART certification or enterprise-managed authorization; HIPAA, GDPR, CMS or ONC compliance or regulatory clearance; R4B, R5 or R6 support, US Core conformance or profile validation; full MCP protocol conformance, support for every MCP host or verified model-input behaviour; complete clinical history, proven absence, a verified latest result when sort order is unknown, or complete retained results; a durable disclosure ledger; token, speed or cost savings; npm, image or registry availability; review by AI models presented as human review; or anything about other FHIR MCP servers.
 

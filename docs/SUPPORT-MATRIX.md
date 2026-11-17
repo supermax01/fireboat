@@ -2,7 +2,7 @@
 
 # Support matrix
 
-Synthetic-only prototype. Nothing here is a clinical-deployment, SMART-authorization, vendor-support or protocol-compatibility claim.
+Synthetic-only prototype. Nothing here is a clinical-deployment, SMART-certification, vendor-support or protocol-compatibility claim.
 
 Revision `support-matrix/4`, policy revision `2026-11-14.3`, workflow `recent-labs-v1`, document support `metadata_only`.
 

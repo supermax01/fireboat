@@ -36,6 +36,9 @@ export const HELP = `fireboat — synthetic-only local FHIR MCP gateway
 Usage:
   fireboat --config <path>          Serve MCP over stdio
   fireboat --doctor --config <path> Check config and source metadata
+  fireboat login --config <path> [--no-browser] [--timeout <s>]
+                                    SMART standalone launch sign-in; stores the grant
+  fireboat logout --config <path>   Delete the stored SMART grant
   fireboat --version                Show release, schema and runtime cell
   fireboat --help                   Show this help
 
@@ -44,6 +47,7 @@ FHIR_MCP_CONFIG is a deprecated alias for this release; using it emits a stderr 
 Local stdio only; literal loopback source; one configured synthetic patient.
 Five read-only tools: fhir_capabilities, fhir_search, fhir_read, fhir_page, fhir_result.
 Optional outbound OAuth client credentials use a named secret environment variable.
-No SMART authorization, clinical writes or remote serving.
+Optional SMART client flows (standalone patient launch, Backend Services) on loopback;
+not SMART-certified. No clinical writes or remote serving.
 Normal serving stdout carries MCP protocol traffic only.
 `;

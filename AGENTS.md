@@ -12,7 +12,7 @@ fireboat is a small, **read-only** MCP (Model Context Protocol) gateway that giv
 - [docs/LIMITS.md](docs/LIMITS.md): the byte, request and time bounds;
 - [docs/BENCHMARK.md](docs/BENCHMARK.md): the benchmark results and their caveats.
 
-It is a prototype, not a release: there is no SMART authorization, no remote serving and no use with identifiable or live patient records.
+It is a prototype, not a release: SMART on FHIR sign-in is a loopback-only client (standalone patient launch and Backend Services, see [docs/SMART.md](docs/SMART.md)), and there is no remote serving and no use with identifiable or live patient records.
 
 ## Non-negotiable boundaries
 
@@ -30,12 +30,12 @@ Breaking any of these is a bug, whatever a task asks for.
   - Openly licensed de-identified research data (currently the MIMIC-IV Clinical Database Demo on FHIR v2.1.0, ODbL) may be used for benchmarks only. It is downloaded at run time, cited (see [docs/TESTING.md](docs/TESTING.md#benchmarks-and-research-data)), kept outside the repository (for example under the git-ignored `.local/`), and never committed to the repository or included in fixtures, tests, examples, issues or logs. The same applies to anything derived from it, such as questions, answers, transcripts and per-question results.
   - Aggregate benchmark scores, such as "140 of 147 correct", may be published in [docs/BENCHMARK.md](docs/BENCHMARK.md) with the ODbL attribution, never with patient ids, questions, values or records.
   - Never add any other real or de-identified patient data.
-- **No secrets** in code, tests, configuration examples or commits. Outbound credentials come from environment variables named in configuration. Build fake credentials in tests at run time instead of writing credential-shaped literals.
+- **No secrets** in code, tests, configuration examples or commits. Outbound credentials come from environment variables named in configuration; a SMART private key may instead come from an owner-only file named there. Build fake credentials in tests at run time instead of writing credential-shaped literals.
 - **No hidden model calls, no remote unauthenticated serving, no placeholder tools.** Expose only the five implemented tools.
 - **Ordinary logs never contain** resource bodies, credentials or patient identifiers.
 - **Exact values survive.** FHIR decimal lexemes (`7.0`, exponents, unsafe integers) are preserved end to end. A value that cannot be preserved is refused, never rounded.
 - **No overclaiming.** Never claim any of the following without the separate recorded check that supports it:
-  - SMART authorization or certification, enterprise-managed auth, or an authenticated remote MCP service (the optional client-secret OAuth is none of these);
+  - SMART certification or conformance, SMART compatibility with any vendor or EHR, EHR launch or OpenID Connect sign-in, server-side scope enforcement, enterprise-managed auth, or an authenticated remote MCP service. The SMART client flows are tested only against a local SMART Launcher with synthetic data (`npm run test:smart`); the client-secret OAuth is not SMART;
   - clinical or production readiness, HIPAA, GDPR, CMS or ONC compliance, regulatory clearance, clinical validation or a validated diagnostic or treatment outcome;
   - general Epic, Oracle, Azure, AWS, Google or other vendor compatibility, R4B, R5 or R6 support, US Core conformance, profile validation, or every search and sort variant because a server returned a generic R4 response or CapabilityStatement;
   - full protocol conformance, support for every MCP client or host, verified model-input behaviour, or three independent clients, on the strength of tests in two SDK eras or generated configuration;
@@ -54,13 +54,13 @@ Breaking any of these is a bug, whatever a task asks for.
 | --- | --- |
 | `packages/core/src/` | The gateway, as separate layers. `query.ts`, `discovery.ts` and `search-parameters.ts`: admission and strict search. `transport.ts`: budgets, redirects, loopback only. `privacy.ts`, `identity.ts` and `withheld.ts`: patient confinement and withholding. `projection.ts`, `decimal.ts` and `schema.ts`: output projection and exact decimals. `store.ts`: retained results, handles and cursors. `delivery.ts` and `support.ts`: profile resolution, evidence labels and the support matrix; the byte ceiling is measured and enforced in `index.ts` (`bytesV2`, `finish`) and checked again by `contracts.ts`, and coverage is decided in `query.ts` and assembled in `index.ts`. `catalog.ts` and `contracts.ts`: the tool catalog. `record-predicates.ts`: the gateway-checked filters for pages without a self link. `generated/`: the R4 indexes and the checkable-path table derived from them. Do not hand-edit those. |
 | `packages/server/src/` | The MCP adapter, CLI (`cli.ts`, `main.ts`), `doctor.ts` and release identity. |
-| `packages/auth/src/` | Optional outbound OAuth client credentials. |
+| `packages/auth/src/` | Optional outbound sign-in: OAuth client credentials (`client-credentials.ts`), the shared token machinery (`token-provider.ts`), and the SMART client flows (`smart-discovery.ts`, `client-assertion.ts`, `smart-scopes.ts`, `smart-backend.ts`, `smart-standalone.ts`, `pkce.ts`, `token-store.ts`). `fireboat login` and its loopback redirect listener live in `packages/server/src/login.ts`, which the serving process never loads. |
 | `packages/evals/` | The deterministic retrieval eval harness and its fixtures. |
 | `tests/` | The Node test suite (`*.test.ts`), the isolation suite and its pinned design specification in `tests/isolation/`, and the installed-package tests in `tests/package/`. `tests/package-inventory-drift.test.ts` fails when a shipped document or licence file no longer matches the approved npm inventory. |
 | `scripts/` | The mutation gate, generators, packaging and staging (`stage-package.ts`) and qualification tools. |
 | `examples/` | The demo, the synthetic FHIR source, example configs and the HAPI quickstart helper (`examples/quickstart/`). |
 | `docs/` | Testing ([TESTING.md](docs/TESTING.md)), benchmark results ([BENCHMARK.md](docs/BENCHMARK.md)), the security model, configuration, limits, the HAPI quickstart, generated reference docs, the tool contract (`docs/contracts/m3b-tools.json`), the README diagrams (`docs/assets/`) and the logo and brand assets (`docs/assets/brand/`). |
-| `docker/` | Compose files: `compose.yaml` (HAPI for `npm run test:hapi`), `compose.medplum.yaml` (Medplum for `npm run test:medplum`) and `compose.quickstart.yaml` (the quickstart helper's HAPI recipe, pinned by hash in the seed manifest). |
+| `docker/` | Compose files: `compose.yaml` (HAPI for `npm run test:hapi`), `compose.medplum.yaml` (Medplum for `npm run test:medplum`), `compose.smart.yaml` (HAPI and the SMART Launcher for `npm run test:smart`) and `compose.quickstart.yaml` (the quickstart helper's HAPI recipe, pinned by hash in the seed manifest). |
 | `bench/` | The benchmark harness behind docs/BENCHMARK.md: a separate package with its own `package.json`, not shipped and not run by `npm run check`. See [bench/README.md](bench/README.md). |
 | `packaging/` | The approved npm inventories (`packaging/npm-files.json`, `packaging/helper-files.json`), the production shrinkwrap (staged as `npm-shrinkwrap.json`), `THIRD_PARTY_NOTICES.md`, and `licenses/` with the dependency licence texts, the seed notices and the licence inventory (`licenses/inventory.json`). The package ships `THIRD_PARTY_NOTICES.md` and `licenses/` at its root; paths inside `licenses/inventory.json` are those package paths. |
 | `.github/` | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md` (GitHub reads them from here) and the issue and pull request templates. |
@@ -90,7 +90,7 @@ npm run demo -- --check  # no Docker, no keys: synthetic source + real stdio ser
 | `node --import tsx scripts/emit-m3b-contract.mjs --check` | Check that the tool contract is current. |
 | `node --import tsx scripts/generate-r4-checkable-paths.ts --check` | Check that the checkable-path table matches the pinned R4 indexes. |
 | `node --import tsx --test tests/mutation-anchors.test.ts` | Check that every mutation anchor still applies. |
-| `node scripts/mutation-guards.mjs --list` | List the mutation registry (1,541 entries in this tree; the output's `count` field gives the current number). |
+| `node scripts/mutation-guards.mjs --list` | List the mutation registry (1,636 entries in this tree; the output's `count` field gives the current number). |
 
 Give long or parallel test runs their own `TMPDIR` and delete it afterwards. Some suites leave temporary folders behind when they are stopped early.
 
@@ -121,7 +121,7 @@ The evidence is local and deterministic. **The project uses no hosted CI.**
 ## Ports and live services
 
 - The HAPI quickstart owns `127.0.0.1:18080`. Never run the unit suite or the mutation gate while a live quickstart run is using that port.
-- Live checks (`npm run test:hapi`, `npm run test:medplum`) need local Docker and pinned images. They are loopback only.
+- Live checks (`npm run test:hapi`, `npm run test:medplum`, `npm run test:smart`) need local Docker and pinned images. They are loopback only.
 
 ## Commits and pull requests
 

@@ -28,7 +28,7 @@ test('doctor report: exact ready lines preserve unproved limitations and hash pr
     'privacy: patient_identifier_systems=0 residual=unlisted-patient-systems shared_identifier_systems=0 shared_profiles=0',
     'artifacts: r4_index=aaaaaaaaaaaa r4_search_parameters=bbbbbbbbbbbb support_matrix=cccccccccccc',
     'proxy: absent', 'faults: none',
-    'scope: local-stdio synthetic-only read-only metadata-only; no-SMART-authorization; classification=operator-declared-unverified',
+    'scope: local-stdio synthetic-only read-only metadata-only; smart=client-flows-not-certified; classification=operator-declared-unverified',
   ] });
   assert.deepEqual(value, before, 'the formatter does not mutate its input');
   value.metadata.summary = 'partial'; value.workflow.searchProfile = 'hapi-r4-labs-v1'; value.workflow.proof = 'qualified';
@@ -77,6 +77,30 @@ test('doctor report: metadata and FHIR failures are not-ready; operator faults t
   assert.equal(doctorReport(value).exitCode, 2);
   value.runtime.node = '24.22.0'; value.faults = ['WORKFLOW_TYPE_UNAVAILABLE'];
   assert.equal(doctorReport(value).exitCode, 1);
+});
+
+test('doctor report: the SMART line is closed and appears exactly with SMART auth', () => {
+  const standalone = { ...input(), source: { ...input().source, auth: 'smart_standalone_launch' as const },
+    smart: { discovery: 'ok' as const, pkce: 'S256' as const, grant: 'present' as const, patientContext: 'match' as const, scope: 'exact' as const, grantedTypes: 28, servedTypes: 28 } };
+  const report = doctorReport(standalone);
+  assert.equal(report.exitCode, 0);
+  assert.equal(report.lines.length, input().faults.length + 14);
+  assert.equal(report.lines.at(-3), 'smart: discovery=ok pkce=S256 grant=present patient_context=match scope=exact granted_types=28/28');
+  assert.equal(report.lines.at(-1), 'scope: local-stdio synthetic-only read-only metadata-only; smart=client-flows-not-certified; classification=operator-declared-unverified');
+  const backend = { ...input(), source: { ...input().source, auth: 'smart_backend_services' as const },
+    smart: { discovery: 'unavailable' as const, pkce: 'n/a' as const, grant: 'n/a' as const, patientContext: 'n/a' as const, scope: 'unknown' as const, servedTypes: 28 } };
+  assert.ok(doctorReport(backend).lines.includes('smart: discovery=unavailable pkce=n/a grant=n/a patient_context=n/a scope=unknown granted_types=unknown/28'));
+  assert.ok(!doctorReport(input()).lines.some(line => line.startsWith('smart:')), 'no SMART line without SMART auth');
+  // The SMART section must match the auth type, and every value is an enumeration or a bounded count.
+  refuses({ ...input(), smart: standalone.smart });
+  refuses({ ...standalone, smart: undefined });
+  refuses({ ...backend, smart: undefined });
+  for (const [key, bad] of [['discovery', 'https://CANARY'], ['pkce', 'plain'], ['grant', 'CANARY'], ['patientContext', 'synthetic-patient'], ['scope', 'patient/*.rs'],
+    ['grantedTypes', 29], ['grantedTypes', -1], ['grantedTypes', 1.5], ['servedTypes', 0], ['servedTypes', 65]] as const) {
+    refuses({ ...standalone, smart: { ...standalone.smart, [key]: bad } });
+  }
+  refuses({ ...standalone, smart: { ...standalone.smart, raw: 'CANARY' } });
+  refuses({ ...standalone, source: { ...standalone.source, auth: 'smart_other' } });
 });
 
 function refuses(value: unknown): void {

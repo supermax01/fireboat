@@ -71,6 +71,28 @@ test('package stage: serving import graph excludes helper eval client and latent
   }
 });
 
+test('package stage: login.js is a separate root; the serving graph never reaches a listener or a child process', () => {
+  const deps = ['@modelcontextprotocol/server', 'zod'];
+  for (const [path, added] of [
+    ['packages/server/src/main.js', "import './login.js';"],
+    ['packages/server/src/main.js', "import { spawn } from 'node:child_process';"],
+    ['packages/core/src/index.js', "export { spawn } from 'node:child_process';"],
+    ['packages/auth/src/smart-standalone.js', "import { createServer } from 'node:http';"],
+    ['packages/server/src/cli.js', "const later = () => import('./doctor.js');"],
+    ['packages/server/src/cli.js', "import './login.js';"],
+    ['packages/server/src/login.js', "import { connect } from 'node:net';"],
+    ['packages/server/src/login.js', "import { request } from 'node:https';"],
+    ['packages/server/src/login.js', "const later = () => import('./doctor.js');"],
+  ] as const) {
+    const changed = new Map(modules); changed.set(path, modules.get(path)! + '\n' + added);
+    assert.throws(() => servingBoundary(changed, deps), { code: 'SERVING_BOUNDARY' }, `${path}: ${added}`);
+  }
+  // The listener's dispatch sites are pinned with its handler: dropping the Host check changes the digest.
+  const login = modules.get('packages/server/src/login.js')!;
+  assert.throws(() => assertHttpDispatch('packages/server/src/login.js', login.replace('if (req.headers.host !== expectedHost)', 'if (false)')), { code: 'HTTP_DISPATCH' });
+  assert.throws(() => assertHttpDispatch('packages/server/src/login.js', login.replace("host: '127.0.0.1'", "host: '0.0.0.0'")), { code: 'HTTP_DISPATCH' });
+});
+
 test('pin-only: package approved HTTP dispatch sites', async () => {
   const transport = modules.get('packages/core/src/transport.js')!, auth = modules.get('packages/auth/src/client-credentials.js')!;
   const helper = await readFile(join(scratch, 'compiled/examples/quickstart/seed-http.js'), 'utf8');

@@ -19,9 +19,11 @@ import { WARNING_MESSAGES, REFUSAL_MESSAGES, MODIFIER_NO_CLINICAL_MESSAGE, OVERS
 import { projectSanitized, indexedProvenance, collectRecipeIds, retainedOmissions } from './projection.js';
 import type { QueryEvidence, QueryChainView, QueryOverlay, SanitizedProjectionRecord } from './m3b.js';
 import { createDiscoveryStore, freezeSearchParameterSnapshot, freezeSupportSnapshot, freezeServerSnapshot, readDiscoverySnapshot, type DiscoveryBinding, type DiscoverySnapshotValue, normalizedCapabilityRevision, UNSUPPORTED_CLINICAL_RESOURCES, R4_TYPE_INTERACTIONS, assertClinicalResource, listedSearchParameters } from './discovery.js';
-import { effectiveSupport, workflowSupport, withSharedIdentifierSummary, SUPPORT_MATRIX_REVISION } from './support.js';
+import { classifiedTypes, effectiveSupport, workflowSupport, withSharedIdentifierSummary, SUPPORT_MATRIX_REVISION } from './support.js';
 import { filterSearchParameters, SEARCH_PARAMETER_DEFINITIONS, reviewedNamesFor, confinementFor, gatewayEnforcedIndicesFor, declaredFromCapability, withheldCapabilityNames, MAX_SEARCH_PARAM_DECLARATIONS, resolveSearchParameters, validatePatientSelectors, validateSearchSyntax, validateSearchAdmission, type DeclaredSearchParam, type VerifiedTargetCheck, type ResolvedSearchParameters } from './search-parameters.js';
-import { ClientCredentialsProvider, CredentialFault, LocalWorkRefusal } from '../../auth/src/client-credentials.js';
+import { CredentialFault, LocalWorkRefusal, type SmartDoctorStatus, type TokenProvider } from '../../auth/src/token-provider.js';
+import { createCredentialProvider } from '../../auth/src/index.js';
+import { SmartStandaloneProvider, type LoginIo, type LoginResult } from '../../auth/src/smart-standalone.js';
 export { TOOL_NAMES, toMcpToolResult };
 export { SERVER_IDENTITY } from './identity.js';
 export {
@@ -159,7 +161,24 @@ const configSchema = z.strictObject({
   source: z.strictObject({ alias: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/), baseUrl: z.string().max(2048), searchProfile: z.enum(eligibleSearchProfileIds() as [string, ...string[]]).optional(),
     // Both off by default. A page without a self link may be judged by its records, and a
     // continuation may carry one operator-named opaque token (never a known search or result parameter name).
-    selfLinkOptional: z.boolean().optional(), continuationTokenParameter: z.union([z.literal(''), z.string().regex(/^[A-Za-z][A-Za-z0-9-]{0,63}$/)]).optional(), auth: z.strictObject({ type: z.literal('client_credentials'), tokenUrl: z.string().max(2048), clientId: z.string().min(1).max(256), clientSecretEnv: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).max(128), scopes: z.array(z.string().min(1).max(128)).max(20).optional() }).optional() }),
+    selfLinkOptional: z.boolean().optional(), continuationTokenParameter: z.union([z.literal(''), z.string().regex(/^[A-Za-z][A-Za-z0-9-]{0,63}$/)]).optional(), auth: z.discriminatedUnion('type', [
+      z.strictObject({ type: z.literal('client_credentials'), tokenUrl: z.string().max(2048), clientId: z.string().min(1).max(256), clientSecretEnv: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).max(128), scopes: z.array(z.string().min(1).max(128)).max(20).optional() }),
+      // SMART Backend Services: exactly one key source (an environment variable name or an absolute file path), never the key itself.
+      z.strictObject({ type: z.literal('smart_backend_services'), clientId: z.string().min(1).max(256), keyId: z.string().min(1).max(256),
+        privateKeyEnv: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).max(128).optional(), privateKeyFile: z.string().min(1).max(4096).optional(),
+        scopes: z.array(z.string().min(1).max(128)).min(1).max(64).optional(), scopeSyntax: z.enum(['v1', 'v2']).optional(),
+        endpoints: z.strictObject({ token: z.string().max(2048).optional() }).optional() })
+        .refine(auth => (auth.privateKeyEnv === undefined) !== (auth.privateKeyFile === undefined)),
+      // SMART standalone patient launch: a public client by default; a private_key_jwt client names exactly one key source.
+      z.strictObject({ type: z.literal('smart_standalone_launch'), clientId: z.string().min(1).max(256), clientAuth: z.enum(['public', 'private_key_jwt']).optional(),
+        keyId: z.string().min(1).max(256).optional(), privateKeyEnv: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).max(128).optional(), privateKeyFile: z.string().min(1).max(4096).optional(),
+        redirectPort: z.number().int().min(0).max(65535).optional(), offlineAccess: z.boolean().optional(), tokenFile: z.string().min(1).max(4096).optional(),
+        scopes: z.array(z.string().min(1).max(128)).min(1).max(64).optional(), scopeSyntax: z.enum(['v1', 'v2']).optional(),
+        endpoints: z.strictObject({ authorization: z.string().max(2048).optional(), token: z.string().max(2048).optional() }).optional() })
+        .refine(auth => (auth.clientAuth ?? 'public') === 'public'
+          ? auth.keyId === undefined && auth.privateKeyEnv === undefined && auth.privateKeyFile === undefined
+          : auth.keyId !== undefined && (auth.privateKeyEnv === undefined) !== (auth.privateKeyFile === undefined)),
+    ]).optional() }),
   patientId: z.string().regex(/^[A-Za-z0-9.-]{1,64}$/).refine(id => !['.', '..'].includes(id)),
   privacy: z.strictObject({ patientIdentifierSystems: z.array(z.string().min(1).max(256).refine(value => value === value.trim() && !/[\x00-\x20\x7f]/.test(value) && /^[A-Za-z][A-Za-z0-9+.-]*:/.test(value) && URL.canParse(value))).max(32).optional(),
     // Operator-listed product identifier systems a shared record (Medication) may carry; empty by default.
@@ -287,7 +306,7 @@ export class FhirGateway {
   /** Directory keys granted by the records a rendered envelope delivers; added to the ledger only when that envelope commits. */
   private readonly pendingReachable = new WeakMap<GatewayEnvelope02, readonly DirectoryKey[]>();
   private readonly discoveryStore: ResultStore<DiscoverySnapshotValue>;
-  private readonly credentials?: ClientCredentialsProvider;
+  private readonly credentials?: TokenProvider;
   private readonly candidateWorkV2 = new AsyncLocalStorage<{ authCalls: number; metadataCalls: number; clinicalCalls: number; upstreamCalls: number; limitReached?: boolean; redactionSelfCheckFailed?: boolean }>();
   private authEpoch = 0;
   private readonly contextId: string;
@@ -359,9 +378,13 @@ export class FhirGateway {
     this.textMode = config.textMode ?? 'envelope';
     this.deliveryProfile = this.config.delivery?.profile ?? 'full-text-v1';
     this.operatorPolicy = Object.freeze({ defaultFormat: 'fhir', delivery: this.deliveryProfile, defaultBytes: this.defaultBytes, maxBytes: this.maxBytes, ttlMs, retentionBytes });
-    if (this.config.source.auth) this.credentials = new ClientCredentialsProvider(this.config.source.baseUrl, this.config.source.auth, { timeoutMs: config.limits?.timeoutMs, onRequest: () => { this.reserveUpstreamWorkV2(); const work = this.candidateWorkV2.getStore(); if (work) work.authCalls++; } });
+    // A changed SMART grant starts a new authorization epoch: results retained under the old grant are dropped.
+    if (this.config.source.auth) this.credentials = createCredentialProvider(this.config.source.baseUrl, this.config.source.auth, { timeoutMs: config.limits?.timeoutMs, onRequest: () => { this.reserveUpstreamWorkV2(); const work = this.candidateWorkV2.getStore(); if (work) work.authCalls++; },
+      patientId: this.config.patientId, servedTypes: classifiedTypes().filter(type => !UNSUPPORTED_CLINICAL_RESOURCES.has(type)), alias: this.config.source.alias,
+      onGrantChanged: () => { this.authEpoch++; this.invalidateState(); } });
     this.transport = new FhirTransport(config.source.baseUrl, config.limits?.upstreamBytes ?? 5 * 1024 * 1024, config.limits?.timeoutMs ?? 10000, this.credentials ? {
       authorizationFor: (url, budget) => this.authorizationFor(url, budget),
+      allows: (type, interaction) => this.credentials!.allows(type, interaction),
       authorizationWithGeneration: async (url, budget) => {
         try { return await this.credentials!.authorizationWithGeneration(url, budget); }
         catch (error) { throw this.credentialFault(error); }
@@ -893,6 +916,8 @@ export class FhirGateway {
         if (tool === 'fhir_read' || tool === 'fhir_search') assertClinicalResource(input.resource_type!);
         await this.admit(budget); admitted = true; this.throwIfCancelled(budget);
         if (this.credentials) await this.authorizationFor(this.transport.base, budget);
+        // A type the current grant does not permit for this interaction is refused before any FHIR request.
+        if ((tool === 'fhir_read' || tool === 'fhir_search') && this.credentials && !this.credentials.allows(input.resource_type!, tool === 'fhir_read' ? 'read' : 'search')) throw new GatewayFault('POLICY_DENIED', 'The granted scope does not permit this resource type.', false, undefined, 'SCOPE_NOT_GRANTED');
         if (this.capabilities && this.capabilityPolicyRevision !== this.policyRevision) this.invalidateState();
         budget.epoch = this.authEpoch; budget.stateGeneration = this.stateGeneration;
         if (tool === 'fhir_capabilities') {
@@ -1490,7 +1515,7 @@ export class FhirGateway {
     let raw: FhirResource;
     try {
       const work = this.candidateWorkV2.getStore(); if (work) work.clinicalCalls++;
-      raw = await this.transport.get(this.transport.url(`${type}/${encodeURIComponent(id)}`), stats, budget) as FhirResource;
+      raw = await this.transport.get(this.transport.url(`${type}/${encodeURIComponent(id)}`), stats, { ...budget, permission: { type, interaction: 'read' } }) as FhirResource;
     } catch (error) {
       // Until linkage is established, a direct read must not disclose existence through distinguishable
       // failures (410/other 4xx, oversized, malformed, decode/precision, redirects, and 2xx body-stage faults such
@@ -1614,7 +1639,11 @@ export class FhirGateway {
     for (const target of pending.values()) {
       let confirmed = false;
       try { confirmed = await this.confirmOwnTarget(target.type, target.id, stats, budget); }
-      catch { confirmed = false; }
+      catch (error) {
+        // A target type outside the SMART grant keeps its own cause; nothing was sent.
+        if (error instanceof GatewayFault && error.cause === 'SCOPE_NOT_GRANTED') throw error;
+        confirmed = false;
+      }
       if (!confirmed) throw new GatewayFault('POLICY_DENIED', 'Patient selector conflicts with the trusted context.');
     }
   }
@@ -1639,6 +1668,23 @@ export class FhirGateway {
   }
   private selectedProfile(): SearchProfile | undefined {
     return this.profileState.profile(this.testOptions?.testQueryProfile?.id ?? this.config.source.searchProfile, this.sourceIdentity);
+  }
+  /** `fireboat login` only: the standalone-launch sign-in. Never called by the serving process. */
+  async smartLogin(io: LoginIo): Promise<LoginResult> {
+    if (!(this.credentials instanceof SmartStandaloneProvider)) throw new GatewayFault('INVALID_CONFIG', 'Sign-in needs smart_standalone_launch auth.');
+    return this.credentials.signIn(io);
+  }
+  /** `fireboat logout` only: the stored standalone grant's file path. */
+  smartTokenFile(): string | undefined {
+    return this.credentials instanceof SmartStandaloneProvider ? this.credentials.tokenFile : undefined;
+  }
+  /** For doctor: whether the current grant permits `interaction` on `type`. Sends nothing; always true without a SMART grant. */
+  grantPermits(type: string, interaction: 'read' | 'search'): boolean {
+    return this.credentials ? this.credentials.allows(type, interaction) : true;
+  }
+  /** Closed SMART discovery and grant summary for doctor (enumerations and counts only); undefined without SMART auth. */
+  async describeSmartStatus(): Promise<SmartDoctorStatus | undefined> {
+    return this.credentials ? this.credentials.doctorStatus() : undefined;
   }
   /** Read-only operator values, taken from the same normalized policy used for execution. */
   describeOperatorPolicy(): Readonly<{ defaultFormat: 'fhir'; delivery: 'full-text-v1' | 'structured-evidence-v1'; defaultBytes: number; maxBytes: number; ttlMs: number; retentionBytes: number }> {
@@ -1685,8 +1731,11 @@ export class FhirGateway {
     catch { return false; }
   }
   private async fetchPage(url: URL, type: string, query: Snapshot['query'], stats: { calls: number }, verifySelf: boolean, budget: RequestBudget = {}, previous?: Snapshot, noteTargets = true): Promise<Snapshot> {
+    // Every search (agent searches, reference-target confirmations and continuations) needs `s` on its type under a
+    // SMART grant; it is refused before sending. Other credentials have no grant to check (allows() is always true).
+    if (this.credentials && !this.credentials.allows(type, 'search')) throw new GatewayFault('POLICY_DENIED', 'The granted scope does not permit this resource type.', false, undefined, 'SCOPE_NOT_GRANTED');
     const work = this.candidateWorkV2.getStore(); if (work) work.clinicalCalls++;
-    const bundle = await this.transport.get(url, stats, budget);
+    const bundle = await this.transport.get(url, stats, { ...budget, permission: { type, interaction: 'search' } });
     this.throwIfCancelled(budget);
     if (bundle.resourceType !== 'Bundle' || bundle.type !== 'searchset') throw new GatewayFault('INVALID_RESPONSE', 'Search did not return a searchset Bundle.');
     // Only an absent entry or link list is absent. A list that is an object, a string or null, or that holds a

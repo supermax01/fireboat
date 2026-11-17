@@ -7,7 +7,7 @@
 Give AI agents safe, read-only access to one patient's FHIR health records over MCP.
 
 > **Early preview, not a release.** Uses synthetic (made-up) patient data; benchmarks may also use openly licensed, de-identified research data.
-> Runs locally on your own machine. Read-only. No SMART on FHIR sign-in yet; it is planned for version 2, the next version.
+> Runs locally on your own machine. Read-only. SMART on FHIR sign-in works with local test servers only, and is not SMART certified.
 > Not clinically validated. Not affiliated with or endorsed by HL7.
 > No npm package or release yet.
 
@@ -186,7 +186,7 @@ fireboat refuses rather than guesses. A few examples:
 | Filter by another patient's record, for example `encounter=Encounter/<their id>` | fireboat first runs the same patient-confined search the agent could run itself (`Encounter?_id=<id>&patient=<this patient>`). It finds nothing, so the filter is refused with `POLICY_DENIED`, exactly as for a record that does not exist, and the filtered search is never sent. Filtering by one of the patient's own encounters works. |
 | List the clinicians, organizations or locations on the server, or search them by name, address or identifier | Refused with `POLICY_DENIED`, and nothing is sent. A Practitioner, Organization or Location is available only by its ID, by read or `_id` search, once one of the patient's own records already shown names it. Reading one that no such record names gives `NOT_FOUND`, the same whether it exists or not. Medications and code systems can still be searched across the server. |
 | Pass a web address or a raw request | Impossible: no tool accepts one. The only server is the one in your configuration. |
-| Search on a field that fireboat hides, such as a patient identifier | Refused, so the search cannot be used to guess hidden values. |
+| Search on a field that fireboat hides, such as a device identifier or an identifier on a shared record | Refused, so the search cannot be used to guess hidden values. |
 
 And when the FHIR server misbehaves:
 
@@ -216,14 +216,17 @@ A minimal configuration, as shipped in [`examples/local.config.json`](examples/l
 - `mode` must be `"synthetic"` for now.
 - `source.baseUrl` must be a literal local address, such as `127.0.0.1`. The agent only ever sees the `alias`.
 - `patientId` is the one patient fireboat will serve.
-- `privacy.patientIdentifierSystems` lists the identifier systems to hide from the agent.
+- `privacy.patientIdentifierSystems` lists the identifier systems that identify patients, such as a medical record
+  number. Identifiers in these systems are removed from shared records, and a reference that carries one is treated as
+  naming another patient, so its record is withheld. The patient's own records keep their own identifiers.
 - Optional: `privacy.sharedIdentifierSystems` lists product identifier systems that shared Medication records may show
   (empty by default). It can never include a patient identifier system. A listed system also lets an uncoded Medication
   mix whose ingredients only reference other Medication records be shown; see the [security model](docs/SECURITY-MODEL.md#patient-and-shared-instance-checks).
 - Optional: `privacy.sharedProfiles` lists the `meta.profile` canonicals that shared records may declare (empty by
   default). Every other shared-record check still applies.
-- Optional: `source.auth` for OAuth client credentials (the secret is read from an environment variable you name), and
-  `limits` for response size, timeouts and how long results are kept.
+- Optional: `source.auth` for signing in to the FHIR server: OAuth client credentials (the secret is read from an
+  environment variable you name) or [SMART on FHIR](docs/SMART.md) (a standalone patient launch through `fireboat login`, or
+  Backend Services with a private key), and `limits` for response size, timeouts and how long results are kept.
 
 Run `npm run doctor -- --config <path>` to check a configuration against its server before you connect an agent.
 The [configuration guide](docs/CONFIGURATION.md) lists every field.
@@ -234,7 +237,7 @@ The [configuration guide](docs/CONFIGURATION.md) lists every field.
 | --- | --- |
 | `packages/core` | The gateway itself: request checks, the HTTP client, patient checks, output shaping, the result store. |
 | `packages/server` | The MCP server, the `fireboat` command line and `doctor`. |
-| `packages/auth` | Optional OAuth client credentials for the FHIR server. |
+| `packages/auth` | Optional sign-in to the FHIR server: OAuth client credentials and the SMART on FHIR client flows. |
 | `packages/evals` | The retrieval checks: fixed tasks with known answers, run through a real MCP client. |
 | `examples` | The demo, the synthetic FHIR server, example configurations and the HAPI FHIR quickstart helper. |
 | `tests` | The automated tests, including the patient-isolation suite. |
@@ -250,6 +253,7 @@ npm run eval:retrieval                   # retrieval checks, current MCP protoco
 npm run eval:retrieval -- --era legacy   # the same checks, older protocol version
 npm run test:isolation                   # patient-isolation suite
 node scripts/mutation-guards.mjs --list  # list the deliberate-breakage checks
+npm run test:smart                       # live SMART sign-in check (needs Docker)
 ```
 
 The tests are checked by mutation testing: a tool deliberately breaks a guard in the code, one at a time, and confirms
@@ -265,9 +269,15 @@ that a named test fails. A full run takes hours, so contributors usually run a f
 - Clinicians, organizations and locations are available only once one of the patient's own records names them, and only by ID.
 - Seven of those types (medication administrations and dispenses, specimens, care plans, care teams, imaging studies and devices) are tested against synthetic test servers only. Against HAPI FHIR they have been exercised only by the benchmark's scripted questions, not by the project's own live check.
 - The project's own live check runs against a local HAPI FHIR 8.12.0 server (`npm run test:hapi`, needs Docker).
+- SMART on FHIR sign-in: a standalone patient launch (authorization code with PKCE, through `fireboat login`) and Backend
+  Services (a signed JWT with a private key). Both are tested against a local SMART Launcher in front of HAPI FHIR, on
+  loopback, with synthetic data (`npm run test:smart`, needs Docker). The configured patient stays the only patient, and a
+  grant that allows writing is refused. See [SMART on FHIR sign-in](docs/SMART.md).
 
 **Not yet:**
-- No use with identifiable or live patient records, no writing to records, no serving over a network, and no SMART on FHIR sign-in.
+- No use with identifiable or live patient records, no writing to records and no serving over a network.
+- SMART sign-in is not SMART certified and has not been tested against any vendor's server. It accepts local
+  (loopback) servers only. There is no EHR launch and no OpenID Connect sign-in.
 - Only Apple-silicon Macs with Node 24.22.0 are verified. Linux, Windows and other Node versions are unverified.
 - An extra, stricter test suite for patient isolation is still being built. It runs in diagnostic mode and counts no cases yet.
 - No independent human security review yet.
@@ -280,11 +290,13 @@ Current results for the tests, the deliberate-breakage checks, the retrieval che
 ## Questions
 
 **Can I connect it to a real EHR or real patient data?** Not in this version. It only accepts a local FHIR server and
-synthetic mode, and it has no SMART on FHIR sign-in. Use the bundled synthetic server or a local HAPI FHIR server
+synthetic mode, including for SMART sign-in. Use the bundled synthetic server or a local HAPI FHIR server
 loaded with the synthetic seed ([quickstart](docs/QUICKSTART.md)).
 
-**Is SMART on FHIR support coming?** Yes. SMART on FHIR sign-in is planned for version 2, the next version. Until it
-ships, nothing in this version should be read as SMART support.
+**Does it support SMART on FHIR?** It can sign in as a SMART on FHIR client: a standalone patient launch through
+`fireboat login`, or Backend Services with a private key. Both are tested only against a local SMART Launcher with
+synthetic data, and it is not SMART certified. The patient in your configuration stays the only patient it serves, whatever
+the token says. See [SMART on FHIR sign-in](docs/SMART.md).
 
 **Does my data stay on my machine?** fireboat itself runs locally and only talks to the server you configure. But the AI
 host you connect it to may send tool results to its model provider. That is up to the host, not fireboat.
@@ -305,6 +317,7 @@ for how it behaves.
 ## Learn more
 
 - [Configuration and command-line options](docs/CONFIGURATION.md), [size and time limits](docs/LIMITS.md), [security model](docs/SECURITY-MODEL.md).
+- [SMART on FHIR sign-in](docs/SMART.md): `fireboat login`, Backend Services keys, scopes and the token file.
 - [Testing and evidence](docs/TESTING.md), [benchmark results](docs/BENCHMARK.md) and the [benchmark harness](bench/README.md).
 - [Which record types are supported](docs/SUPPORT-MATRIX.md), [how searches are checked](docs/QUERY-EVIDENCE.md), [how failed searches are explained](docs/QUERY-REPAIR.md).
 - [Compact output formats](docs/COMPACT-PROFILES.md) and [notes on AI hosts](docs/HOST-PROFILES.md).

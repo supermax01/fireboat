@@ -12,6 +12,12 @@ export async function bootstrap(argv: string[]): Promise<number> {
     if (argv.includes('--version')) { process.stdout.write(`${versionLine(release)}\n`); return 0; }
     checkRuntime(release);
     checkRuntimeAssets(release);
+    // `login` and `logout` load their own module (the one with the redirect listener and the browser launcher);
+    // the serving graph reached from main.js never imports it.
+    if (argv[0] === 'login' || argv[0] === 'logout') {
+      const { accountCommand } = await import('./login.js');
+      return await accountCommand(argv);
+    }
     const { main } = await import('./main.js');
     return await main(argv, release);
   } catch (error) { process.stderr.write(startupMessage(error)); return 2; }

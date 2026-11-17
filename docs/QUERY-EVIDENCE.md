@@ -2,7 +2,7 @@
 
 # Query evidence
 
-Synthetic-only prototype. Nothing here is a clinical-deployment, SMART-authorization, vendor-support or protocol-compatibility claim.
+Synthetic-only prototype. Nothing here is a clinical-deployment, SMART-certification, vendor-support or protocol-compatibility claim.
 
 Every response carries `coverage.query_evidence`, which classifies the evidence behind the delivered records. It never claims clinical completeness: clinical responses always carry `authorization_limited: true` and `CLINICAL_RECORD_COMPLETENESS_UNKNOWN`. The label summarizes; the per-constraint `execution` and `source_reported` values, `coverage.state` and `coverage.sort` carry the detail.
 

@@ -2,7 +2,7 @@
 
 # Host profiles
 
-Synthetic-only prototype. Nothing here is a clinical-deployment, SMART-authorization, vendor-support or protocol-compatibility claim.
+Synthetic-only prototype. Nothing here is a clinical-deployment, SMART-certification, vendor-support or protocol-compatibility claim.
 
 Schema `host-profiles/1`, workflow `recent-labs-v1`.
 

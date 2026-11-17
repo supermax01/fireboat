@@ -26,11 +26,11 @@ const order = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
 export const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 export const GATEWAY_MODULES = [
-  'packages/auth/src/client-credentials.js',
+  ...['client-assertion', 'client-credentials', 'index', 'pkce', 'smart-backend', 'smart-discovery', 'smart-scopes', 'smart-standalone', 'token-provider', 'token-store'].map(n => `packages/auth/src/${n}.js`),
   ...['catalog', 'contracts', 'decimal', 'delivery', 'discovery', 'identity', 'index', 'privacy', 'projection',
     'query', 'record-predicates', 'repairs', 'schema', 'search-parameters', 'store', 'support', 'transport', 'withheld'].map(n => `packages/core/src/${n}.js`),
   'packages/core/src/generated/r4-checkable-paths.js',
-  ...['cli', 'doctor', 'index', 'main', 'release', 'startup'].map(n => `packages/server/src/${n}.js`),
+  ...['cli', 'doctor', 'index', 'login', 'main', 'release', 'startup'].map(n => `packages/server/src/${n}.js`),
 ].sort(order);
 export const RUNTIME_FILES = [
   'packages/core/src/generated/r4-index.json', 'packages/core/src/generated/r4-search-parameters.json',
@@ -107,6 +107,11 @@ function parse<T>(code: string, inspect: (source: Node) => T): T {
 }
 const walk = (node: Node, visit: (node: Node) => void): void => { visit(node); node.forEachChild(n => walk(n, visit)); };
 const textOf = (node: Node): string => node.getText().replace(/\s+/g, ' ').trim();
+/** The bootstrap's only lazy imports: serving (`main.js`) and the separate `login`/`logout` command module. */
+export const BOOTSTRAP_LAZY_IMPORTS: readonly string[] = ["import('./main.js')", "import('./login.js')"];
+/** The `login`/`logout` module: a separate root that alone may import node:child_process and the node:http listener. */
+export const ACCOUNT_ROOT = 'packages/server/src/login.js';
+const BOOTSTRAP = 'packages/server/src/cli.js';
 export function forbiddenServingLoad(code: string, bootstrap: boolean): boolean {
   return parse(code, source => {
     let forbidden = false;
@@ -116,12 +121,25 @@ export function forbiddenServingLoad(code: string, bootstrap: boolean): boolean 
       if (n.kind === SyntaxKind.ImportDeclaration && ['node:module', 'node:vm', 'node:worker_threads'].includes(((n as ImportDeclaration).moduleSpecifier as StringLiteral).text)) forbidden = true;
       if (n.kind === SyntaxKind.CallExpression) {
         const call = n as CallExpression;
-        if (call.expression.kind === SyntaxKind.ImportKeyword && (!bootstrap || textOf(n) !== "import('./main.js')")) forbidden = true;
+        if (call.expression.kind === SyntaxKind.ImportKeyword && (!bootstrap || !BOOTSTRAP_LAZY_IMPORTS.includes(textOf(n)))) forbidden = true;
         // FHIR's schema/snapshot .binding fields are data; process.binding is a loader.
         if (/(?:^|\.)binding$/.test(textOf(call.expression)) || /\[['"]binding['"]\]$/.test(textOf(call.expression))) forbidden = true;
       }
     });
     return forbidden;
+  });
+}
+/** Static import and re-export specifiers only (no lazy imports). */
+export function staticImports(code: string): string[] {
+  return parse(code, source => {
+    const imports: string[] = [];
+    walk(source, n => {
+      if (n.kind === SyntaxKind.ImportDeclaration || n.kind === SyntaxKind.ExportDeclaration) {
+        const specifier = (n as ImportDeclaration | ExportDeclaration).moduleSpecifier;
+        if (specifier) imports.push(specifier.kind === SyntaxKind.StringLiteral ? (specifier as StringLiteral).text : '');
+      }
+    });
+    return imports;
   });
 }
 export function moduleImports(code: string): string[] {
@@ -144,7 +162,8 @@ export function moduleImports(code: string): string[] {
 export function httpDispatchSites(code: string): string[] {
   return parse(code, source => {
     const sites: string[] = [];
-    const names = new Set(['httpRequest', 'httpsRequest', 'controlledFetch', 'fetchFn', 'send', 'listedPut', 'fetch', 'XMLHttpRequest', 'WebSocket']);
+    const names = new Set(['httpRequest', 'httpsRequest', 'controlledFetch', 'fetchFn', 'send', 'listedPut', 'fetch', 'XMLHttpRequest', 'WebSocket',
+      'createServer', 'createHttpServer', 'listen']);
     walk(source, n => {
       if ((n.kind === SyntaxKind.Identifier || n.kind === SyntaxKind.StringLiteral) && names.has((n as StringLiteral).text)) {
         const parent = n.parent;
@@ -162,7 +181,15 @@ export function httpDispatchSites(code: string): string[] {
 // so editing such a comment needs a new digest. Tests change the actual calls and options.
 export const HTTP_DISPATCH: Readonly<Record<string, string>> = {
   'packages/auth/src/client-credentials.js': 'a11e622da412c298ed51f8d46bdde90d0fd4909df0c48b00a4308273d99a0594',
+  // SMART Backend Services: one token POST to the discovered (or pinned) loopback token endpoint, plus the doctor's discovery call.
+  'packages/auth/src/smart-backend.js': 'fa36d22205a67dc0caeb401d88233d935e277bb814e2fc4632b5f65f38f66349',
+  // SMART discovery: one unauthenticated GET of <baseUrl>/.well-known/smart-configuration.
+  'packages/auth/src/smart-discovery.js': '18479560908e19065b135cd5387b59f5966173dad34cb4f4796a07a2c12721a5',
+  // SMART standalone launch: the code exchange and refresh token POSTs to the discovered (or pinned) loopback token endpoint.
+  'packages/auth/src/smart-standalone.js': '4e5d12b5e47d541b566999d4651e14524fec658a180c7332cf0b004f6d347576',
   'packages/core/src/transport.js': 'd116466f0e6cff1195b0e651abfee5725e583263e2b45c1fc0b99ce64aaca070',
+  // The account module only (`fireboat login`): the one-shot 127.0.0.1 redirect listener, pinned with its handler.
+  'packages/server/src/login.js': '8e10504d55dc358ba9dd402741aa91493ea0e9a43e2da0eaa259074630c0d7d6',
   'packages/server/src/main.js': '6b6cd7e78ac11872e66b8a42e1d70df74c45bc77711f623c9b92913437434182',
   'examples/quickstart/client.js': '1b0f700399d67254fccf1c6204776d50c4f6e3349290fccd75556fa181cbc955',
   'examples/quickstart/request-observer.js': '72a0412cfe92e7bd52a36541331a46c78e9892bad134a9b9f110edd304dc40be',
@@ -175,33 +202,52 @@ export function assertHttpDispatch(path: string, code: string): void {
   if (sites.length ? sha256(JSON.stringify(sites)) !== expected : expected !== undefined) throw fault('HTTP_DISPATCH');
 }
 
+/**
+ * Two walks over the shipped modules. The serving walk starts at cli.js and main.js: only transport.js may import a
+ * network module and nothing may import node:child_process. cli.js's one lazy `import('./login.js')` is not followed
+ * there; it starts the account walk, where login.js alone may also import node:child_process and node:http (its
+ * one-shot loopback listener). Every module is reached by exactly these walks, and each keeps its pinned dispatch sites.
+ */
 export function servingBoundary(modules: ReadonlyMap<string, string>, dependencies: readonly string[]): void {
-  const seen = new Set<string>(), pending = ['packages/server/src/cli.js', 'packages/server/src/main.js'];
-  while (pending.length) {
-    const path = pending.pop()!;
-    if (seen.has(path)) continue;
-    const code = modules.get(path);
-    if (code === undefined || !GATEWAY_MODULES.includes(path)) throw fault('SERVING_BOUNDARY');
-    seen.add(path);
-    // Bootstrap's one fixed lazy import is needed for --version without loading serving code.
-    if (forbiddenServingLoad(code, path === 'packages/server/src/cli.js')) throw fault('SERVING_BOUNDARY');
-    for (const specifier of moduleImports(code)) {
-      if (specifier.startsWith('node:')) {
-        if (/^node:(?:https?|http2|net|tls|dgram)$/.test(specifier) && path !== 'packages/core/src/transport.js') throw fault('SERVING_BOUNDARY');
-        continue;
-      }
-      if (specifier.startsWith('.')) {
-        const target = posix.normalize(posix.join(posix.dirname(path), specifier));
-        if (target.endsWith('.json')) {
-          if (target !== 'package.json' && !RUNTIME_FILES.includes(target)) throw fault('SERVING_BOUNDARY');
-        } else {
-          if (!GATEWAY_MODULES.includes(target)) throw fault('SERVING_BOUNDARY');
-          pending.push(target);
+  const seen = new Set<string>(), accountRoots = new Set<string>();
+  const visit = (roots: readonly string[], account: boolean): void => {
+    const pending = [...roots];
+    while (pending.length) {
+      const path = pending.pop()!;
+      if (seen.has(path)) continue;
+      const code = modules.get(path);
+      if (code === undefined || !GATEWAY_MODULES.includes(path)) throw fault('SERVING_BOUNDARY');
+      seen.add(path);
+      const own = account && path === ACCOUNT_ROOT;
+      // Bootstrap's fixed lazy imports are needed for --version without loading serving code, and for login/logout.
+      if (forbiddenServingLoad(code, path === BOOTSTRAP)) throw fault('SERVING_BOUNDARY');
+      const statics = path === BOOTSTRAP ? staticImports(code) : [];
+      for (const specifier of moduleImports(code)) {
+        if (specifier.startsWith('node:')) {
+          if (/^node:(?:https?|http2|net|tls|dgram)$/.test(specifier) && path !== 'packages/core/src/transport.js' && !(own && specifier === 'node:http')) throw fault('SERVING_BOUNDARY');
+          if (specifier === 'node:child_process' && !own) throw fault('SERVING_BOUNDARY');
+          continue;
         }
-      } else if (!dependencies.some(name => specifier === name || specifier.startsWith(`${name}/`))) throw fault('SERVING_BOUNDARY');
+        if (specifier.startsWith('.')) {
+          const target = posix.normalize(posix.join(posix.dirname(path), specifier));
+          if (target.endsWith('.json')) {
+            if (target !== 'package.json' && !RUNTIME_FILES.includes(target)) throw fault('SERVING_BOUNDARY');
+          } else {
+            if (!GATEWAY_MODULES.includes(target)) throw fault('SERVING_BOUNDARY');
+            if (path === BOOTSTRAP && target === ACCOUNT_ROOT) {
+              if (statics.includes(specifier)) throw fault('SERVING_BOUNDARY');
+              accountRoots.add(target);
+              continue;
+            }
+            pending.push(target);
+          }
+        } else if (!dependencies.some(name => specifier === name || specifier.startsWith(`${name}/`))) throw fault('SERVING_BOUNDARY');
+      }
+      assertHttpDispatch(path, code);
     }
-    assertHttpDispatch(path, code);
-  }
+  };
+  visit([BOOTSTRAP, 'packages/server/src/main.js'], false);
+  visit([...accountRoots], true);
   if (!isDeepStrictEqual([...seen].sort(order), [...GATEWAY_MODULES].sort(order))) throw fault('SERVING_BOUNDARY');
 }
 

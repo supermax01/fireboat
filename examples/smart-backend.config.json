@@ -1,0 +1,15 @@
+{
+  "mode": "synthetic",
+  "source": {
+    "alias": "smart-backend-synthetic",
+    "baseUrl": "http://127.0.0.1:8080/fhir",
+    "auth": {
+      "type": "smart_backend_services",
+      "clientId": "synthetic-backend-client",
+      "keyId": "synthetic-key-1",
+      "privateKeyEnv": "FIREBOAT_SMART_PRIVATE_KEY",
+      "scopeSyntax": "v2"
+    }
+  },
+  "patientId": "synthetic-patient-a"
+}
