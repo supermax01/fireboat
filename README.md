@@ -7,7 +7,7 @@
 Give AI agents safe, read-only access to one patient's FHIR health records over MCP.
 
 > **Early preview, not a release.** Uses synthetic (made-up) patient data; benchmarks may also use openly licensed, de-identified research data.
-> Runs locally on your own machine. Read-only. No SMART on FHIR sign-in yet.
+> Runs locally on your own machine. Read-only. No SMART on FHIR sign-in yet; it is planned for version 2, the next version.
 > Not clinically validated. Not affiliated with or endorsed by HL7.
 > No npm package or release yet.
 
@@ -282,6 +282,9 @@ Current results for the tests, the deliberate-breakage checks, the retrieval che
 **Can I connect it to a real EHR or real patient data?** Not in this version. It only accepts a local FHIR server and
 synthetic mode, and it has no SMART on FHIR sign-in. Use the bundled synthetic server or a local HAPI FHIR server
 loaded with the synthetic seed ([quickstart](docs/QUICKSTART.md)).
+
+**Is SMART on FHIR support coming?** Yes. SMART on FHIR sign-in is planned for version 2, the next version. Until it
+ships, nothing in this version should be read as SMART support.
 
 **Does my data stay on my machine?** fireboat itself runs locally and only talks to the server you configure. But the AI
 host you connect it to may send tool results to its model provider. That is up to the host, not fireboat.
