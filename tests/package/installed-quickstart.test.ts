@@ -29,6 +29,8 @@ test('installed quickstart: fresh locked installs, independent guards and all 18
   // Emit just this built-in-only harness. No checkout source, tsx, symlink or loader participates in installed launches.
   const worker = join(state.scratch, 'package-worker.mjs');
   await writeFile(worker, stripTypeScriptTypes(await readFile(new URL('../../scripts/package-quickstart.ts', import.meta.url), 'utf8')), { flag: 'wx', mode: 0o600 });
+  // The harness imports ./is-main.mjs (Node built-ins only); emit it beside the worker.
+  await writeFile(join(state.scratch, 'is-main.mjs'), await readFile(new URL('../../scripts/is-main.mjs', import.meta.url)), { flag: 'wx', mode: 0o600 });
   const plan = join(state.scratch, 'timing-plan.json'), timing = join(state.scratch, 'timing.json');
   await writeFile(plan, JSON.stringify(installPlan(state, worker)), { flag: 'wx', mode: 0o600 });
   const result = await executeCommand(state.node, [state.timing, '--plan', plan, '--out', timing], { cwd: state.cwd, env: installedEnvironment(state), timeout: 540_000 });

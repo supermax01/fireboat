@@ -16,15 +16,15 @@
     },
     {
       "path": "NOTICE",
-      "size": 725,
+      "size": 847,
       "mode": 420,
-      "sha256": "21e4cb2e0e0103bb897920ef620381fb997f2b214657148907efbdbe35b4fa0d"
+      "sha256": "5e4313ed5902e1a8b557ac02520add485acaad22ff2f0eb0e85be006d93a6ff4"
     },
     {
       "path": "README.md",
-      "size": 22144,
+      "size": 22219,
       "mode": 420,
-      "sha256": "d736c9e43ac842f22004c6d3e4e3d7ee6c6a103a44c2722bdc50c389684656b7"
+      "sha256": "6393c48265d6c6e58b29e4641f07f7089a4f47cf723199373efcf4931e82927b"
     },
     {
       "path": "SECURITY.md",
@@ -40,9 +40,9 @@
     },
     {
       "path": "dist/package.json",
-      "size": 5099,
+      "size": 5106,
       "mode": 420,
-      "sha256": "56b95c95d3c2057c1591a7d77c393a13ae2437d63d1f7aead544c295ee03c3e9"
+      "sha256": "eaab5d5a95fc48980e452b077c9817b0c5c1d1e530fbf9ab6337af901efd1c28"
     },
     {
       "path": "dist/packages/auth/src/client-credentials.js",
@@ -400,15 +400,9 @@
     },
     {
       "path": "package.json",
-      "size": 5099,
+      "size": 5106,
       "mode": 420,
-      "sha256": "56b95c95d3c2057c1591a7d77c393a13ae2437d63d1f7aead544c295ee03c3e9"
-    },
-    {
-      "path": "quickstart/compose.quickstart.yaml",
-      "size": 895,
-      "mode": 420,
-      "sha256": "9f71979cfa7e0c46b0a45b0c726c80b7e12a77dbaf675740271d2d416f698e97"
+      "sha256": "eaab5d5a95fc48980e452b077c9817b0c5c1d1e530fbf9ab6337af901efd1c28"
     },
     {
       "path": "quickstart/dist/examples/quickstart/backend-evidence.json",
@@ -466,9 +460,9 @@
     },
     {
       "path": "quickstart/dist/examples/quickstart/main.js",
-      "size": 5596,
+      "size": 5603,
       "mode": 493,
-      "sha256": "104ecdefed74acf7497e5ab3465dd44c3ce3b1ed2e2f8c5d70c73a544990d9b0"
+      "sha256": "6bb0a887166f8a892acb727dfbc30113b95b1b9cbe958dd9ca3b380b5f24fd75"
     },
     {
       "path": "quickstart/dist/examples/quickstart/manifest.js",
@@ -535,6 +529,12 @@
       "size": 18509,
       "mode": 420,
       "sha256": "aadc69d1d2c53f13cc60f23f4e090e13ccf83e294ab1daf9d09b783ef82514bf"
+    },
+    {
+      "path": "quickstart/docker/compose.quickstart.yaml",
+      "size": 895,
+      "mode": 420,
+      "sha256": "9f71979cfa7e0c46b0a45b0c726c80b7e12a77dbaf675740271d2d416f698e97"
     },
     {
       "path": "quickstart/examples/quickstart/backend-evidence.json",

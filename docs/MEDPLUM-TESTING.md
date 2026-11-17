@@ -2,15 +2,15 @@
 
 > **Status.** This live check needs Docker and is not part of `npm run check`. Recorded results are in [TESTING.md](TESTING.md). A pass at one revision does not establish success for changed code, so run the commands below locally at the revision you are evaluating.
 
-This repository includes an isolated self-hosted Medplum R4 stack. Medplum, PostgreSQL and Redis images are pinned by immutable multi-platform digests in [compose.medplum.yaml](../compose.medplum.yaml). Only Medplum is exposed to the host, on `127.0.0.1:18103`. PostgreSQL and Redis have no published host ports.
+This repository includes an isolated self-hosted Medplum R4 stack. Medplum, PostgreSQL and Redis images are pinned by immutable multi-platform digests in [docker/compose.medplum.yaml](../docker/compose.medplum.yaml). Only Medplum is exposed to the host, on `127.0.0.1:18103`. PostgreSQL and Redis have no published host ports.
 
 With Docker and Node 24 available:
 
 ```sh
 npm ci
-docker compose -f compose.medplum.yaml up -d
+docker compose -f docker/compose.medplum.yaml up -d
 npm run test:medplum
-docker compose -f compose.medplum.yaml down --volumes
+docker compose -f docker/compose.medplum.yaml down --volumes
 ```
 
 The integration script waits up to four minutes for startup and base-schema seeding. Using intentionally public bootstrap fixture credentials, it creates a disposable ordinary project and a separate client application, then seeds two synthetic patients, observations and an attachment. It also seeds three same-patient decoys, each excluded by exactly one code or date predicate, and reads each decoy directly as a positive control. The gateway receives only the ordinary project client's credentials through a temporary environment variable; the bootstrap token is never configured in the gateway. The script checks that unauthenticated reads fail, the ordinary client can read its project's resources, repeated date filters and paging work, the configured patient's observations are returned and the decoys are not, another patient's read is denied, and attachment content or protected storage links are withheld. It restores the environment and closes the gateway on completion. Teardown removes the database volume and test resources.

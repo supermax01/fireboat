@@ -193,7 +193,7 @@ This runs three test files. `package-stage.test.ts` checks the staging tool. `pa
 
 Related tools:
 
-- `npm run build`, then `npm run stage:package -- <absolute-new-dir>` stages the package and checks it against the approved inventory. A maintainer who has reviewed an intended change re-approves with `npm run stage:package -- --approve-inventory <absolute-new-dir>` and reviews the `git diff` of `packaging/*.json`. Never hand-edit those inventories. See [contributing](../CONTRIBUTING.md).
+- `npm run build`, then `npm run stage:package -- <absolute-new-dir>` stages the package and checks it against the approved inventory. A maintainer who has reviewed an intended change re-approves with `npm run stage:package -- --approve-inventory <absolute-new-dir>` and reviews the `git diff` of `packaging/*.json`. Never hand-edit those inventories. See [contributing](../.github/CONTRIBUTING.md).
 - `npm run licenses:release` checks the licence inventory against the installed dependencies.
 - `npm run verify:package -- --tar <file>` checks a packed tarball against the approved inventory.
 - `npm run test:package-installed` installs a packed tarball and the quickstart helper into a fresh scratch directory and runs the packaged tasks. It needs the `FIREBOAT_PACKAGE_*` inputs (the tarball, a scratch directory outside the checkout and others), is deliberately outside `tests/*.test.ts`, and never skips when an input is missing.
@@ -205,17 +205,17 @@ fireboat is not published to npm. These checks show that a staged package matche
 These optional checks need Docker and pinned local images. They run against loopback-only synthetic stacks:
 
 ```sh
-docker compose up -d
+docker compose -f docker/compose.yaml up -d
 npm run test:hapi
-docker compose down --volumes
+docker compose -f docker/compose.yaml down --volumes
 
-docker compose -f compose.medplum.yaml up -d
+docker compose -f docker/compose.medplum.yaml up -d
 npm run test:medplum
-docker compose -f compose.medplum.yaml down --volumes
+docker compose -f docker/compose.medplum.yaml down --volumes
 ```
 
-- **HAPI.** `compose.yaml` runs HAPI FHIR 8.12.0, pinned by digest, on `127.0.0.1:18080`. `scripts/test-hapi.ts` seeds two synthetic patients and checks paging, patient confinement, decoys that a single predicate excludes, the denial of the other patient's read and payload withholding. It prints one JSON line (`"target":"local-hapi"`, with request counts and pages) and exits 0.
-- **Medplum.** `compose.medplum.yaml` runs a self-hosted Medplum R4 stack on `127.0.0.1:18103`. `scripts/test-medplum.ts` adds authenticated client credentials, a denied unauthenticated read and attachment withholding. It prints one JSON line (`"target":"local-medplum"`). See [Medplum testing](MEDPLUM-TESTING.md).
+- **HAPI.** `docker/compose.yaml` runs HAPI FHIR 8.12.0, pinned by digest, on `127.0.0.1:18080`. `scripts/test-hapi.ts` seeds two synthetic patients and checks paging, patient confinement, decoys that a single predicate excludes, the denial of the other patient's read and payload withholding. It prints one JSON line (`"target":"local-hapi"`, with request counts and pages) and exits 0.
+- **Medplum.** `docker/compose.medplum.yaml` runs a self-hosted Medplum R4 stack on `127.0.0.1:18103`. `scripts/test-medplum.ts` adds authenticated client credentials, a denied unauthenticated read and attachment withholding. It prints one JSON line (`"target":"local-medplum"`). See [Medplum testing](MEDPLUM-TESTING.md).
 - **HAPI quickstart.** The [quickstart](QUICKSTART.md) prepares a helper-owned HAPI server from the synthetic seed, verifies the packaged tasks and generates host configurations. It is a checkout recipe, not a release.
 
 A live check covers that script and its synthetic seed only. Query proof is limited to the synthetic fixture and the narrow HAPI FHIR 8.12.0 search profile described in [query evidence](QUERY-EVIDENCE.md), with no HAPI sort or continuation proof.
@@ -244,7 +244,7 @@ The table below records the gate results for this tree, run on 17 November 2026 
 | `npm run eval:retrieval` (modern) | Passed: each arm (fhir, compact, selected) 85/85 tasks and 301/301 comparable checks. |
 | `npm run eval:retrieval -- --era legacy` | Passed, with the same counts as the modern era. |
 | `npm run test:isolation` | Passed: 139 of 139 tests, all 68 cases; `status=DIAGNOSTIC earned=0`, as designed. |
-| `npm run mutation:guards` (full, aggregated) | Passed: 1,541 mutants in two shards, each run exactly once. 1,538 killed and 3 declared survivors, with 0 inconclusive, 0 anchor errors and 0 timeout-only kills. The targeted pass decided 1,534 and the full path 7. The run was on the source tree before the last documentation-only edits, after one shard was repeated on a quiet machine because a loaded first attempt left one mutant inconclusive. |
+| `npm run mutation:guards` (full, aggregated) | Passed: 1,541 mutants in two shards, each run exactly once. 1,538 killed and 3 declared survivors, with 0 inconclusive, 0 anchor errors and 0 timeout-only kills. The targeted pass decided 1,534 and the full path 7. The run was on the source tree before the last documentation-only edits, after one shard was repeated on a quiet machine because a loaded first attempt left one mutant inconclusive. After that run the repository root was reorganized; the 82 mutants anchored in the changed packaging and quickstart files were judged again with `--only` (all killed). An `--only` run is not a full pass. |
 | Generator and contract checks | Passed: generated docs, tool contract and R4 checkable-path table in sync; every mutation anchor applies. |
 | `npm run test:package` | Passed, 19 of 19; `npm run licenses:release` passed. |
 | `npm run test:hapi` | Not run on this tree. |
@@ -287,4 +287,4 @@ Datasets:
 
 ## Reporting results
 
-Testing feedback is welcome. Include your platform, Node version, the command and its output in an issue. Never include real or de-identified patient data (benchmark data included) or credentials. Issues and pull requests are welcome under [contributing](../CONTRIBUTING.md) and the [code of conduct](../CODE_OF_CONDUCT.md). Report security issues privately under the [security policy](../SECURITY.md).
+Testing feedback is welcome. Include your platform, Node version, the command and its output in an issue. Never include real or de-identified patient data (benchmark data included) or credentials. Issues and pull requests are welcome under [contributing](../.github/CONTRIBUTING.md) and the [code of conduct](../.github/CODE_OF_CONDUCT.md). Report security issues privately under the [security policy](../.github/SECURITY.md).

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/brand/icon.svg" width="96" alt="fireboat">
+  <img src="docs/assets/brand/icon.svg" width="96" alt="fireboat">
 </p>
 
 # fireboat
@@ -254,7 +254,7 @@ node scripts/mutation-guards.mjs --list  # list the deliberate-breakage checks
 
 The tests are checked by mutation testing: a tool deliberately breaks a guard in the code, one at a time, and confirms
 that a named test fails. A full run takes hours, so contributors usually run a few at a time with `--only <ids>`.
-[CONTRIBUTING.md](CONTRIBUTING.md) explains the rules, and [testing and evidence](docs/TESTING.md) has the details.
+[CONTRIBUTING.md](.github/CONTRIBUTING.md) explains the rules, and [testing and evidence](docs/TESTING.md) has the details.
 
 ## What works today, and what does not yet
 
@@ -309,16 +309,16 @@ for how it behaves.
 - [Which record types are supported](docs/SUPPORT-MATRIX.md), [how searches are checked](docs/QUERY-EVIDENCE.md), [how failed searches are explained](docs/QUERY-REPAIR.md).
 - [Compact output formats](docs/COMPACT-PROFILES.md) and [notes on AI hosts](docs/HOST-PROFILES.md).
 - [Running it against a local HAPI FHIR server](docs/QUICKSTART.md) (needs Docker).
-- [Contributing](CONTRIBUTING.md), [code of conduct](CODE_OF_CONDUCT.md), [instructions for coding agents](AGENTS.md), [security policy](SECURITY.md).
+- [Contributing](.github/CONTRIBUTING.md), [code of conduct](.github/CODE_OF_CONDUCT.md), [instructions for coding agents](AGENTS.md), [security policy](.github/SECURITY.md).
 
 Issues and pull requests are welcome. Include your platform, Node version, command and output with testing feedback.
-Report security issues privately through the [security policy](SECURITY.md).
+Report security issues privately through the [security policy](.github/SECURITY.md).
 Do not submit real or de-identified patient data (including benchmark data) or credentials.
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE), [NOTICE](NOTICE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Apache License 2.0. See [LICENSE](LICENSE), [NOTICE](NOTICE) and [THIRD_PARTY_NOTICES.md](packaging/THIRD_PARTY_NOTICES.md).
 
-**Third-party content:** the synthetic test data contains content from LOINC and records generated with Synthea. The LOINC notice and other credits are in [licenses/SEED_NOTICES.md](licenses/SEED_NOTICES.md). Benchmark datasets are not included: they are downloaded at run time and cited in [testing and evidence](docs/TESTING.md#benchmarks-and-research-data).
+**Third-party content:** the synthetic test data contains content from LOINC and records generated with Synthea. The LOINC notice and other credits are in [packaging/licenses/SEED_NOTICES.md](packaging/licenses/SEED_NOTICES.md). Benchmark datasets are not included: they are downloaded at run time and cited in [testing and evidence](docs/TESTING.md#benchmarks-and-research-data).
 
 HL7® and FHIR® are registered trademarks of Health Level Seven International. Their use here does not constitute endorsement by HL7.

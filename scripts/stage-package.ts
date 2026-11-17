@@ -39,8 +39,13 @@ export const RUNTIME_FILES = [
 export const DOCUMENTS = ['README.md', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'SECURITY.md',
   'docs/QUICKSTART.md', 'docs/LIMITS.md', 'docs/SUPPORT-MATRIX.md', 'docs/support-matrix.json',
   'docs/COMPACT-PROFILES.md', 'docs/HOST-PROFILES.md', 'docs/QUERY-EVIDENCE.md', 'docs/QUERY-REPAIR.md', 'docs/contracts/m3b-tools.json'];
+/** DOCUMENTS are package paths. These ones are kept elsewhere in the repository and staged at the package path. */
+export const DOCUMENT_SOURCES: Readonly<Record<string, string>> = { 'SECURITY.md': '.github/SECURITY.md', 'THIRD_PARTY_NOTICES.md': 'packaging/THIRD_PARTY_NOTICES.md' };
+/** The package's licenses/ folder is kept at packaging/licenses/ in the repository. */
+export const LICENSES_SOURCE = 'packaging/licenses';
+export const documentSource = (path: string): string => DOCUMENT_SOURCES[path] ?? path;
 export const HELPER_ASSETS = [
-  'compose.quickstart.yaml', 'examples/quickstart/seed-manifest.json', 'examples/quickstart/generator-pins.json',
+  'docker/compose.quickstart.yaml', 'examples/quickstart/seed-manifest.json', 'examples/quickstart/generator-pins.json',
   'examples/quickstart/backend-evidence.json', 'examples/quickstart/config.json', 'examples/quickstart/host-config.example.json',
   'packages/evals/fixtures/quickstart/resources.ndjson', 'packages/evals/fixtures/quickstart/seed-manifest.json',
   'packages/evals/fixtures/quickstart/generation.properties', 'packages/evals/fixtures/quickstart/edges.json',
@@ -243,8 +248,8 @@ export async function verifyStagedDirectory(root: string, expected: ExpectedInve
 }
 
 export async function snapshotInputs(root: string): Promise<readonly FileInventory[]> {
-  const paths = ['package.json', 'package-lock.json', 'tsconfig.json', 'tsconfig.build.json', ...DOCUMENTS, 'compose.quickstart.yaml'];
-  for (const directory of ['packages', 'examples/quickstart', 'scripts', 'tests', 'packaging', 'licenses'])
+  const paths = ['package.json', 'package-lock.json', 'tsconfig.json', 'tsconfig.build.json', ...DOCUMENTS.map(documentSource), 'docker/compose.quickstart.yaml'];
+  for (const directory of ['packages', 'examples/quickstart', 'scripts', 'tests', 'packaging'])
     paths.push(...(await listRegularFiles(join(root, directory))).map(p => `${directory}/${p}`));
   return Promise.all([...new Set(paths)].sort(order).map(async path => {
     const body = await readFile(join(root, path)), info = await lstat(join(root, path));
@@ -281,7 +286,7 @@ export async function prepareFiles(root: string, scratch: string): Promise<{ fil
   const boundary = await helperBoundary(observedGraph(dist, Object.keys(HELPER_ENTRIES)), p => readFile(join(dist, p), 'utf8'), Object.keys(helperPkg.dependencies));
   const helperAssets = await import(pathToFileURL(join(dist, 'examples/quickstart/prepare.js')).href);
   helperAssets.validateHelperAssets({ manifest: await readFile(join(root, 'examples/quickstart/seed-manifest.json')),
-    compose: await readFile(join(root, 'compose.quickstart.yaml')), resources: await readFile(join(root, 'packages/evals/fixtures/quickstart/resources.ndjson')) });
+    compose: await readFile(join(root, 'docker/compose.quickstart.yaml')), resources: await readFile(join(root, 'packages/evals/fixtures/quickstart/resources.ndjson')) });
   const modules = new Map(await Promise.all(GATEWAY_MODULES.map(async p => [p, await readFile(join(dist, p), 'utf8')] as const)));
   servingBoundary(modules, Object.keys(pkg.dependencies));
   for (const p of boundary.modules.filter(p => p.endsWith('.js'))) assertHttpDispatch(p, await readFile(join(dist, p), 'utf8'));
@@ -296,11 +301,11 @@ export async function prepareFiles(root: string, scratch: string): Promise<{ fil
   };
   for (const p of GATEWAY_MODULES) await copy(`dist/${p}`, `dist/${p}`, p === 'packages/server/src/cli.js' ? 0o755 : 0o644);
   for (const p of [...RUNTIME_FILES, 'packages/server/src/generated/release.json']) await copy(`dist/${p}`);
-  for (const p of DOCUMENTS) await copy(p);
+  for (const p of DOCUMENTS) await copy(documentSource(p), p);
   await copy('packaging/npm-shrinkwrap.json', 'npm-shrinkwrap.json');
   const licenses = await import(pathToFileURL(join(root, 'scripts/release-licenses.mjs')).href);
   await licenses.checkReleaseLicenses(root);
-  for (const p of await listRegularFiles(join(root, 'licenses'))) await copy(`licenses/${p}`);
+  for (const p of await listRegularFiles(join(root, LICENSES_SOURCE))) await copy(`${LICENSES_SOURCE}/${p}`, `licenses/${p}`);
   await copy('examples/quickstart/package.json', 'quickstart/package.json');
   await copy('examples/quickstart/package-lock.json', 'quickstart/package-lock.json');
   for (const p of boundary.modules) await copy(`dist/${p}`, `quickstart/dist/${p}`, p === 'examples/quickstart/main.js' ? 0o755 : 0o644);

@@ -10,7 +10,7 @@ import { HELPER_BACKEND } from '../examples/quickstart/backend.js';
 import { sha256 } from '../examples/quickstart/manifest.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const files = ['compose.quickstart.yaml', 'scripts/quickstart/generate-synthea.mjs', 'packages/evals/fixtures/quickstart/generation.properties',
+const files = ['docker/compose.quickstart.yaml', 'scripts/quickstart/generate-synthea.mjs', 'packages/evals/fixtures/quickstart/generation.properties',
   'scripts/quickstart/transform-synthea.ts', 'packages/evals/fixtures/quickstart/natural-r4.json',
   'packages/evals/fixtures/quickstart/seed-manifest.json', 'packages/evals/fixtures/quickstart/resources.ndjson'];
 test('pin-only: quickstart approved helper manifest bytes', async () => {

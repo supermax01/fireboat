@@ -26,7 +26,7 @@ test('package licenses: all 14 locked dependencies carry verbatim installed text
   for (const dependency of inventory.dependencies) {
     assert.match(dependency.integrity, /^sha512-/);
     for (const text of dependency.texts) {
-      const approved = await readFile(join(ROOT, text.path)), installed = await readFile(join(ROOT, 'node_modules', dependency.name, text.source));
+      const approved = await readFile(join(ROOT, licenses.sourcePath(text.path))), installed = await readFile(join(ROOT, 'node_modules', dependency.name, text.source));
       assert.deepEqual(approved, installed); assert.equal(approved.length, text.bytes); assert.equal(sha256(approved), text.sha256);
     }
   }
@@ -37,21 +37,21 @@ test('package licenses: a changed required license body refuses rather than copy
   // A complete synthetic installed package with its own required NOTICE, not one borrowed from a different package.
   const write = async (path: string, body: string) => { await mkdir(dirname(join(scratch, path)), { recursive: true }); await writeFile(join(scratch, path), body); };
   const rootFiles = ['packaging/npm-shrinkwrap.json', 'examples/quickstart/package-lock.json', 'examples/quickstart/seed-manifest.json', 'examples/quickstart/generator-pins.json',
-    'packages/evals/fixtures/quickstart/resources.ndjson', 'licenses/SEED_NOTICES.md'];
+    'packages/evals/fixtures/quickstart/resources.ndjson', 'packaging/licenses/SEED_NOTICES.md'];
   for (const path of rootFiles) await write(path, await readFile(join(ROOT, path), 'utf8'));
   const collected = await licenses.collectReleaseLicenses(ROOT);
   for (const dependency of collected.inventory.dependencies) {
     await write(`node_modules/${dependency.name}/package.json`, await readFile(join(ROOT, 'node_modules', dependency.name, 'package.json'), 'utf8'));
-    for (const text of dependency.texts) await write(`node_modules/${dependency.name}/${text.source}`, await readFile(join(ROOT, text.path), 'utf8'));
+    for (const text of dependency.texts) await write(`node_modules/${dependency.name}/${text.source}`, await readFile(join(ROOT, licenses.sourcePath(text.path)), 'utf8'));
   }
   await write('node_modules/zod/NOTICE', 'Synthetic required upstream notice\n');
   const inventory = await licenses.writeReleaseLicenses(scratch);
   await licenses.checkReleaseLicenses(scratch);
   const zod = inventory.dependencies.find((d: any) => d.name === 'zod'), notice = zod.texts.find((r: any) => r.kind === 'notice');
-  await rm(join(scratch, notice.path));
+  await rm(join(scratch, licenses.sourcePath(notice.path)));
   await assert.rejects(licenses.checkReleaseLicenses(scratch), { code: 'NOTICE_MISSING' });
-  await write(notice.path, 'Synthetic required upstream notice\n');
-  await write(zod.texts.find((r: any) => r.kind === 'license').path, 'altered');
+  await write(licenses.sourcePath(notice.path), 'Synthetic required upstream notice\n');
+  await write(licenses.sourcePath(zod.texts.find((r: any) => r.kind === 'license').path), 'altered');
   await assert.rejects(licenses.checkReleaseLicenses(scratch), { code: 'LICENSE_TEXT_CHANGED' });
 });
 

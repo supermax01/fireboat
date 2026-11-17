@@ -15,7 +15,7 @@ import type { PackageTask } from '../packages/evals/src/package-tasks.js';
 type Rec = Record<string, unknown>;
 const fixture = (name: string) => readFile(new URL(`../packages/evals/fixtures/quickstart/${name}`, import.meta.url), 'utf8');
 const resources = await fixture('resources.ndjson');
-const ASSETS = { manifest: await readFile(new URL('../examples/quickstart/seed-manifest.json', import.meta.url)), compose: await readFile(new URL('../compose.quickstart.yaml', import.meta.url)),
+const ASSETS = { manifest: await readFile(new URL('../examples/quickstart/seed-manifest.json', import.meta.url)), compose: await readFile(new URL('../docker/compose.quickstart.yaml', import.meta.url)),
   resources: Buffer.from(resources) };
 const seedManifest = JSON.parse(await fixture('seed-manifest.json')) as { patient: string; resources: { type: string; id: string }[] };
 const patientId = seedManifest.patient.split('/')[1]!;

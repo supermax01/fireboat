@@ -95,7 +95,7 @@ function references(node: unknown, out: Rec[] = []): Rec[] {
 }
 
 /**
- * Licence-restricted terminology the quickstart seed may not carry (SNOMED CT; `licenses/SEED_NOTICES.md`): its
+ * Licence-restricted terminology the quickstart seed may not carry (SNOMED CT; `packaging/licenses/SEED_NOTICES.md`): its
  * system URI and its OID (with any child arc), wherever they appear. `scripts/quickstart/terminology.ts` replaces the
  * transform's Encounter codings before the merge; this detector keeps any other copy out of a seed or an edge file.
  */

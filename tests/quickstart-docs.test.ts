@@ -92,7 +92,7 @@ function assertGuideFaults(doc: string): void {
   assert.deepEqual(rows.map(row => row[1]!).sort(), [...faultCodes].sort(), 'every manifest fault has exactly one cause/remedy row');
 }
 
-const compose = read('compose.quickstart.yaml');
+const compose = read('docker/compose.quickstart.yaml');
 const image = /^\s+image:\s+(\S+)\s*$/m.exec(compose)?.[1];
 const binding = /^\s+- "(127\.0\.0\.1:\d+:\d+)"\s*$/m.exec(compose)?.[1];
 assert.ok(image && binding, 'checked-in Compose image and port binding');

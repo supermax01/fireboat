@@ -15,6 +15,11 @@ export class LicenseFault extends Error {
   constructor(code) { super(code); this.name = 'LicenseFault'; this.code = code; }
 }
 const fault = code => new LicenseFault(code);
+/**
+ * Paths inside the inventory are package paths: the npm package ships licenses/ and THIRD_PARTY_NOTICES.md at its
+ * root. In the repository those files live under packaging/, so a package path is read and written there.
+ */
+export const sourcePath = packagePath => `packaging/${packagePath}`;
 const TEXT = /^(?:licen[sc]e|copying|notice)(?:[._-].*)?$/i;
 const NOTICE = /^notice(?:[._-].*)?$/i;
 
@@ -114,27 +119,27 @@ export async function collectReleaseLicenses(root) {
 
 export async function checkReleaseLicenses(root) {
   const { inventory, files } = await collectReleaseLicenses(root);
-  const approved = await json(join(root, 'licenses/inventory.json'));
+  const approved = await json(join(root, sourcePath('licenses/inventory.json')));
   validateNoticeInventory(approved);
   if (!isDeepStrictEqual(inventory, approved)) throw fault('LICENSE_INVENTORY_CHANGED');
   for (const [path, body] of files) {
     let actual;
     try {
-      const info = await lstat(join(root, path));
+      const info = await lstat(join(root, sourcePath(path)));
       if (!info.isFile() || info.isSymbolicLink()) throw 0;
-      actual = await readFile(join(root, path));
+      actual = await readFile(join(root, sourcePath(path)));
     } catch { throw fault(path.split('/').at(-1).toLowerCase().startsWith('notice') ? 'NOTICE_MISSING' : 'LICENSE_MISSING'); }
     if (!actual.equals(body)) throw fault('LICENSE_TEXT_CHANGED');
   }
-  const notice = await readFile(join(root, 'licenses/SEED_NOTICES.md'));
+  const notice = await readFile(join(root, sourcePath('licenses/SEED_NOTICES.md')));
   if (!notice.byteLength) throw fault('NOTICE_MISSING');
   return inventory;
 }
 
 export async function writeReleaseLicenses(root) {
   const { inventory, files } = await collectReleaseLicenses(root);
-  for (const [path, body] of files) { await mkdir(dirname(join(root, path)), { recursive: true }); await writeFile(join(root, path), body); }
-  await writeFile(join(root, 'licenses/inventory.json'), bytesOf(inventory));
+  for (const [path, body] of files) { await mkdir(dirname(join(root, sourcePath(path))), { recursive: true }); await writeFile(join(root, sourcePath(path)), body); }
+  await writeFile(join(root, sourcePath('licenses/inventory.json')), bytesOf(inventory));
   return inventory;
 }
 

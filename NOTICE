@@ -2,7 +2,8 @@ fireboat
 Copyright 2026 Chandra Vikram Singh
 
 This product is licensed under the Apache License, Version 2.0 (see LICENSE).
-Third-party notices: see THIRD_PARTY_NOTICES.md.
+Third-party notices: see THIRD_PARTY_NOTICES.md (packaging/THIRD_PARTY_NOTICES.md
+in the source repository).
 
 The synthetic quickstart seed and test fixtures contain LOINC codes. Section
 10.1 of the LOINC licence requires this notice:
@@ -14,4 +15,5 @@ at http://loinc.org/license. LOINC® is a registered United States trademark of
 Regenstrief Institute, Inc.
 
 Notices for the other code systems and for Synthea are in
-licenses/SEED_NOTICES.md.
+licenses/SEED_NOTICES.md (packaging/licenses/SEED_NOTICES.md in the source
+repository).

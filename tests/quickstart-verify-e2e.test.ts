@@ -18,7 +18,7 @@ import { verify, type DoctorRunner } from '../examples/quickstart/verify.js';
 type Rec = Record<string, unknown>;
 const root = fileURLToPath(new URL('../', import.meta.url));
 const ndjson = await readFile(join(root, 'packages/evals/fixtures/quickstart/resources.ndjson'), 'utf8');
-const ASSETS = { manifest: await readFile(join(root, 'examples/quickstart/seed-manifest.json')), compose: await readFile(join(root, 'compose.quickstart.yaml')), resources: Buffer.from(ndjson) };
+const ASSETS = { manifest: await readFile(join(root, 'examples/quickstart/seed-manifest.json')), compose: await readFile(join(root, 'docker/compose.quickstart.yaml')), resources: Buffer.from(ndjson) };
 const PATIENT = 'd44d0c9c-ccd8-7945-3968-d043ff9a5805';
 
 /**

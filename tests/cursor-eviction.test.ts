@@ -337,11 +337,20 @@ test('cursor eviction gateway: an evicted cursor gives a tool result byte-identi
   await sleep(ttlMs + 200);
   const expiredResult = await call('fhir_page', { cursor: expiringCursor });
   assert.equal(expiredResult.structuredContent?.error?.code, 'RESULT_EXPIRED');
-  // Only the per-call request id and elapsed time may differ.
-  const normalize = (r: Result) => JSON.stringify(r).replace(/(\\?"request_id\\?":\\?")[0-9a-f-]{36}/g, '$1<request>').replace(/(\\?"elapsed_ms\\?":)\d+/g, '$1<ms>');
+  // Only the per-call request id and elapsed time may differ. The byte counts include the digits of elapsed_ms, so
+  // they are masked too, and checked to differ by exactly what the elapsed_ms digit difference explains.
+  const normalize = (r: Result) => JSON.stringify(r).replace(/(\\?"request_id\\?":\\?")[0-9a-f-]{36}/g, '$1<request>')
+    .replace(/(\\?"elapsed_ms\\?":)\d+/g, '$1<ms>').replace(/(\\?"(?:bytes_returned|wire_bytes)\\?":)\d+/g, '$1<n>');
   assert.equal(normalize(evicted), normalize(expiredResult));
   assert.ok(normalize(evicted).includes('<request>') && !/[0-9a-f]{8}-[0-9a-f]{4}-/.test(normalize(evicted)), 'only the request ids were normalized');
-  assert.equal(JSON.stringify(evicted).length, JSON.stringify(expiredResult).length, 'same byte length');
+  const budgetOf = (r: Result) => (r.structuredContent as { budget: { elapsed_ms: number; bytes_returned: number; wire_bytes: number } }).budget;
+  const [a, b] = [budgetOf(evicted), budgetOf(expiredResult)];
+  const digits = (n: number) => String(n).length;
+  const elapsedDigits = digits(a.elapsed_ms) - digits(b.elapsed_ms);
+  assert.equal(a.bytes_returned - b.bytes_returned, elapsedDigits, 'bytes_returned differs only by the elapsed_ms digits');
+  assert.equal(a.wire_bytes - b.wire_bytes, 2 * elapsedDigits, 'wire_bytes differs only by the elapsed_ms digits in both copies');
+  const countDigits = (digits(a.bytes_returned) - digits(b.bytes_returned)) + (digits(a.wire_bytes) - digits(b.wire_bytes));
+  assert.equal(JSON.stringify(evicted).length - JSON.stringify(expiredResult).length, 2 * (elapsedDigits + countDigits), 'byte length differs only by those digits');
 });
 
 test('cursor eviction gateway: recent replay still returns the same page with no extra upstream work (CUR-04, CUR-13)', async t => {

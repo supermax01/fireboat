@@ -25,7 +25,7 @@ const projectRoot = fileURLToPath(new URL(import.meta.url.endsWith('.ts') ? '../
 export async function loadHelperAssets(): Promise<HelperAssets> {
   const [manifest, compose, resources] = await Promise.all([
     readFile(join(projectRoot, 'examples/quickstart/seed-manifest.json')),
-    readFile(join(projectRoot, 'compose.quickstart.yaml')),
+    readFile(join(projectRoot, 'docker/compose.quickstart.yaml')),
     readFile(join(projectRoot, 'packages/evals/fixtures/quickstart/resources.ndjson'))
   ]);
   return { manifest, compose, resources };

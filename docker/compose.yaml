@@ -1,3 +1,5 @@
+# The project name is fixed so it does not follow this folder's name.
+name: fireboat
 services:
   hapi:
     # Resolved from the official hapiproject/hapi multiarch manifest on 2026-10-18.

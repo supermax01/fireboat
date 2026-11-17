@@ -116,7 +116,7 @@ function projectFiles(): string[] {
 const NAMES_SNOMED_CT = new Set([
   'scripts/quickstart/edges.ts', 'scripts/quickstart/terminology.ts', 'scripts/mutation-guards.mjs',
   'tests/quickstart-edges.test.ts', 'tests/quickstart-terminology.test.ts', 'tests/quickstart-fixtures.test.ts',
-  'licenses/SEED_NOTICES.md', 'THIRD_PARTY_NOTICES.md',
+  'packaging/licenses/SEED_NOTICES.md', 'packaging/THIRD_PARTY_NOTICES.md',
   'packages/core/src/generated/r4-index.json',
 ]);
 

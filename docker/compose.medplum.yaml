@@ -1,3 +1,5 @@
+# The project name is fixed so it does not follow this folder's name.
+name: fireboat
 services:
   postgres:
     image: postgres@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This guide is for coding agents and for the people who run them or contribute by hand. Any tool that reads `AGENTS.md` picks it up. [CONTRIBUTING.md](CONTRIBUTING.md) covers the same ground for human contributors.
+This guide is for coding agents and for the people who run them or contribute by hand. Any tool that reads `AGENTS.md` picks it up. [CONTRIBUTING.md](.github/CONTRIBUTING.md) covers the same ground for human contributors.
 
 ## What this project is
 
@@ -59,10 +59,12 @@ Breaking any of these is a bug, whatever a task asks for.
 | `tests/` | The Node test suite (`*.test.ts`), the isolation suite and its pinned design specification in `tests/isolation/`, and the installed-package tests in `tests/package/`. `tests/package-inventory-drift.test.ts` fails when a shipped document or licence file no longer matches the approved npm inventory. |
 | `scripts/` | The mutation gate, generators, packaging and staging (`stage-package.ts`) and qualification tools. |
 | `examples/` | The demo, the synthetic FHIR source, example configs and the HAPI quickstart helper (`examples/quickstart/`). |
-| `docs/` | Testing ([TESTING.md](docs/TESTING.md)), benchmark results ([BENCHMARK.md](docs/BENCHMARK.md)), the security model, configuration, limits, the HAPI quickstart, generated reference docs and the tool contract (`docs/contracts/m3b-tools.json`). |
+| `docs/` | Testing ([TESTING.md](docs/TESTING.md)), benchmark results ([BENCHMARK.md](docs/BENCHMARK.md)), the security model, configuration, limits, the HAPI quickstart, generated reference docs, the tool contract (`docs/contracts/m3b-tools.json`), the README diagrams (`docs/assets/`) and the logo and brand assets (`docs/assets/brand/`). |
+| `docker/` | Compose files: `compose.yaml` (HAPI for `npm run test:hapi`), `compose.medplum.yaml` (Medplum for `npm run test:medplum`) and `compose.quickstart.yaml` (the quickstart helper's HAPI recipe, pinned by hash in the seed manifest). |
 | `bench/` | The benchmark harness behind docs/BENCHMARK.md: a separate package with its own `package.json`, not shipped and not run by `npm run check`. See [bench/README.md](bench/README.md). |
-| `packaging/`, `licenses/` | The approved npm inventories (`packaging/npm-files.json`, `packaging/helper-files.json`), the production shrinkwrap, and licence and notice inventories. |
-| Repository root | `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `NOTICE`, `LICENSE` and `THIRD_PARTY_NOTICES.md`. `.github/` holds issue and pull request templates. |
+| `packaging/` | The approved npm inventories (`packaging/npm-files.json`, `packaging/helper-files.json`), the production shrinkwrap (staged as `npm-shrinkwrap.json`), `THIRD_PARTY_NOTICES.md`, and `licenses/` with the dependency licence texts, the seed notices and the licence inventory (`licenses/inventory.json`). The package ships `THIRD_PARTY_NOTICES.md` and `licenses/` at its root; paths inside `licenses/inventory.json` are those package paths. |
+| `.github/` | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md` (GitHub reads them from here) and the issue and pull request templates. |
+| Repository root | `README.md`, `AGENTS.md`, `NOTICE` and `LICENSE`, plus the npm and TypeScript configuration and `.nvmrc`. |
 
 **Keep the layers separate:** core policy, HTTP transport, output projection, the result store and the MCP adapter. A change that couples them needs a design reason in the pull request. In practice `packages/core/src/index.ts` still orchestrates admission, paging, retention and delivery in one place. Move logic out of it into the layer modules, not into it.
 
@@ -94,7 +96,7 @@ Give long or parallel test runs their own `TMPDIR` and delete it afterwards. Som
 
 The synthetic FHIR source listens on port 8080 by default. Set `SYNTHETIC_FHIR_PORT` (only that variable is read) to move it, for example when 8080 is busy, and point a copy of the config at the same port.
 
-Shipped documents (`README.md`, `LICENSE`, `NOTICE`, `SECURITY.md`, `THIRD_PARTY_NOTICES.md`, `docs/QUICKSTART.md`, `docs/LIMITS.md`, the generated reference docs, `docs/contracts/m3b-tools.json` and `licenses/*`) are hash-bound in `packaging/npm-files.json`; after an intended change, run `npm run build`, re-approve with `npm run stage:package -- --approve-inventory <dir>` (a new absolute directory, deleted afterwards), then run `npm run test:package`.
+Shipped documents (`README.md`, `LICENSE`, `NOTICE`, `.github/SECURITY.md`, `packaging/THIRD_PARTY_NOTICES.md`, `docs/QUICKSTART.md`, `docs/LIMITS.md`, the generated reference docs, `docs/contracts/m3b-tools.json` and `packaging/licenses/*`; the package stages the `.github/` and `packaging/` ones at its root as `SECURITY.md`, `THIRD_PARTY_NOTICES.md` and `licenses/*`) are hash-bound in `packaging/npm-files.json`; after an intended change, run `npm run build`, re-approve with `npm run stage:package -- --approve-inventory <dir>` (a new absolute directory, deleted afterwards), then run `npm run test:package`.
 
 ## How changes are judged
 
@@ -114,7 +116,7 @@ The evidence is local and deterministic. **The project uses no hosted CI.**
 - `docs/contracts/m3b-tools.json`. Regenerate it with `scripts/emit-m3b-contract.mjs`.
 - `packages/core/src/generated/*`. The two R4 indexes are regenerated from the pinned HL7 FHIR R4 package by the `scripts/generate-r4-*.py` scripts; `r4-checkable-paths.ts` is derived from those two indexes by `scripts/generate-r4-checkable-paths.ts` (`--check` fails on drift).
 - `tests/isolation/design-spec.md`, the pinned isolation design specification. The isolation ledger binds its exact bytes; editing it breaks the suite.
-- `licenses/inventory.json` and `packaging/*.json`. These are approved inventories, updated only by their own tools during packaging.
+- `packaging/licenses/inventory.json` and `packaging/*.json`. These are approved inventories, updated only by their own tools during packaging.
 
 ## Ports and live services
 
@@ -128,4 +130,4 @@ The evidence is local and deterministic. **The project uses no hosted CI.**
 - No unrelated reformatting.
 - Open a pull request from a fork or branch. Tags, releases, package publishing and repository settings are handled by the maintainer.
 - Never commit personal files, such as editor or agent settings folders and `*.local.md` notes. `.gitignore` covers the common ones; keep personal instructions in those local files, not in this one.
-- Security issues go to the private channel in [SECURITY.md](SECURITY.md), never to a public issue.
+- Security issues go to the private channel in [SECURITY.md](.github/SECURITY.md), never to a public issue.

@@ -9,12 +9,6 @@
   },
   "files": [
     {
-      "path": "compose.quickstart.yaml",
-      "size": 895,
-      "mode": 420,
-      "sha256": "9f71979cfa7e0c46b0a45b0c726c80b7e12a77dbaf675740271d2d416f698e97"
-    },
-    {
       "path": "dist/examples/quickstart/backend-evidence.json",
       "size": 17850,
       "mode": 420,
@@ -70,9 +64,9 @@
     },
     {
       "path": "dist/examples/quickstart/main.js",
-      "size": 5596,
+      "size": 5603,
       "mode": 493,
-      "sha256": "104ecdefed74acf7497e5ab3465dd44c3ce3b1ed2e2f8c5d70c73a544990d9b0"
+      "sha256": "6bb0a887166f8a892acb727dfbc30113b95b1b9cbe958dd9ca3b380b5f24fd75"
     },
     {
       "path": "dist/examples/quickstart/manifest.js",
@@ -139,6 +133,12 @@
       "size": 18509,
       "mode": 420,
       "sha256": "aadc69d1d2c53f13cc60f23f4e090e13ccf83e294ab1daf9d09b783ef82514bf"
+    },
+    {
+      "path": "docker/compose.quickstart.yaml",
+      "size": 895,
+      "mode": 420,
+      "sha256": "9f71979cfa7e0c46b0a45b0c726c80b7e12a77dbaf675740271d2d416f698e97"
     },
     {
       "path": "examples/quickstart/backend-evidence.json",

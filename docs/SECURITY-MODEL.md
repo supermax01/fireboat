@@ -126,4 +126,4 @@ No SMART authorization, authenticated remote MCP service, clinical or production
 
 Without its own recorded evidence, none of these is claimed either: SMART certification or enterprise-managed authorization; HIPAA, GDPR, CMS or ONC compliance or regulatory clearance; R4B, R5 or R6 support, US Core conformance or profile validation; full MCP protocol conformance, support for every MCP host or verified model-input behaviour; complete clinical history, proven absence, a verified latest result when sort order is unknown, or complete retained results; a durable disclosure ledger; token, speed or cost savings; npm, image or registry availability; review by AI models presented as human review; or anything about other FHIR MCP servers.
 
-Report suspected vulnerabilities privately under the [security policy](../SECURITY.md).
+Report suspected vulnerabilities privately under the [security policy](../.github/SECURITY.md).

@@ -12,4 +12,4 @@ assignees: ''
 
 **How it stays inside the product boundaries** (read-only; the patient is fixed by configuration; no arbitrary URLs or headers; no unimplemented tools advertised; synthetic data only in fixtures and tests)
 
-**How it would be tested** (authorization, confinement, payload withholding, continuations, byte budgets; see `CONTRIBUTING.md`)
+**How it would be tested** (authorization, confinement, payload withholding, continuations, byte budgets; see `.github/CONTRIBUTING.md`)

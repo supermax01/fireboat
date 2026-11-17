@@ -26,7 +26,7 @@ export function assembleHelperManifest(input: ManifestInputs): SeedManifest {
 }
 export const manifestText = (manifest: SeedManifest): string => `${JSON.stringify(manifest, null, 2)}\n`;
 export async function generateHelperManifest(root: string, check: boolean): Promise<SeedManifest> {
-  const paths = ['compose.quickstart.yaml', 'scripts/quickstart/generate-synthea.mjs', 'packages/evals/fixtures/quickstart/generation.properties',
+  const paths = ['docker/compose.quickstart.yaml', 'scripts/quickstart/generate-synthea.mjs', 'packages/evals/fixtures/quickstart/generation.properties',
     'scripts/quickstart/transform-synthea.ts', 'packages/evals/fixtures/quickstart/natural-r4.json',
     'packages/evals/fixtures/quickstart/seed-manifest.json', 'packages/evals/fixtures/quickstart/resources.ndjson'];
   const [compose, generator, config, transform, natural, fixture, resources] = await Promise.all(paths.map(p => readFile(resolve(root, p))));

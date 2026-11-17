@@ -5,11 +5,11 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import { validateExpectedInventory, type ExpectedInventory } from '../scripts/package-inventory.js';
-import { describeInventoryDrift, DOCUMENTS, HELPER_ASSETS, ROOT, sha256 } from '../scripts/stage-package.js';
+import { describeInventoryDrift, documentSource, DOCUMENTS, HELPER_ASSETS, LICENSES_SOURCE, ROOT, sha256 } from '../scripts/stage-package.js';
 
 /** Where a staged path is copied from, or undefined for build outputs and the generated manifest. */
 const sourceOf = (path: string): string | undefined =>
-  DOCUMENTS.includes(path) || path.startsWith('licenses/') ? path
+  DOCUMENTS.includes(path) ? documentSource(path) : path.startsWith('licenses/') ? `${LICENSES_SOURCE}/${path.slice(9)}`
     : path === 'npm-shrinkwrap.json' ? 'packaging/npm-shrinkwrap.json'
       : path === 'quickstart/package.json' || path === 'quickstart/package-lock.json' ? `examples/quickstart/${path.slice(11)}`
         : path === 'quickstart/fireboat-timing.mjs' ? undefined

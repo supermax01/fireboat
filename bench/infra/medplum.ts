@@ -19,7 +19,7 @@ export const MEDPLUM_VOLUME = 'fbbench-medplum-pg-synthea-dev';
 /** Only Synthea development data is loaded into Medplum (no MIMIC). */
 export const MEDPLUM_DATASETS = ['synthea-dev'] as const;
 
-/** The same three images, by digest, as compose.medplum.yaml at the repository root (fireboat's own Medplum test stack). */
+/** The same three images, by digest, as docker/compose.medplum.yaml in the repository (fireboat's own Medplum test stack). */
 export const MEDPLUM_IMAGES = {
   medplum: 'medplum/medplum-server@sha256:2968c9aeb85d03968370855a5dc409a6f28ef5abda0996e353be06c525b61216',
   postgres: 'postgres@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea',
@@ -28,7 +28,7 @@ export const MEDPLUM_IMAGES = {
 /** The version in packages/server/package.json inside the medplum image; bench:medplum:up checks /healthcheck. */
 export const MEDPLUM_EXPECTED_VERSION = '5.2.6';
 
-/** Synthetic bootstrap super-admin client (compose.medplum.yaml values). Used only by the loader and client setup. */
+/** Synthetic bootstrap super-admin client (docker/compose.medplum.yaml values). Used only by the loader and client setup. */
 export const MEDPLUM_BOOTSTRAP = {
   clientId: '11111111-1111-4111-8111-111111111111',
   clientSecret: 'synthetic_bootstrap_only_never_use_for_real_data',
