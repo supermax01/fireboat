@@ -1,0 +1,45 @@
+# Benchmark backend: HAPI FHIR on PostgreSQL. Start and stop it with bench:infra:up / bench:infra:down only.
+# HAPI is published on 127.0.0.1:18190 only; PostgreSQL is not published. Values mirror bench/infra/pins.ts
+# (tests/infra.test.ts checks this). One external volume per dataset, chosen by FBBENCH_PG_VOLUME.
+name: fbbench
+
+services:
+  db:
+    image: postgres:17.12-bookworm@sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536
+    pull_policy: never
+    environment:
+      POSTGRES_DB: hapi
+      POSTGRES_USER: hapi
+      # Reachable only from the compose network (no published port), so no password is used.
+      POSTGRES_HOST_AUTH_METHOD: trust
+    command: ["postgres", "-c", "shared_buffers=1GB", "-c", "max_wal_size=8GB", "-c", "checkpoint_timeout=15min", "-c", "max_connections=50"]
+    shm_size: 1g
+    volumes:
+      - pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hapi -d hapi"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  hapi:
+    image: hapiproject/hapi:v8.12.0-2@sha256:0ff86aac4c7bd13a1ee226444a70263bb46ed1c28ef543c30a44f865b80ca04e
+    pull_policy: never
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:18190:8080"
+    labels:
+      # Changes when hapi/application.yaml changes, so `up` recreates HAPI with the new settings.
+      io.fbbench.hapi-config-sha256: ${FBBENCH_HAPI_CONFIG_SHA256:-unset}
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms1g -Xmx4g"
+      SPRING_CONFIG_ADDITIONAL_LOCATION: "file:/bench/application.yaml"
+    volumes:
+      - ./hapi/application.yaml:/bench/application.yaml:ro
+
+volumes:
+  pg:
+    name: ${FBBENCH_PG_VOLUME:?set by bench:infra:up}
+    external: true

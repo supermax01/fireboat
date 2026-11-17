@@ -1,0 +1,410 @@
+{
+  "schema_version": "m3b-tasks/1",
+  "tasks": [
+    {
+      "id": "s7a-error-none",
+      "category": "s7a-usability",
+      "corpus": "usability",
+      "question": "Synthetic usability contract: error-none",
+      "steps": [
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "invalidSyntheticArgument": true
+          },
+          "drainPages": false
+        },
+        {
+          "tool": "fhir_search",
+          "input": {
+            "invalidSyntheticArgument": true
+          },
+          "drainPages": false
+        },
+        {
+          "tool": "fhir_read",
+          "input": {
+            "invalidSyntheticArgument": true
+          },
+          "drainPages": false
+        },
+        {
+          "tool": "fhir_page",
+          "input": {
+            "invalidSyntheticArgument": true
+          },
+          "drainPages": false
+        },
+        {
+          "tool": "fhir_result",
+          "input": {
+            "invalidSyntheticArgument": true
+          },
+          "drainPages": false
+        }
+      ],
+      "checks": [
+        {
+          "kind": "envelopePath",
+          "id": "none-0",
+          "path": "coverage.query_evidence",
+          "equals": "none",
+          "step": 0
+        },
+        {
+          "kind": "envelopePath",
+          "id": "none-1",
+          "path": "coverage.query_evidence",
+          "equals": "none",
+          "step": 1
+        },
+        {
+          "kind": "envelopePath",
+          "id": "none-2",
+          "path": "coverage.query_evidence",
+          "equals": "none",
+          "step": 2
+        },
+        {
+          "kind": "envelopePath",
+          "id": "none-3",
+          "path": "coverage.query_evidence",
+          "equals": "none",
+          "step": 3
+        },
+        {
+          "kind": "envelopePath",
+          "id": "none-4",
+          "path": "coverage.query_evidence",
+          "equals": "none",
+          "step": 4
+        },
+        {
+          "kind": "upstreamWork",
+          "id": "no-work-0",
+          "step": 0,
+          "clinical": 0,
+          "metadata": 0
+        },
+        {
+          "kind": "upstreamWork",
+          "id": "no-work-1",
+          "step": 1,
+          "clinical": 0,
+          "metadata": 0
+        },
+        {
+          "kind": "upstreamWork",
+          "id": "no-work-2",
+          "step": 2,
+          "clinical": 0,
+          "metadata": 0
+        },
+        {
+          "kind": "upstreamWork",
+          "id": "no-work-3",
+          "step": 3,
+          "clinical": 0,
+          "metadata": 0
+        },
+        {
+          "kind": "upstreamWork",
+          "id": "no-work-4",
+          "step": 4,
+          "clinical": 0,
+          "metadata": 0
+        },
+        {
+          "kind": "callOutcome",
+          "id": "exact-error-0",
+          "step": 0,
+          "outcome": "application_error",
+          "code": "INVALID_ARGUMENTS"
+        },
+        {
+          "kind": "callOutcome",
+          "id": "exact-error-1",
+          "step": 1,
+          "outcome": "application_error",
+          "code": "INVALID_ARGUMENTS"
+        },
+        {
+          "kind": "callOutcome",
+          "id": "exact-error-2",
+          "step": 2,
+          "outcome": "application_error",
+          "code": "INVALID_ARGUMENTS"
+        },
+        {
+          "kind": "callOutcome",
+          "id": "exact-error-3",
+          "step": 3,
+          "outcome": "application_error",
+          "code": "INVALID_ARGUMENTS"
+        },
+        {
+          "kind": "callOutcome",
+          "id": "exact-error-4",
+          "step": 4,
+          "outcome": "application_error",
+          "code": "INVALID_ARGUMENTS"
+        }
+      ],
+      "budget": {
+        "maxBytes": 50000,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 10
+      }
+    },
+    {
+      "id": "s7a-binding",
+      "category": "s7a-usability",
+      "corpus": "usability",
+      "question": "Synthetic usability contract: binding",
+      "steps": [
+        {
+          "tool": "fhir_capabilities",
+          "input": {},
+          "drainPages": false
+        }
+      ],
+      "checks": [
+        {
+          "kind": "dataPath",
+          "id": "patient",
+          "path": "patient_id",
+          "equals": "eval-patient-a",
+          "step": 0
+        },
+        {
+          "kind": "dataPath",
+          "id": "first",
+          "path": "resources.0.type",
+          "equals": "Patient",
+          "step": 0
+        },
+        {
+          "kind": "dataPath",
+          "id": "second",
+          "path": "resources.1.type",
+          "equals": "Observation",
+          "step": 0
+        },
+        {
+          "kind": "envelopePath",
+          "id": "metadata",
+          "path": "coverage.query_evidence",
+          "equals": "metadata_snapshot",
+          "step": 0
+        }
+      ],
+      "budget": {
+        "maxBytes": 50000,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 10
+      }
+    },
+    {
+      "id": "s7a-server-pages",
+      "category": "s7a-usability",
+      "corpus": "usability",
+      "question": "Synthetic usability contract: server-pages",
+      "steps": [
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "topic": "server",
+            "limit": 1
+          },
+          "drainPages": false
+        },
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "topic": "server",
+            "limit": 1,
+            "cursor": "{{discovery_cursor:0}}"
+          },
+          "drainPages": false
+        },
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "topic": "server",
+            "limit": 1,
+            "cursor": "{{discovery_cursor:1}}"
+          },
+          "drainPages": false
+        }
+      ],
+      "checks": [
+        {
+          "kind": "dataPath",
+          "id": "patient",
+          "path": "resources.0.type",
+          "equals": "Patient",
+          "step": 0
+        },
+        {
+          "kind": "dataPath",
+          "id": "observation",
+          "path": "resources.0.type",
+          "equals": "Observation",
+          "step": 1
+        },
+        {
+          "kind": "envelopePath",
+          "id": "more",
+          "path": "coverage.query_exhausted",
+          "equals": false,
+          "step": 1
+        },
+        {
+          "kind": "upstreamWork",
+          "id": "local-continuation",
+          "step": 1,
+          "clinical": 0,
+          "metadata": 0
+        }
+      ],
+      "budget": {
+        "maxBytes": 50000,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 10
+      }
+    },
+    {
+      "id": "s7a-inherited-size",
+      "category": "s7a-usability",
+      "corpus": "usability",
+      "question": "Synthetic usability contract: inherited-size",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "page_size": 1,
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              }
+            ]
+          },
+          "drainPages": true
+        }
+      ],
+      "checks": [
+        {
+          "kind": "envelopePath",
+          "id": "inherited-size",
+          "step": 0,
+          "response_index": "all",
+          "path": "pagination.requested_page_size",
+          "equals": 1
+        },
+        {
+          "kind": "envelopePath",
+          "id": "one-row",
+          "step": 0,
+          "response_index": "all",
+          "path": "pagination.returned_matches",
+          "equals": 1
+        }
+      ],
+      "budget": {
+        "maxBytes": 50000,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 10
+      }
+    },
+    {
+      "id": "s7a-byte-warning",
+      "category": "s7a-usability",
+      "corpus": "usability",
+      "question": "Synthetic usability contract: byte-warning",
+      "steps": [
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "topic": "support",
+            "limit": 25
+          },
+          "maxBytes": 6000
+        }
+      ],
+      "checks": [
+        {
+          "kind": "envelopePath",
+          "id": "limited",
+          "path": "budget.limit_reached",
+          "equals": true,
+          "step": 0
+        },
+        {
+          "kind": "envelopePath",
+          "id": "warning",
+          "path": "warnings.0.code",
+          "equals": "METADATA_BYTE_LIMIT",
+          "step": 0
+        },
+        {
+          "kind": "envelopePath",
+          "id": "message",
+          "path": "warnings.0.message",
+          "equals": "Metadata rows were reduced to fit the byte budget; follow the returned continuation.",
+          "step": 0
+        },
+        {
+          "kind": "upstreamWork",
+          "id": "metadata-only",
+          "step": 0,
+          "clinical": 0,
+          "metadata": 1
+        }
+      ],
+      "budget": {
+        "maxBytes": 50000,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 10
+      }
+    },
+    {
+      "id": "s7a-logical-limit",
+      "category": "s7a-usability",
+      "corpus": "usability",
+      "question": "Synthetic usability contract: logical-limit",
+      "steps": [
+        {
+          "tool": "fhir_capabilities",
+          "input": {
+            "topic": "support",
+            "limit": 1
+          },
+          "drainPages": false
+        }
+      ],
+      "checks": [
+        {
+          "kind": "envelopePath",
+          "id": "no-warning",
+          "path": "warnings",
+          "equals": [],
+          "step": 0
+        },
+        {
+          "kind": "envelopePath",
+          "id": "not-byte-limited",
+          "path": "budget.limit_reached",
+          "equals": false,
+          "step": 0
+        }
+      ],
+      "budget": {
+        "maxBytes": 50000,
+        "maxUpstreamCalls": 4,
+        "maxToolCalls": 10
+      }
+    }
+  ]
+}

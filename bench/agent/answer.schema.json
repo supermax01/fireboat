@@ -1,0 +1,13 @@
+{"type":"object","additionalProperties":false,
+ "required":["answer_kind","answer","answer_list","value_as_recorded","unit","timestamp","resource_ids","completeness","abstained","explanation"],
+ "properties":{
+  "answer_kind":{"enum":["value","list","none"]},
+  "answer":{"type":["string","null"]},
+  "answer_list":{"type":["array","null"],"items":{"type":"string"}},
+  "value_as_recorded":{"type":["string","null"]},
+  "unit":{"type":["string","null"]},
+  "timestamp":{"type":["string","null"]},
+  "resource_ids":{"type":"array","items":{"type":"string","pattern":"^[A-Za-z]+/[A-Za-z0-9\\-\\.]{1,64}$"}},
+  "completeness":{"enum":["all_retrieved","not_all_retrieved","not_sure"]},
+  "abstained":{"type":"boolean"},
+  "explanation":{"type":"string"}}}

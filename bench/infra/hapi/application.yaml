@@ -1,0 +1,29 @@
+# Overrides on top of the image's own application.yaml (hapi-fhir-jpaserver-starter v8.12.0-2).
+# Every value here is listed in bench/infra/pins.ts (HAPI_SETTINGS) and recorded in manifests/infra.json.
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/hapi
+    username: hapi
+    password: ""
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    properties:
+      hibernate:
+        dialect: ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect
+
+hapi:
+  fhir:
+    # server_address is deliberately not set: HAPI builds its base URL from the request Host header.
+    use_apache_address_strategy: false
+    reuse_cached_search_results_millis: 0
+    default_page_size: 20
+    max_page_size: 200
+    retain_cached_searches_mins: 60
+    # The starter also uses max_page_size as JpaStorageSettings.fetchSizeDefaultMaximum, which caps the final "-1"
+    # prefetch pass of the stock thresholds (13,503,2003,-1): every search with more than ~2,203 matches was silently
+    # truncated (Condition: 2,115 of 5,051 served). A finite last threshold above any dataset size avoids the cap.
+    search_prefetch_thresholds: 13,503,2003,2000000
+    client_id_strategy: ALPHANUMERIC
+    enforce_referential_integrity_on_write: false
+    enforce_referential_integrity_on_delete: false
+    auto_create_placeholder_reference_targets: false

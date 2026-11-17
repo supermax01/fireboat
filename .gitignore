@@ -1,0 +1,23 @@
+node_modules/
+dist/
+coverage/
+.local/
+artifacts/
+mutation-results/
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# Personal editor and tool files: never commit these
+.claude/
+.codex/
+.muse/
+.t3/
+.cursor/
+CLAUDE.local.md
+*.local.md
+.idea/
+.vscode/

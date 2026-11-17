@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">fireboat</title>
+  <desc id="desc">An angular triangular sail split into Ember and Amber halves above a broad Chalk boat hull.</desc>
+  <rect width="512" height="512" rx="112" fill="#202936"/>
+  <path d="M256 64L416 320H96Z" fill="#D84A2B"/>
+  <path d="M256 64L416 320H256Z" fill="#FFB547"/>
+  <path d="M48 352H464L416 416Q394 448 352 448H160Q118 448 96 416Z" fill="#FFF4E8"/>
+</svg>

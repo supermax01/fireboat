@@ -1,0 +1,906 @@
+{
+ "schema_version": "b2-coverage-matrix/1",
+ "scope_revision": "B2-0 seed: required subjects x {search, read} x output; covered_by reviewed from tests/isolation/scenarios.ts; everything else visibly uncovered",
+ "axes": {
+  "requirement": [
+   "CA-ISO-01",
+   "CA-ISO-02",
+   "CA-ISO-03",
+   "CA-ISO-04",
+   "CA-ISO-05",
+   "CA-ISO-05a",
+   "CA-ISO-05b",
+   "CA-ISO-05c",
+   "CA-ISO-05d"
+  ],
+  "tool": [
+   "fhir_capabilities",
+   "fhir_search",
+   "fhir_read",
+   "fhir_page",
+   "fhir_result"
+  ],
+  "subject": [
+   {
+    "id": "patient:Patient",
+    "required": true
+   },
+   {
+    "id": "patient:Observation",
+    "required": true
+   },
+   {
+    "id": "patient:Condition",
+    "required": true
+   },
+   {
+    "id": "patient:AllergyIntolerance",
+    "required": true
+   },
+   {
+    "id": "patient:MedicationRequest",
+    "required": true
+   },
+   {
+    "id": "patient:MedicationStatement",
+    "required": true
+   },
+   {
+    "id": "patient:Encounter",
+    "required": true
+   },
+   {
+    "id": "patient:DocumentReference",
+    "required": true
+   },
+   {
+    "id": "patient:DiagnosticReport",
+    "required": true
+   },
+   {
+    "id": "patient:Immunization",
+    "required": true
+   },
+   {
+    "id": "patient:Procedure",
+    "required": true
+   },
+   {
+    "id": "patient:Coverage",
+    "required": true
+   },
+   {
+    "id": "patient:ExplanationOfBenefit",
+    "required": true
+   },
+   {
+    "id": "patient:ServiceRequest",
+    "required": true
+   },
+   {
+    "id": "patient:Claim",
+    "required": true
+   },
+   {
+    "id": "shared:Medication",
+    "required": true
+   },
+   {
+    "id": "shared:Organization",
+    "required": true
+   },
+   {
+    "id": "shared:Location",
+    "required": true
+   },
+   {
+    "id": "shared:Practitioner",
+    "required": true
+   },
+   {
+    "id": "shared:CodeSystem",
+    "required": true
+   },
+   {
+    "id": "shared:ValueSet",
+    "required": true
+   },
+   {
+    "id": "shared:StructureDefinition",
+    "required": true
+   },
+   {
+    "id": "shared:SearchParameter",
+    "required": true
+   },
+   {
+    "id": "shared:CapabilityStatement",
+    "required": true
+   },
+   {
+    "id": "shared:OperationDefinition",
+    "required": true
+   },
+   {
+    "id": "ambiguous:RelatedPerson",
+    "required": true
+   },
+   {
+    "id": "ambiguous:Group",
+    "required": true
+   },
+   {
+    "id": "ambiguous:Provenance",
+    "required": true
+   },
+   {
+    "id": "ambiguous:AuditEvent",
+    "required": true
+   },
+   {
+    "id": "ambiguous:contained-child",
+    "required": true
+   }
+  ],
+  "interaction": [
+   "read",
+   "search",
+   "continuation",
+   "include",
+   "retained-project",
+   "retained-inspect",
+   "metadata"
+  ],
+  "channel": [
+   "output",
+   "retained"
+  ]
+ },
+ "cells": [
+  {
+   "id": "MX-0001",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:Patient",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": [
+    "B2-SEL-03",
+    "B2-SEL-05"
+   ]
+  },
+  {
+   "id": "MX-0002",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:Patient",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0003",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:Observation",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": [
+    "B2-SEL-01",
+    "B2-SEL-02",
+    "B2-SEL-04",
+    "B2-SEL-06",
+    "B2-SEL-15",
+    "B2-SEL-16",
+    "B2-SEL-19",
+    "B2-HPP-01",
+    "B2-HPP-02"
+   ]
+  },
+  {
+   "id": "MX-0004",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:Observation",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": [
+    "B2-PTH-07",
+    "B2-PTH-09",
+    "B2-PTH-11",
+    "B2-PTH-01",
+    "B2-CLS-01"
+   ]
+  },
+  {
+   "id": "MX-0005",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:Condition",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0006",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:Condition",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0007",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:AllergyIntolerance",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0008",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:AllergyIntolerance",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0009",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:MedicationRequest",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0010",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:MedicationRequest",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0011",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:MedicationStatement",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0012",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:MedicationStatement",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0013",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:Encounter",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0014",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:Encounter",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0015",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:DocumentReference",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0016",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:DocumentReference",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0017",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:DiagnosticReport",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0018",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:DiagnosticReport",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0019",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:Immunization",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0020",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:Immunization",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0021",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:Procedure",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0022",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:Procedure",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0023",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:Coverage",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0024",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:Coverage",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0025",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:ExplanationOfBenefit",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0026",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:ExplanationOfBenefit",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0027",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:ServiceRequest",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0028",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:ServiceRequest",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0029",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "patient:Claim",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0030",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "patient:Claim",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0031",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "shared:Medication",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0032",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "shared:Medication",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0033",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "shared:Organization",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0034",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "shared:Organization",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0035",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "shared:Location",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0036",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "shared:Location",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0037",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "shared:Practitioner",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": [
+    "B2-SEL-23",
+    "B2-SEL-24",
+    "B2-SEL-25",
+    "B2-SEL-33"
+   ]
+  },
+  {
+   "id": "MX-0038",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "shared:Practitioner",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0039",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "shared:CodeSystem",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0040",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "shared:CodeSystem",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0041",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "shared:ValueSet",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0042",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "shared:ValueSet",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0043",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "shared:StructureDefinition",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0044",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "shared:StructureDefinition",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0045",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "shared:SearchParameter",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0046",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "shared:SearchParameter",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0047",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "shared:CapabilityStatement",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0048",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "shared:CapabilityStatement",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0049",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "shared:OperationDefinition",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0050",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "shared:OperationDefinition",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0051",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "ambiguous:RelatedPerson",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0052",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "ambiguous:RelatedPerson",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0053",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "ambiguous:Group",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0054",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "ambiguous:Group",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0055",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "ambiguous:Provenance",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0056",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "ambiguous:Provenance",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0057",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "ambiguous:AuditEvent",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0058",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "ambiguous:AuditEvent",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0059",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_search",
+   "subject": "ambiguous:contained-child",
+   "interaction": "search",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  },
+  {
+   "id": "MX-0060",
+   "requirement": "CA-ISO-01",
+   "tool": "fhir_read",
+   "subject": "ambiguous:contained-child",
+   "interaction": "read",
+   "channel": "output",
+   "applicability": {
+    "status": "applicable"
+   },
+   "covered_by": []
+  }
+ ],
+ "not_applicable_rules": []
+}

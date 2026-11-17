@@ -1,0 +1,14 @@
+[
+  {
+    "id": "outcome-execution-failure",
+    "justification": "The explicit execution-failure throw in classifyOutcomeIssues is currently subsumed by the fallthrough throw: EXECUTION_FAILURE_CODES and FILTER_CLASS_CODES are disjoint, so every execution-failure code at error/fatal severity throws UNVERIFIED_QUERY either way. The explicit branch is kept so the rule stays stated directly; if a code ever joins both sets this survivor must be re-reviewed."
+  },
+  {
+    "id": "credential-reinvalidate",
+    "justification": "Removing CREDENTIAL_INVALIDATED from the credentialFault exempt list changes nothing today: the provider always raises that fault as retryable, so the retryable short-circuit returns the identical retryable GatewayFault before any invalidate() call. The exempt-list entry is kept so the never-re-invalidate rule stays explicit if provider retryability ever changes."
+  },
+  {
+    "id": "t6-contract-display",
+    "justification": "Removing the PROVIDER_NOUNS display clause from the seed contract's reference check in scripts/quickstart/transform-synthea.ts changes nothing today: PROVIDER_NOUNS names only Organization and Location, both members of PROVIDER_TYPES, and the next check rejects a display on every PROVIDER_TYPES reference except a Practitioner whose display matches its synthetic stand-in, raising the same SEED_CONTRACT fault either way. The explicit clause is kept so the no-display rule for organization and location references stays stated directly; if PROVIDER_TYPES, PROVIDER_NOUNS or the Practitioner exception changes, this survivor must be re-reviewed."
+  }
+]

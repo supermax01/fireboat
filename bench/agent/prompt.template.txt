@@ -1,0 +1,7 @@
+You are answering a question about one patient's health record. Use only the tools provided.
+The patient's FHIR resource id is Patient/{{patient_id}}.{{subject_id_sentence}}{{datastore_sentence}}
+{{reference_time_line}}Answer only from what the records show. If you cannot determine the answer, set abstained to true.
+If the records show that the thing asked about is absent, answer "none".
+Say whether you retrieved every record the answer depends on.
+
+Question: {{question}}

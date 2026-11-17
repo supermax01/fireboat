@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="t d">
+<title id="t">How fireboat works</title>
+<desc id="d">An AI agent calls one of five read-only tools over MCP. fireboat checks the request, fetches from the one configured FHIR server, re-checks every record against the configured patient, withholds hidden data, and returns an exact, size-capped answer. Results are kept briefly for paging.</desc>
+<defs>
+<filter id="sh"><feOffset dx="0" dy="0"/></filter>
+<marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+<path d="M1 1.5 L8.5 5 L1 8.5" fill="none" stroke="#5E6A7A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+<style>
+text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif; fill: #F2EDE7; }
+.h { font-size: 19px; font-weight: 600; }
+.c { font-size: 16px; fill: #99A3B0; }
+.big { font-size: 20px; font-weight: 650; }
+.brand { font-size: 22px; font-weight: 700; letter-spacing: -0.2px; }
+.sub { font-size: 16px; fill: #99A3B0; }
+.lane { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; font-size: 13px; letter-spacing: 2px; fill: #99A3B0; }
+.lbl { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; font-size: 13px; fill: #99A3B0; }
+.chip { fill: #202833; stroke: #303B49; stroke-width: 1; }
+.acc { fill: #33221F; stroke: #A8452D; stroke-width: 1.2; }
+.dot { fill: #F0643F; }
+.ln { stroke: #5E6A7A; stroke-width: 1.8; stroke-linecap: round; fill: none; }
+.dash { stroke: #5E6A7A; stroke-width: 1.5; stroke-dasharray: 4 5; stroke-linecap: round; fill: none; }
+</style>
+</defs>
+<rect x="0.5" y="0.5" width="1199" height="559" rx="24" fill="#141A22" stroke="#252E3A"/>
+<rect x="24" y="168" width="168" height="244" rx="16" fill="#1A212B" stroke="#2A3441" filter="url(#sh)"/>
+<rect x="48" y="192" width="40" height="40" rx="10" fill="#252E3A"/>
+<path d="M68 201 Q68 212 79 212 Q68 212 68 223 Q68 212 57 212 Q68 212 68 201Z" fill="#F2EDE7"/>
+<text class="big" x="48" y="270">AI agent</text>
+<text class="c" x="48" y="298">Claude Code</text>
+<text class="c" x="48" y="322">or any MCP host</text>
+<rect x="1008" y="168" width="168" height="244" rx="16" fill="#1A212B" stroke="#2A3441" filter="url(#sh)"/>
+<rect x="1032" y="192" width="40" height="40" rx="10" fill="#252E3A"/>
+<g fill="none" stroke="#F2EDE7" stroke-width="1.8"><ellipse cx="1052" cy="205" rx="10" ry="3.5"/><path d="M1042 205 V219 A10 3.5 0 0 0 1062 219 V205"/><path d="M1042 212 A10 3.5 0 0 0 1062 212"/></g>
+<text class="big" x="1032" y="270">FHIR server</text>
+<text class="c" x="1032" y="298">one R4 source</text>
+<text class="c" x="1032" y="322">you configure</text>
+<rect x="268" y="32" width="664" height="496" rx="22" fill="#1A212B" stroke="#2A3441" filter="url(#sh)"/>
+<g transform="translate(292 58) scale(0.05078)"><rect width="512" height="512" rx="112" fill="#202936"/><path d="M256 64L416 320H96Z" fill="#D84A2B"/><path d="M256 64L416 320H256Z" fill="#FFB547"/><path d="M48 352H464L416 416Q394 448 352 448H160Q118 448 96 416Z" fill="#FFF4E8"/></g>
+<text x="328" y="79"><tspan class="brand">fireboat</tspan><tspan class="sub" dx="10">on your machine</tspan></text>
+<circle class="dot" cx="780" cy="72" r="4"/>
+<text class="c" x="792" y="78">patient checks</text>
+<text class="lane" x="296" y="136">REQUEST →</text>
+<text class="lane" x="296" y="304">← ANSWER</text>
+<rect class="chip" x="296" y="150" width="188" height="110" rx="14"/>
+<text class="h" x="316" y="186">Five tools</text>
+<text class="c" x="316" y="214">all read-only,</text>
+<text class="c" x="316" y="238">no writes</text>
+<rect class="acc" x="504" y="150" width="188" height="110" rx="14"/>
+<circle class="dot" cx="528" cy="180" r="4"/>
+<text class="h" x="540" y="186">Check request</text>
+<text class="c" x="524" y="214">patient from config</text>
+<text class="c" x="524" y="238">no URLs from agent</text>
+<rect class="chip" x="712" y="150" width="188" height="110" rx="14"/>
+<text class="h" x="732" y="186">Fetch safely</text>
+<text class="c" x="732" y="214">one server</text>
+<text class="c" x="732" y="238">no redirects</text>
+<line class="ln" x1="487" y1="205" x2="501" y2="205" marker-end="url(#ah)"/>
+<line class="ln" x1="695" y1="205" x2="709" y2="205" marker-end="url(#ah)"/>
+<rect class="acc" x="712" y="318" width="188" height="110" rx="14"/>
+<circle class="dot" cx="736" cy="348" r="4"/>
+<text class="h" x="748" y="354">Re-check</text>
+<text class="c" x="732" y="382">every record</text>
+<text class="c" x="732" y="406">against the patient</text>
+<rect class="acc" x="504" y="318" width="188" height="110" rx="14"/>
+<circle class="dot" cx="528" cy="348" r="4"/>
+<text class="h" x="540" y="354">Withhold</text>
+<text class="c" x="524" y="382">patient identifiers</text>
+<text class="c" x="524" y="406">attachment data</text>
+<rect class="chip" x="296" y="318" width="188" height="110" rx="14"/>
+<text class="h" x="316" y="354">Shape answer</text>
+<text class="c" x="316" y="382">exact decimals</text>
+<text class="c" x="316" y="406">coverage + size cap</text>
+<line class="ln" x1="709" y1="373" x2="695" y2="373" marker-end="url(#ah)"/>
+<line class="ln" x1="501" y1="373" x2="487" y2="373" marker-end="url(#ah)"/>
+<line class="ln" x1="196" y1="205" x2="292" y2="205" marker-end="url(#ah)"/>
+<text class="lbl" x="230" y="193" text-anchor="middle">MCP</text>
+<text class="lbl" x="230" y="229" text-anchor="middle">stdio</text>
+<line class="ln" x1="904" y1="205" x2="1004" y2="205" marker-end="url(#ah)"/>
+<text class="lbl" x="970" y="193" text-anchor="middle">GET</text>
+<text class="lbl" x="970" y="229" text-anchor="middle">only</text>
+<line class="ln" x1="1004" y1="373" x2="904" y2="373" marker-end="url(#ah)"/>
+<text class="lbl" x="970" y="397" text-anchor="middle">records</text>
+<line class="ln" x1="292" y1="373" x2="196" y2="373" marker-end="url(#ah)"/>
+<text class="lbl" x="230" y="397" text-anchor="middle">answer</text>
+<line class="dash" x1="390" y1="430" x2="390" y2="450"/>
+<rect x="296" y="452" width="604" height="48" rx="24" fill="#1A212B" stroke="#303B49" stroke-dasharray="4 5"/>
+<text x="598" y="482" text-anchor="middle"><tspan class="h" style="font-size:16px">Result store</tspan><tspan class="c" dx="8">kept briefly, so paging needs no new fetch</tspan></text>
+</svg>

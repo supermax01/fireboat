@@ -1,0 +1,247 @@
+{
+  "schema_version": "m3b-fixture/1",
+  "id": "m3b-query-decoys",
+  "resources": [
+    {
+      "resourceType": "Observation",
+      "id": "q-match",
+      "status": "final",
+      "code": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "4548-4",
+            "display": "Hemoglobin A1c"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/eval-patient-a"
+      },
+      "effectiveDateTime": "2025-06-15T08:00:00.000Z",
+      "valueQuantity": {
+        "value": 5.4,
+        "unit": "%",
+        "system": "http://unitsofmeasure.org",
+        "code": "%"
+      }
+    },
+    {
+      "resourceType": "Observation",
+      "id": "q-decoy-code",
+      "status": "final",
+      "code": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "2345-7",
+            "display": "Glucose"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/eval-patient-a"
+      },
+      "effectiveDateTime": "2025-06-15T08:00:00.000Z",
+      "valueQuantity": {
+        "value": 95,
+        "unit": "mg/dL",
+        "system": "http://unitsofmeasure.org",
+        "code": "mg/dL"
+      }
+    },
+    {
+      "resourceType": "Observation",
+      "id": "q-decoy-early",
+      "status": "final",
+      "code": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "4548-4",
+            "display": "Hemoglobin A1c"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/eval-patient-a"
+      },
+      "effectiveDateTime": "2019-06-15T08:00:00.000Z",
+      "valueQuantity": {
+        "value": 5.1,
+        "unit": "%",
+        "system": "http://unitsofmeasure.org",
+        "code": "%"
+      }
+    },
+    {
+      "resourceType": "Observation",
+      "id": "q-decoy-late",
+      "status": "final",
+      "code": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "4548-4",
+            "display": "Hemoglobin A1c"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/eval-patient-a"
+      },
+      "effectiveDateTime": "2027-06-15T08:00:00.000Z",
+      "valueQuantity": {
+        "value": 5.9,
+        "unit": "%",
+        "system": "http://unitsofmeasure.org",
+        "code": "%"
+      }
+    },
+    {
+      "resourceType": "Observation",
+      "id": "q-local-comma",
+      "status": "final",
+      "code": {
+        "coding": [
+          {
+            "system": "http://example.test/codes",
+            "code": "local,hba1c",
+            "display": "Local HbA1c"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/eval-patient-a"
+      },
+      "valueQuantity": {
+        "value": 5.4,
+        "unit": "%",
+        "system": "http://unitsofmeasure.org",
+        "code": "%"
+      },
+      "effectiveDateTime": "2025-06-15T08:00:00.000Z"
+    },
+    {
+      "resourceType": "Observation",
+      "id": "q-decoy-hba1c-other-system",
+      "status": "final",
+      "code": {
+        "coding": [
+          {
+            "system": "http://example.test/other",
+            "code": "hba1c",
+            "display": "Decoy"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/eval-patient-a"
+      },
+      "valueQuantity": {
+        "value": 5.4,
+        "unit": "%",
+        "system": "http://unitsofmeasure.org",
+        "code": "%"
+      },
+      "effectiveDateTime": "2025-06-15T08:00:00.000Z"
+    },
+    {
+      "resourceType": "Observation",
+      "id": "q-systemless",
+      "status": "final",
+      "code": {
+        "coding": [
+          {
+            "code": "4548-4",
+            "display": "Systemless HbA1c"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/eval-patient-a"
+      },
+      "valueQuantity": {
+        "value": 5.4,
+        "unit": "%",
+        "system": "http://unitsofmeasure.org",
+        "code": "%"
+      },
+      "effectiveDateTime": "2025-06-15T08:00:00.000Z"
+    },
+    {
+      "resourceType": "Observation",
+      "id": "q-instant",
+      "status": "final",
+      "code": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "17856-6",
+            "display": "Hemoglobin A1c/Hemoglobin.total in Blood by HPLC"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/eval-patient-a"
+      },
+      "valueQuantity": {
+        "value": 5.4,
+        "unit": "%",
+        "system": "http://unitsofmeasure.org",
+        "code": "%"
+      },
+      "effectiveInstant": "2025-06-15T08:00:00Z"
+    }
+  ],
+  "search_parameters": [
+    {
+      "resource_type": "Observation",
+      "name": "code",
+      "type": "token",
+      "definition": "http://hl7.org/fhir/SearchParameter/clinical-code"
+    },
+    {
+      "resource_type": "Observation",
+      "name": "date",
+      "type": "date",
+      "definition": "http://hl7.org/fhir/SearchParameter/clinical-date"
+    },
+    {
+      "resource_type": "Observation",
+      "name": "patient",
+      "type": "reference",
+      "definition": "http://hl7.org/fhir/SearchParameter/clinical-patient"
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "ignore-code",
+      "ignore_parameters": [
+        "code"
+      ],
+      "ignore_sort": false,
+      "lexicographic_date_sort": false
+    },
+    {
+      "id": "ignore-date",
+      "ignore_parameters": [
+        "date"
+      ],
+      "ignore_sort": false,
+      "lexicographic_date_sort": false
+    },
+    {
+      "id": "ignore-sort",
+      "ignore_parameters": [],
+      "ignore_sort": true,
+      "lexicographic_date_sort": false
+    },
+    {
+      "id": "lexicographic-sort",
+      "ignore_parameters": [],
+      "ignore_sort": false,
+      "lexicographic_date_sort": true
+    }
+  ]
+}

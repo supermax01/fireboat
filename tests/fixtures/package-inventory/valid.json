@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "identity": {
+    "name": "@synthetic/leaf",
+    "version": "0.0.0-test",
+    "bin": {
+      "leaf": "dist/cli.js"
+    }
+  },
+  "files": [
+    {
+      "path": "package.json",
+      "size": 79,
+      "mode": 420,
+      "sha256": "638c17fdd20b64a064d71861d139f3ea7d7bfe52897cfa50c048c387d95a01de"
+    },
+    {
+      "path": "dist/cli.js",
+      "size": 42,
+      "mode": 493,
+      "sha256": "8e8f96e4ad33e7b003d8f2797e2dd1c4ee5f68c131b33da5cc215174f094b59e"
+    },
+    {
+      "path": "docs/support.json",
+      "size": 19,
+      "mode": 420,
+      "sha256": "cb8daed7b30399a1c3c8b83b3b7bee4b774a30fc389afc1d375e4c23a3cc4ae8"
+    }
+  ]
+}

@@ -1,0 +1,1703 @@
+{
+ "schema": "fbbench.fuzz-corpus/1",
+ "version": "1",
+ "label": "adversarial, not natural prevalence",
+ "templates": {
+  "{{patient}}": "the run patient's id",
+  "{{other_patient}}": "another patient of the dataset",
+  "{{canary}}": "http://127.0.0.1:<canary port>/fbfuzz-canary/<case id>",
+  "{{canary_port}}": "the slot's canary port",
+  "{{proxy}}": "the slot's recording proxy base URL",
+  "{{case}}": "the case id",
+  "{{repeat:<char>:<n>}}": "the character repeated n times"
+ },
+ "setup_search": {
+  "op": "search",
+  "type": "Observation",
+  "params": [
+   [
+    "patient",
+    "Patient/{{patient}}"
+   ]
+  ],
+  "page_size": 2
+ },
+ "cases": [
+  {
+   "id": "F001",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "read: every required argument removed",
+   "base": {
+    "op": "read",
+    "type": "Patient",
+    "id": "{{patient}}"
+   },
+   "mutation": "drop_all_required",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F002",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "read: first required argument removed",
+   "base": {
+    "op": "read",
+    "type": "Patient",
+    "id": "{{patient}}"
+   },
+   "mutation": "drop_first_required",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F003",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "read: arguments object empty",
+   "base": {
+    "op": "read",
+    "type": "Patient",
+    "id": "{{patient}}"
+   },
+   "mutation": "empty_arguments",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F004",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "read: first required string argument as a number",
+   "base": {
+    "op": "read",
+    "type": "Patient",
+    "id": "{{patient}}"
+   },
+   "mutation": "required_string_to_number",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F005",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "read: first required string argument as an array",
+   "base": {
+    "op": "read",
+    "type": "Patient",
+    "id": "{{patient}}"
+   },
+   "mutation": "required_string_to_array",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F006",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "read: first required string argument as an object",
+   "base": {
+    "op": "read",
+    "type": "Patient",
+    "id": "{{patient}}"
+   },
+   "mutation": "required_string_to_object",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F007",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "read: first required string argument as null",
+   "base": {
+    "op": "read",
+    "type": "Patient",
+    "id": "{{patient}}"
+   },
+   "mutation": "required_string_to_null",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F008",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "read: first required string argument as a boolean",
+   "base": {
+    "op": "read",
+    "type": "Patient",
+    "id": "{{patient}}"
+   },
+   "mutation": "required_string_to_boolean",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F009",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "search: every required argument removed",
+   "base": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "fbfuzz-code"
+     ]
+    ]
+   },
+   "mutation": "drop_all_required",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F010",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "search: first required argument removed",
+   "base": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "fbfuzz-code"
+     ]
+    ]
+   },
+   "mutation": "drop_first_required",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F011",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "search: arguments object empty",
+   "base": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "fbfuzz-code"
+     ]
+    ]
+   },
+   "mutation": "empty_arguments",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F012",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "search: first required string argument as a number",
+   "base": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "fbfuzz-code"
+     ]
+    ]
+   },
+   "mutation": "required_string_to_number",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F013",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "search: first required string argument as an array",
+   "base": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "fbfuzz-code"
+     ]
+    ]
+   },
+   "mutation": "required_string_to_array",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F014",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "search: first required string argument as an object",
+   "base": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "fbfuzz-code"
+     ]
+    ]
+   },
+   "mutation": "required_string_to_object",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F015",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "search: first required string argument as null",
+   "base": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "fbfuzz-code"
+     ]
+    ]
+   },
+   "mutation": "required_string_to_null",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F016",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "search: first required string argument as a boolean",
+   "base": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "fbfuzz-code"
+     ]
+    ]
+   },
+   "mutation": "required_string_to_boolean",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F017",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "search: first object or array argument as a string",
+   "base": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "fbfuzz-code"
+     ]
+    ]
+   },
+   "mutation": "container_to_string",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F018",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "either",
+   "note": "search: first nested string value as a number",
+   "base": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "fbfuzz-code"
+     ]
+    ]
+   },
+   "mutation": "nested_leaf_to_number",
+   "malformed_mcp": false
+  },
+  {
+   "id": "F019",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "either",
+   "note": "search: an argument the schema does not declare",
+   "base": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "fbfuzz-code"
+     ]
+    ]
+   },
+   "mutation": "unknown_argument",
+   "malformed_mcp": false
+  },
+  {
+   "id": "F020",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "either",
+   "note": "read: an argument the schema does not declare",
+   "base": {
+    "op": "read",
+    "type": "Patient",
+    "id": "{{patient}}"
+   },
+   "mutation": "unknown_argument",
+   "malformed_mcp": false
+  },
+  {
+   "id": "F021",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "next page: every required argument removed",
+   "base": {
+    "op": "next"
+   },
+   "mutation": "drop_all_required",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F022",
+   "category": "malformed_input",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "next page: first required string argument as a number",
+   "base": {
+    "op": "next"
+   },
+   "mutation": "required_string_to_number",
+   "malformed_mcp": true
+  },
+  {
+   "id": "F023",
+   "category": "unknown_type",
+   "kind": "op",
+   "expect": "error",
+   "note": "read of an unknown type",
+   "op": {
+    "op": "read",
+    "type": "NotAType",
+    "id": "{{patient}}"
+   }
+  },
+  {
+   "id": "F024",
+   "category": "unknown_type",
+   "kind": "op",
+   "expect": "error",
+   "note": "search of an unknown type",
+   "op": {
+    "op": "search",
+    "type": "NotAType",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F025",
+   "category": "unknown_type",
+   "kind": "op",
+   "expect": "error",
+   "note": "type in lower case",
+   "op": {
+    "op": "search",
+    "type": "observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F026",
+   "category": "unknown_type",
+   "kind": "op",
+   "expect": "error",
+   "note": "empty type",
+   "op": {
+    "op": "search",
+    "type": "",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F027",
+   "category": "unknown_type",
+   "kind": "op",
+   "expect": "error",
+   "note": "capabilities of an unknown type",
+   "op": {
+    "op": "capabilities",
+    "type": "NotAType"
+   }
+  },
+  {
+   "id": "F028",
+   "category": "unknown_type",
+   "kind": "op",
+   "expect": "error",
+   "note": "path traversal in the type",
+   "op": {
+    "op": "search",
+    "type": "Patient/../Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F029",
+   "category": "unknown_type",
+   "kind": "op",
+   "expect": "error",
+   "note": "query string in the type",
+   "op": {
+    "op": "search",
+    "type": "Observation?_id=fbfuzz",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F030",
+   "category": "unsupported_param",
+   "kind": "op",
+   "expect": "error",
+   "note": "unknown parameter name",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "fbfuzz-unknown",
+      "1"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F031",
+   "category": "unsupported_param",
+   "kind": "op",
+   "expect": "either",
+   "note": "_query named query",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "_query",
+      "fbfuzz"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F032",
+   "category": "unsupported_param",
+   "kind": "op",
+   "expect": "either",
+   "note": "_filter expression",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "_filter",
+      "code eq fbfuzz"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F033",
+   "category": "unsupported_param",
+   "kind": "op",
+   "expect": "error",
+   "note": "unknown modifier",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code:fbfuzz",
+      "x"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F034",
+   "category": "unsupported_param",
+   "kind": "op",
+   "expect": "error",
+   "note": "_sort by an unknown parameter",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "_sort",
+      "fbfuzz"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F035",
+   "category": "unsupported_param",
+   "kind": "op",
+   "expect": "either",
+   "note": "_include wildcard",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "_include",
+      "*"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F036",
+   "category": "unsupported_param",
+   "kind": "op",
+   "expect": "either",
+   "note": "_format xml",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "_format",
+      "xml"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F037",
+   "category": "unsupported_param",
+   "kind": "op",
+   "expect": "either",
+   "note": "_has reverse chain",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "_has:Observation:patient:code",
+      "x"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F038",
+   "category": "unsupported_param",
+   "kind": "op",
+   "expect": "either",
+   "note": "empty _elements",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "_elements",
+      ""
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F039",
+   "category": "invalid_date",
+   "kind": "op",
+   "expect": "error",
+   "note": "not a date",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "date",
+      "notadate"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F040",
+   "category": "invalid_date",
+   "kind": "op",
+   "expect": "error",
+   "note": "month 13, day 45",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "date",
+      "2020-13-45"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F041",
+   "category": "invalid_date",
+   "kind": "op",
+   "expect": "error",
+   "note": "prefix without a value",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "date",
+      "gt"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F042",
+   "category": "invalid_date",
+   "kind": "op",
+   "expect": "error",
+   "note": "hour 25, minute 61",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "date",
+      "ge2020-01-01T25:61:00Z"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F043",
+   "category": "invalid_date",
+   "kind": "op",
+   "expect": "error",
+   "note": "offset +25:00",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "date",
+      "2020-01-01T00:00:00+25:00"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F044",
+   "category": "invalid_date",
+   "kind": "op",
+   "expect": "error",
+   "note": "unknown prefix",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "date",
+      "ex2020-01-01"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F045",
+   "category": "invalid_date",
+   "kind": "op",
+   "expect": "error",
+   "note": "30 February",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "date",
+      "2020-02-30"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F046",
+   "category": "invalid_date",
+   "kind": "op",
+   "expect": "error",
+   "note": "five-digit year",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "date",
+      "99999-01-01"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F047",
+   "category": "page_size",
+   "kind": "op",
+   "expect": "error",
+   "note": "negative page size",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ]
+    ]
+   },
+   "page_size": -1
+  },
+  {
+   "id": "F048",
+   "category": "page_size",
+   "kind": "op",
+   "expect": "either",
+   "note": "page size 0 (count only in FHIR)",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ]
+    ]
+   },
+   "page_size": 0
+  },
+  {
+   "id": "F049",
+   "category": "page_size",
+   "kind": "op",
+   "expect": "either",
+   "note": "page size one million",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ]
+    ]
+   },
+   "page_size": 1000000
+  },
+  {
+   "id": "F050",
+   "category": "page_size",
+   "kind": "op",
+   "expect": "either",
+   "note": "page size 2^31",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ]
+    ]
+   },
+   "page_size": 2147483648
+  },
+  {
+   "id": "F051",
+   "category": "page_size",
+   "kind": "op",
+   "expect": "either",
+   "note": "page size 10^15",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ]
+    ]
+   },
+   "page_size": 1000000000000000
+  },
+  {
+   "id": "F052",
+   "category": "long_string",
+   "kind": "op",
+   "expect": "error",
+   "note": "10 kB id",
+   "op": {
+    "op": "read",
+    "type": "Patient",
+    "id": "{{repeat:A:10240}}"
+   }
+  },
+  {
+   "id": "F053",
+   "category": "long_string",
+   "kind": "op",
+   "expect": "either",
+   "note": "10 kB parameter value",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "{{repeat:A:10240}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F054",
+   "category": "long_string",
+   "kind": "op",
+   "expect": "error",
+   "note": "10 kB parameter name",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "{{repeat:A:10240}}",
+      "x"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F055",
+   "category": "long_string",
+   "kind": "op",
+   "expect": "error",
+   "note": "10 kB resource type",
+   "op": {
+    "op": "search",
+    "type": "{{repeat:A:10240}}",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F056",
+   "category": "long_string",
+   "kind": "op",
+   "expect": "error",
+   "note": "10 kB capabilities type",
+   "op": {
+    "op": "capabilities",
+    "type": "{{repeat:A:10240}}"
+   }
+  },
+  {
+   "id": "F057",
+   "category": "long_string",
+   "kind": "cursor",
+   "expect": "error",
+   "note": "10 kB cursor",
+   "cursor": "{{repeat:A:10240}}"
+  },
+  {
+   "id": "F058",
+   "category": "long_string",
+   "kind": "op",
+   "expect": "either",
+   "note": "100 kB parameter value",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "{{repeat:B:102400}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F059",
+   "category": "non_ascii",
+   "kind": "op",
+   "expect": "either",
+   "note": "CJK and emoji value",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "\u8840\u538b\ud83e\ude7a"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F060",
+   "category": "non_ascii",
+   "kind": "op",
+   "expect": "error",
+   "note": "Cyrillic id",
+   "op": {
+    "op": "read",
+    "type": "Patient",
+    "id": "\u041f\u0430\u0446\u0438\u0435\u043d\u0442-1"
+   }
+  },
+  {
+   "id": "F061",
+   "category": "non_ascii",
+   "kind": "op",
+   "expect": "either",
+   "note": "right-to-left override in a value",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "abc\u202edef"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F062",
+   "category": "non_ascii",
+   "kind": "op",
+   "expect": "either",
+   "note": "NUL in a value",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "x\u0000y"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F063",
+   "category": "non_ascii",
+   "kind": "op",
+   "expect": "either",
+   "note": "combining accent (NFD) in a value",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "e\u0301"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F064",
+   "category": "non_ascii",
+   "kind": "op",
+   "expect": "error",
+   "note": "zero-width joiner in a parameter name",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "co\u200dde",
+      "x"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F065",
+   "category": "non_ascii",
+   "kind": "op",
+   "expect": "error",
+   "note": "full-width digits in a date",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "date",
+      "\uff12\uff10\uff12\uff10-01-01"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F066",
+   "category": "injection",
+   "kind": "op",
+   "expect": "either",
+   "note": "SQL tautology in a value",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "' OR '1'='1"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F067",
+   "category": "injection",
+   "kind": "op",
+   "expect": "either",
+   "note": "SQL statement in a value",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "\"; DROP TABLE hfj_resource; --"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F068",
+   "category": "injection",
+   "kind": "op",
+   "expect": "error",
+   "note": "path traversal to another patient in a read id",
+   "op": {
+    "op": "read",
+    "type": "Patient",
+    "id": "../Patient/{{other_patient}}"
+   }
+  },
+  {
+   "id": "F069",
+   "category": "injection",
+   "kind": "op",
+   "expect": "either",
+   "note": "history path in a read id",
+   "op": {
+    "op": "read",
+    "type": "Patient",
+    "id": "{{patient}}/_history"
+   }
+  },
+  {
+   "id": "F070",
+   "category": "injection",
+   "kind": "op",
+   "expect": "error",
+   "note": "query smuggled into a read id",
+   "op": {
+    "op": "read",
+    "type": "Observation",
+    "id": "x?_format=json&patient=Patient/{{other_patient}}"
+   }
+  },
+  {
+   "id": "F071",
+   "category": "injection",
+   "kind": "op",
+   "expect": "either",
+   "note": "parameter smuggled into a value",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "x&patient=Patient/{{other_patient}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F072",
+   "category": "injection",
+   "kind": "op",
+   "expect": "either",
+   "note": "comma list of two patients",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}},Patient/{{other_patient}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F073",
+   "category": "injection",
+   "kind": "op",
+   "expect": "either",
+   "note": "CRLF header injection in a value",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "x\r\nX-Fbfuzz-Injected: 1"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F074",
+   "category": "injection",
+   "kind": "op",
+   "expect": "either",
+   "note": "JNDI lookup string aimed at the canary",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "${jndi:ldap://127.0.0.1:{{canary_port}}/fbfuzz/{{case}}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F075",
+   "category": "injection",
+   "kind": "op",
+   "expect": "either",
+   "note": "template, script and encoded traversal in a value",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "#{7*7}<%= 7*7 %><script>alert(1)</script>%00%2e%2e%2f"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F076",
+   "category": "canary_url",
+   "kind": "op",
+   "expect": "error",
+   "note": "canary URL as a read type",
+   "op": {
+    "op": "read",
+    "type": "{{canary}}",
+    "id": "{{patient}}"
+   }
+  },
+  {
+   "id": "F077",
+   "category": "canary_url",
+   "kind": "op",
+   "expect": "error",
+   "note": "canary URL as a read id",
+   "op": {
+    "op": "read",
+    "type": "Patient",
+    "id": "{{canary}}"
+   }
+  },
+  {
+   "id": "F078",
+   "category": "canary_url",
+   "kind": "op",
+   "expect": "error",
+   "note": "canary URL as a search type",
+   "op": {
+    "op": "search",
+    "type": "{{canary}}",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F079",
+   "category": "canary_url",
+   "kind": "op",
+   "expect": "either",
+   "note": "canary URL as a parameter value",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "{{canary}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F080",
+   "category": "canary_url",
+   "kind": "op",
+   "expect": "either",
+   "note": "canary URL as the patient reference",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "{{canary}}/Patient/{{patient}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F081",
+   "category": "canary_url",
+   "kind": "op",
+   "expect": "either",
+   "note": "canary URL as _source",
+   "op": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "_source",
+      "{{canary}}"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "F082",
+   "category": "canary_url",
+   "kind": "op",
+   "expect": "error",
+   "note": "canary URL as a capabilities type",
+   "op": {
+    "op": "capabilities",
+    "type": "{{canary}}"
+   }
+  },
+  {
+   "id": "F083",
+   "category": "canary_url",
+   "kind": "cursor",
+   "expect": "error",
+   "note": "canary URL as a cursor",
+   "cursor": "{{canary}}"
+  },
+  {
+   "id": "F084",
+   "category": "canary_url",
+   "kind": "mutate",
+   "expect": "error",
+   "note": "search: every string argument replaced by the canary URL",
+   "base": {
+    "op": "search",
+    "type": "Observation",
+    "params": [
+     [
+      "patient",
+      "Patient/{{patient}}"
+     ],
+     [
+      "code",
+      "fbfuzz-code"
+     ]
+    ]
+   },
+   "mutation": "all_strings_to_canary",
+   "malformed_mcp": false
+  },
+  {
+   "id": "F085",
+   "category": "bad_cursor",
+   "kind": "cursor",
+   "expect": "error",
+   "note": "one-character cursor",
+   "cursor": "x"
+  },
+  {
+   "id": "F086",
+   "category": "bad_cursor",
+   "kind": "cursor",
+   "expect": "error",
+   "note": "empty cursor",
+   "cursor": ""
+  },
+  {
+   "id": "F087",
+   "category": "bad_cursor",
+   "kind": "cursor",
+   "expect": "error",
+   "note": "base64 junk",
+   "cursor": "eyJmYnoiOiJ4In0="
+  },
+  {
+   "id": "F088",
+   "category": "bad_cursor",
+   "kind": "cursor",
+   "expect": "error",
+   "note": "server-root paging link with an unknown search id",
+   "cursor": "{{proxy}}?_getpages=fbfuzz-nonexistent&_getpagesoffset=0&_count=10"
+  },
+  {
+   "id": "F089",
+   "category": "bad_cursor",
+   "kind": "cursor",
+   "expect": "error",
+   "note": "real cursor, truncated to half",
+   "cursor": null,
+   "transform": "truncate"
+  },
+  {
+   "id": "F090",
+   "category": "bad_cursor",
+   "kind": "cursor",
+   "expect": "error",
+   "note": "real cursor, one character changed",
+   "cursor": null,
+   "transform": "flip"
+  },
+  {
+   "id": "F091",
+   "category": "bad_cursor",
+   "kind": "cursor",
+   "expect": "either",
+   "note": "real cursor used twice",
+   "cursor": null,
+   "transform": "replay"
+  },
+  {
+   "id": "F092",
+   "category": "bad_cursor",
+   "kind": "cursor",
+   "expect": "error",
+   "note": "real paging URL pointed at the backend port directly",
+   "cursor": null,
+   "transform": "reorigin_backend"
+  },
+  {
+   "id": "F093",
+   "category": "adversarial_number",
+   "kind": "number",
+   "expect": "value",
+   "note": "read: Observation value 1e-3",
+   "lexeme": "1e-3",
+   "number_id": "fbfuzz-num-1",
+   "via": "read"
+  },
+  {
+   "id": "F094",
+   "category": "adversarial_number",
+   "kind": "number",
+   "expect": "value",
+   "note": "read: Observation value 9007199254740993",
+   "lexeme": "9007199254740993",
+   "number_id": "fbfuzz-num-2",
+   "via": "read"
+  },
+  {
+   "id": "F095",
+   "category": "adversarial_number",
+   "kind": "number",
+   "expect": "value",
+   "note": "read: Observation value -0.0",
+   "lexeme": "-0.0",
+   "number_id": "fbfuzz-num-3",
+   "via": "read"
+  },
+  {
+   "id": "F096",
+   "category": "adversarial_number",
+   "kind": "number",
+   "expect": "value",
+   "note": "read: Observation value 0.10000000000000000001",
+   "lexeme": "0.10000000000000000001",
+   "number_id": "fbfuzz-num-4",
+   "via": "read"
+  },
+  {
+   "id": "F097",
+   "category": "adversarial_number",
+   "kind": "number",
+   "expect": "value",
+   "note": "search: Observation value 1e-3",
+   "lexeme": "1e-3",
+   "number_id": "fbfuzz-num-1",
+   "via": "search"
+  },
+  {
+   "id": "F098",
+   "category": "adversarial_number",
+   "kind": "number",
+   "expect": "value",
+   "note": "search: Observation value 9007199254740993",
+   "lexeme": "9007199254740993",
+   "number_id": "fbfuzz-num-2",
+   "via": "search"
+  },
+  {
+   "id": "F099",
+   "category": "adversarial_number",
+   "kind": "number",
+   "expect": "value",
+   "note": "search: Observation value -0.0",
+   "lexeme": "-0.0",
+   "number_id": "fbfuzz-num-3",
+   "via": "search"
+  },
+  {
+   "id": "F100",
+   "category": "adversarial_number",
+   "kind": "number",
+   "expect": "value",
+   "note": "search: Observation value 0.10000000000000000001",
+   "lexeme": "0.10000000000000000001",
+   "number_id": "fbfuzz-num-4",
+   "via": "search"
+  }
+ ]
+}

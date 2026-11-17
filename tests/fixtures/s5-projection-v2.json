@@ -1,0 +1,9 @@
+{
+  "description": "Synthetic S5.4 provenance/inspection expectations, independent of output assembly; no patient data.",
+  "criticalPaths": ["resourceType", "id", "meta.versionId", "meta.profile", "meta.security", "meta.tag", "status", "_status", "code", "valueQuantity", "effectiveDateTime", "_effectiveDateTime", "interpretation", "referenceRange", "component", "specimen", "contained", "derivedFrom", "device"],
+  "selectedFields": ["status", "code", "valueQuantity", "effectiveDateTime", "interpretation", "referenceRange", "component", "specimen", "contained", "derivedFrom", "device"],
+  "retrievalTimes": ["2026-10-19T10:00:01Z", "2026-10-19T10:00:02Z", "2026-10-19T10:00:03Z"],
+  "expectedOmissions": ["/identifier", "/meta/lastUpdated", "/note", "/text"],
+  "withheldReasons": ["V1_PAYLOAD_WITHHELD", "PROTECTED_LINK"],
+  "omissionOnlyKeys": ["resource_index", "resource_type", "id", "version", "recipe_id", "omitted_fields", "withheld_reasons", "interpretation"]
+}

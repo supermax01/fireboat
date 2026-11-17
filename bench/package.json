@@ -1,0 +1,43 @@
+{
+  "name": "fireboat-bench",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Benchmark harness for single-patient FHIR MCP servers. Not part of the fireboat package.",
+  "type": "module",
+  "engines": {
+    "node": "24.22.0"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "bench:toolchain": "tsx lib/toolchain.ts",
+    "bench:infra:up": "tsx infra/up.ts",
+    "bench:infra:down": "tsx infra/down.ts",
+    "bench:infra:status": "tsx infra/status.ts",
+    "bench:medplum:up": "tsx infra/medplum-up.ts",
+    "bench:medplum:down": "tsx infra/medplum-down.ts",
+    "bench:medplum:status": "tsx infra/medplum-status.ts",
+    "bench:convert": "tsx data/convert.ts",
+    "bench:load": "tsx data/load.ts",
+    "bench:medplum:load": "tsx data/medplum-load.ts",
+    "bench:medplum:clients": "tsx data/medplum-clients.ts",
+    "bench:questions": "tsx gold/questions.ts",
+    "bench:gold": "tsx gold/gold.ts",
+    "bench:gold-compare": "tsx gold/compare.ts",
+    "bench:strata-measure": "tsx gold/strata-measure.ts",
+    "bench:install": "tsx servers/install.ts",
+    "bench:arms-check": "tsx servers/check.ts",
+    "bench:scripted": "tsx run/scripted.ts",
+    "bench:score": "tsx run/score.ts",
+    "bench:scripted-report": "tsx run/report.ts",
+    "bench:agent-smoke": "tsx agent/smoke.ts",
+    "bench:agent-score": "tsx agent/score.ts",
+    "bench:holdout": "tsx holdout/cli.ts",
+    "bench:fuzz": "tsx fuzz/run.ts",
+    "bench:latency": "tsx latency/run.ts",
+    "bench:healthlake": "tsx healthlake/cli.ts"
+  },
+  "dependencies": {
+    "@smithy/signature-v4": "5.7.5"
+  }
+}

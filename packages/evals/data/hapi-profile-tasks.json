@@ -1,0 +1,434 @@
+{
+  "schema_version": "m3b-tasks/1",
+  "tasks": [
+    {
+      "id": "hapi-code-membership",
+      "corpus": "query",
+      "category": "external-profile-membership",
+      "question": "System-qualified code and escaped-comma OR alternatives have exact independently authored membership; systemless and wrong-code decoys are absent.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              }
+            ],
+            "page_size": 100
+          }
+        },
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4,http://example.test/codes|local\\,hba1c"
+              }
+            ],
+            "page_size": 100
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "resourceIdSet",
+          "id": "members-0",
+          "step": 0,
+          "equals": [
+            "obs-hba1c-1",
+            "q-match",
+            "q-decoy-early",
+            "q-decoy-late"
+          ]
+        },
+        {
+          "kind": "queryEvidence",
+          "id": "proof-0",
+          "step": 0,
+          "state": "complete_for_query",
+          "query_exhausted": true,
+          "constraints": [
+            {
+              "name": "code",
+              "value": "http://loinc.org|4548-4",
+              "source_reported": "matched",
+              "execution": "tested_adapter"
+            }
+          ]
+        },
+        {
+          "kind": "envelopePath",
+          "id": "label-0",
+          "step": 0,
+          "path": "coverage.query_evidence",
+          "equals": "tested_adapter"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-0",
+          "step": 0,
+          "resource": "q-systemless"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-1",
+          "step": 0,
+          "resource": "q-decoy-code"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-2",
+          "step": 0,
+          "resource": "q-decoy-hba1c-other-system"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-3",
+          "step": 0,
+          "resource": "q-local-comma"
+        },
+        {
+          "kind": "resourceIdSet",
+          "id": "members-1",
+          "step": 1,
+          "equals": [
+            "obs-hba1c-1",
+            "q-match",
+            "q-decoy-early",
+            "q-decoy-late",
+            "q-local-comma"
+          ]
+        },
+        {
+          "kind": "queryEvidence",
+          "id": "proof-1",
+          "step": 1,
+          "state": "complete_for_query",
+          "query_exhausted": true,
+          "constraints": [
+            {
+              "name": "code",
+              "value": "http://loinc.org|4548-4,http://example.test/codes|local\\,hba1c",
+              "source_reported": "matched",
+              "execution": "tested_adapter"
+            }
+          ]
+        },
+        {
+          "kind": "envelopePath",
+          "id": "label-1",
+          "step": 1,
+          "path": "coverage.query_evidence",
+          "equals": "tested_adapter"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-1-0",
+          "step": 1,
+          "resource": "q-systemless"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-1-1",
+          "step": 1,
+          "resource": "q-decoy-code"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-1-2",
+          "step": 1,
+          "resource": "q-decoy-hba1c-other-system"
+        }
+      ],
+      "budget": {
+        "maxBytes": 49152,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "hapi-code-date-window",
+      "corpus": "query",
+      "category": "external-profile-membership",
+      "question": "The conjunction of system-qualified code, ge lower bound and lt upper bound returns exactly the two in-window records without claiming sort or continuation proof.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              }
+            ],
+            "page_size": 100
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "resourceIdSet",
+          "id": "members-0",
+          "step": 0,
+          "equals": [
+            "obs-hba1c-1",
+            "q-match"
+          ]
+        },
+        {
+          "kind": "queryEvidence",
+          "id": "proof-0",
+          "step": 0,
+          "state": "complete_for_query",
+          "query_exhausted": true,
+          "constraints": [
+            {
+              "name": "code",
+              "value": "http://loinc.org|4548-4",
+              "source_reported": "matched",
+              "execution": "tested_adapter"
+            },
+            {
+              "name": "date",
+              "value": "ge2020-01-01",
+              "source_reported": "matched",
+              "execution": "tested_adapter"
+            },
+            {
+              "name": "date",
+              "value": "lt2026-01-01",
+              "source_reported": "matched",
+              "execution": "tested_adapter"
+            }
+          ]
+        },
+        {
+          "kind": "envelopePath",
+          "id": "label-0",
+          "step": 0,
+          "path": "coverage.query_evidence",
+          "equals": "tested_adapter"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-0",
+          "step": 0,
+          "resource": "q-decoy-early"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-1",
+          "step": 0,
+          "resource": "q-decoy-late"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-2",
+          "step": 0,
+          "resource": "q-decoy-code"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-3",
+          "step": 0,
+          "resource": "q-systemless"
+        }
+      ],
+      "budget": {
+        "maxBytes": 49152,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "hapi-date-lower-discrimination",
+      "corpus": "query",
+      "category": "external-profile-membership",
+      "question": "The ge lower bound excludes the early matching-code decoy and retains the late record, independently discriminating the lower bound.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "ge2020-01-01"
+              }
+            ],
+            "page_size": 100
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "resourceIdSet",
+          "id": "members-0",
+          "step": 0,
+          "equals": [
+            "obs-hba1c-1",
+            "q-match",
+            "q-decoy-late"
+          ]
+        },
+        {
+          "kind": "queryEvidence",
+          "id": "proof-0",
+          "step": 0,
+          "state": "complete_for_query",
+          "query_exhausted": true,
+          "constraints": [
+            {
+              "name": "code",
+              "value": "http://loinc.org|4548-4",
+              "source_reported": "matched",
+              "execution": "tested_adapter"
+            },
+            {
+              "name": "date",
+              "value": "ge2020-01-01",
+              "source_reported": "matched",
+              "execution": "tested_adapter"
+            }
+          ]
+        },
+        {
+          "kind": "envelopePath",
+          "id": "label-0",
+          "step": 0,
+          "path": "coverage.query_evidence",
+          "equals": "tested_adapter"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-0",
+          "step": 0,
+          "resource": "q-decoy-early"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-1",
+          "step": 0,
+          "resource": "q-decoy-code"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-2",
+          "step": 0,
+          "resource": "q-systemless"
+        }
+      ],
+      "budget": {
+        "maxBytes": 49152,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    },
+    {
+      "id": "hapi-date-upper-discrimination",
+      "corpus": "query",
+      "category": "external-profile-membership",
+      "question": "The lt upper bound excludes the late matching-code decoy and retains the early record, independently discriminating the upper bound.",
+      "steps": [
+        {
+          "tool": "fhir_search",
+          "input": {
+            "resource_type": "Observation",
+            "params": [
+              {
+                "name": "code",
+                "value": "http://loinc.org|4548-4"
+              },
+              {
+                "name": "date",
+                "value": "lt2026-01-01"
+              }
+            ],
+            "page_size": 100
+          }
+        }
+      ],
+      "checks": [
+        {
+          "kind": "resourceIdSet",
+          "id": "members-0",
+          "step": 0,
+          "equals": [
+            "obs-hba1c-1",
+            "q-match",
+            "q-decoy-early"
+          ]
+        },
+        {
+          "kind": "queryEvidence",
+          "id": "proof-0",
+          "step": 0,
+          "state": "complete_for_query",
+          "query_exhausted": true,
+          "constraints": [
+            {
+              "name": "code",
+              "value": "http://loinc.org|4548-4",
+              "source_reported": "matched",
+              "execution": "tested_adapter"
+            },
+            {
+              "name": "date",
+              "value": "lt2026-01-01",
+              "source_reported": "matched",
+              "execution": "tested_adapter"
+            }
+          ]
+        },
+        {
+          "kind": "envelopePath",
+          "id": "label-0",
+          "step": 0,
+          "path": "coverage.query_evidence",
+          "equals": "tested_adapter"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-0",
+          "step": 0,
+          "resource": "q-decoy-late"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-1",
+          "step": 0,
+          "resource": "q-decoy-code"
+        },
+        {
+          "kind": "resourceAbsent",
+          "id": "excluded-0-2",
+          "step": 0,
+          "resource": "q-systemless"
+        }
+      ],
+      "budget": {
+        "maxBytes": 49152,
+        "maxUpstreamCalls": 8,
+        "maxToolCalls": 4
+      }
+    }
+  ]
+}

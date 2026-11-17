@@ -1,0 +1,497 @@
+[
+ {
+  "id": "b2m-count-condition-dropped",
+  "test_prefix": "count condition:",
+  "weakening": "Weakens the B2 classification requirement."
+ },
+ {
+  "id": "b2m-template-fault-accepted",
+  "test_prefix": "templated fault intents",
+  "weakening": "Accepts boilerplate fault intents."
+ },
+ {
+  "id": "b2m-anchor-multi-match",
+  "test_prefix": "a counted record needs",
+  "weakening": "Accepts ambiguous multiple source anchors."
+ },
+ {
+  "id": "b2m-budget-provenance-skipped",
+  "test_prefix": "budgets must carry",
+  "weakening": "Accepts budgets without measured provenance."
+ },
+ {
+  "id": "b2m-kill-ref-unchecked",
+  "test_prefix": "kill matrix: counted",
+  "weakening": "Accepts critical mutant sets not equal to the killing rows."
+ },
+ {
+  "id": "b2m-excluded-survivor-admitted",
+  "test_prefix": "kill matrix rows are validated",
+  "weakening": "Admits an explicitly excluded kill row."
+ },
+ {
+  "id": "b2m-ledger-declared-counts-unchecked",
+  "test_prefix": "ledger: counts",
+  "weakening": "Admits a ledger whose declared counts disagree with its records."
+ },
+ {
+  "id": "b2m-alias-chain-unchecked",
+  "test_prefix": "ledger: counts",
+  "weakening": "Admits alias chains; the separate cycle check is defence in depth."
+ },
+ {
+  "id": "b2m-total-upstream-unenforced",
+  "test_prefix": "budget enforcement:",
+  "weakening": "Accepts a pre-stub upstream budget breach."
+ },
+ {
+  "id": "b2m-budget-post-stub",
+  "test_prefix": "budget enforcement:",
+  "weakening": "Accepts breached budgets by checking an empty accounting snapshot."
+ },
+ {
+  "id": "b2m-watchdog-expiry-passes",
+  "test_prefix": "watchdog: a held clinical request",
+  "weakening": "Accepts an expired execution as passing."
+ },
+ {
+  "id": "b2m-watchdog-scan-skipped",
+  "test_prefix": "watchdog with a captured disclosure:",
+  "weakening": "Credits an expired capture without checking forbidden markers."
+ },
+ {
+  "id": "b2m-earned-ignores-qualifying",
+  "test_prefix": "computeStanding:",
+  "weakening": "Credits a development run as earned."
+ },
+ {
+  "id": "b2m-earned-counts-inconclusive",
+  "test_prefix": "computeStanding:",
+  "weakening": "Credits an inconclusive case as earned."
+ },
+ {
+  "id": "b2m-gate-matrix-conjunct-dropped",
+  "test_prefix": "gate matrix admission witnesses:",
+  "weakening": "Accepts an otherwise passing gate with an uncovered applicable cell."
+ },
+ {
+  "id": "b2m-matrix-alias-cover",
+  "test_prefix": "coverage matrix:",
+  "weakening": "Admits a non-executable alias as matrix coverage."
+ },
+ {
+  "id": "b2m-aggregate-missing-shard",
+  "test_prefix": "aggregate admission witnesses:",
+  "weakening": "Admits an unselected empty shard (missing-shard checks remain independently enforced)."
+ },
+ {
+  "id": "b2m-prohibited-classes-narrowed",
+  "test_prefix": "gate admission witnesses:",
+  "weakening": "Credits only marker failures as prohibited and ignores non-counted failures in the gate."
+ },
+ {
+  "id": "b2m-blocking-conjunct-dropped",
+  "test_prefix": "gate admission witnesses:",
+  "weakening": "Admits an extra failed counted case after 200 greens, bypassing redundant completeness conjuncts."
+ },
+ {
+  "id": "b2m-shard-binding-unchecked",
+  "test_prefix": "aggregate: binds",
+  "weakening": "Admits a shard from a different candidate/build/attempt."
+ },
+ {
+  "id": "b2m-prerequisites-binding-unchecked",
+  "test_prefix": "aggregate: binds",
+  "weakening": "Admits prerequisites from a different candidate/build/attempt."
+ },
+ {
+  "id": "b2m-kills-lanes-unchecked",
+  "test_prefix": "kill evidence is credited only",
+  "weakening": "Credits contradictory core-only kill headers."
+ },
+ {
+  "id": "b2m-kills-run-unbound",
+  "test_prefix": "kill evidence is credited only",
+  "weakening": "Credits a kill file relabelled with a foreign run id."
+ },
+ {
+  "id": "b2m-skip-build-qualifies",
+  "test_prefix": "run context:",
+  "weakening": "Qualifies a skip-build run."
+ },
+ {
+  "id": "b2m-watchdog-late-completion-credited",
+  "test_prefix": "watchdog: a held clinical request",
+  "weakening": "Credits abandoned cancellation as successful completion through the published work object."
+ },
+ {
+  "id": "b2m-coverage-self-declared",
+  "test_prefix": "cell evidence:",
+  "weakening": "Credits a PASS cell using its own N/A declarations."
+ },
+ {
+  "id": "b2m-discriminating-row-unchecked",
+  "test_prefix": "loader independence:",
+  "weakening": "Admits counted siblings without a discriminating spare execution."
+ },
+ {
+  "id": "b2m-fault-tokens-unnormalized",
+  "test_prefix": "templated fault intents",
+  "weakening": "Admits punctuation variants of duplicate or templated intents."
+ },
+ {
+  "id": "b2m-oracle-substring",
+  "test_prefix": "kill matrix rows are validated",
+  "weakening": "Admits a source substring as a case oracle without an executable literal."
+ },
+ {
+  "id": "b2m-anchor-cross-file",
+  "test_prefix": "a counted record needs",
+  "weakening": "Admits a killing edit in a different source file."
+ },
+ {
+  "id": "b2m-anchor-nonproduction",
+  "test_prefix": "nonproduction anchor admission witness:",
+  "weakening": "Admits eval fixtures and test files as production decisions."
+ },
+ {
+  "id": "b2m-budget-provenance-unverified",
+  "test_prefix": "budget provenance names",
+  "weakening": "Credits measurement values from a mismatched report digest."
+ },
+ {
+  "id": "b2m-kill-rows-unvalidated",
+  "test_prefix": "kill matrix rows are validated",
+  "weakening": "Admits a kill matrix row naming unknown or overlapping cases."
+ },
+ {
+  "id": "b2m-empty-selection-accepted",
+  "test_prefix": "aggregate admission witnesses:",
+  "weakening": "Admits complete evidence for an empty selection."
+ },
+ {
+  "id": "b2m-ledger-shape-unchecked",
+  "test_prefix": "ledger: counts",
+  "weakening": "Admits a counted record carrying duplicate_of."
+ },
+ {
+  "id": "b2m-matrix-complete-ignored",
+  "test_prefix": "gate matrix admission witnesses:",
+  "weakening": "Admits a gate with unlisted required tuples."
+ },
+ {
+  "id": "b2m-secondary-driver-uncounted",
+  "test_prefix": "secondary budget admission witness:",
+  "weakening": "Accepts the primary-only budget while a second driver performs extra work."
+ },
+ {
+  "id": "b2m-stale-known-failure-silent",
+  "test_prefix": "aggregate problems name",
+  "weakening": "Reports clean diagnostic evidence while a known failure remains annotated."
+ },
+ {
+  "id": "b2m-capture-stack-unwound",
+  "test_prefix": "capture stack:",
+  "weakening": "Loses newer capture ownership on out-of-order teardown."
+ },
+ {
+  "id": "b2m-half-open-driver-unregistered",
+  "test_prefix": "startup deadline:",
+  "weakening": "Allows a half-open child and capture to outlive the cell."
+ },
+ {
+  "id": "b2m-child-reference-forgotten",
+  "test_prefix": "child ownership:",
+  "weakening": "Admits a live child after the SDK forgets its private process field."
+ },
+ {
+  "id": "b2m-startup-after-cancel",
+  "test_prefix": "startup cancellation:",
+  "weakening": "Allows a driver to be opened by a cancelled startup continuation."
+ },
+ {
+  "id": "b2m-capture-version-ignored",
+  "test_prefix": "disclosure scans:",
+  "weakening": "Credits an old clean channel scan after output was appended."
+ },
+ {
+  "id": "b2m-pre-close-scan-skipped",
+  "test_prefix": "disclosure scans:",
+  "weakening": "Closes away state evidence before the deadline scan."
+ },
+ {
+  "id": "b2m-teardown-scan-skipped",
+  "test_prefix": "disclosure scans:",
+  "weakening": "Accepts a marker added during teardown after the last scan."
+ },
+ {
+  "id": "b2m-prohibited-checks-masked",
+  "test_prefix": "prohibited collectors:",
+  "weakening": "Credits missing prohibited observations after the first recorded failure."
+ },
+ {
+  "id": "b2m-channel-scan-short-circuited",
+  "test_prefix": "channel scan isolation:",
+  "weakening": "Credits a clean later channel when an earlier channel is unreadable."
+ },
+ {
+  "id": "b2m-repeat-work-ignored",
+  "test_prefix": "repeat evidence:",
+  "weakening": "Credits repeat agreement despite different observable upstream work."
+ },
+ {
+  "id": "b2m-report-shape-open",
+  "test_prefix": "cell evidence:",
+  "weakening": "Accepts unknown case and cell evidence fields."
+ },
+ {
+  "id": "b2m-cell-era-unchecked",
+  "test_prefix": "cell evidence:",
+  "weakening": "Credits cells executed under a wrong era."
+ },
+ {
+  "id": "b2m-cell-pass-failures",
+  "test_prefix": "cell evidence:",
+  "weakening": "Credits PASS cells carrying recorded failures."
+ },
+ {
+  "id": "b2m-cell-budget-unchecked",
+  "test_prefix": "cell evidence:",
+  "weakening": "Credits a PASS cell exceeding manifested budgets."
+ },
+ {
+  "id": "b2m-cell-counts-unchecked",
+  "test_prefix": "cell evidence:",
+  "weakening": "Credits contradictory protected call counts."
+ },
+ {
+  "id": "b2m-cell-repeat-digest-unchecked",
+  "test_prefix": "cell evidence:",
+  "weakening": "Credits absent repeat digests."
+ },
+ {
+  "id": "b2m-case-verdict-trusted",
+  "test_prefix": "cell evidence:",
+  "weakening": "Accepts a case PASS label despite a failing cell."
+ },
+ {
+  "id": "b2m-cli-verdict-trusted",
+  "test_prefix": "cell evidence:",
+  "weakening": "Accepts a CLI label inconsistent with its SDK cells."
+ },
+ {
+  "id": "b2m-case-repeat-unchecked",
+  "test_prefix": "cell evidence:",
+  "weakening": "Credits disagreeing fresh runs as PASS."
+ },
+ {
+  "id": "b2m-stub-kinds-duplicated",
+  "test_prefix": "cell evidence:",
+  "weakening": "Credits two deny-all replays without the overblocking challenge."
+ },
+ {
+  "id": "b2m-capture-hash-invalid",
+  "test_prefix": "cell evidence:",
+  "weakening": "Credits empty or non-hex capture hashes."
+ },
+ {
+  "id": "b2m-kill-summary-trusted",
+  "test_prefix": "kill row evidence:",
+  "weakening": "Credits summary-only KILLED records without any row execution."
+ },
+ {
+  "id": "b2m-kill-anchors-unchecked",
+  "test_prefix": "kill row evidence:",
+  "weakening": "Credits a kill row without its anchors evidence."
+ },
+ {
+  "id": "b2m-kill-compile-unchecked",
+  "test_prefix": "kill row evidence:",
+  "weakening": "Credits a kill row without its compile evidence."
+ },
+ {
+  "id": "b2m-kill-baseline-unchecked",
+  "test_prefix": "kill row evidence:",
+  "weakening": "Credits a kill row without its baseline evidence."
+ },
+ {
+  "id": "b2m-kill-oracle-unchecked",
+  "test_prefix": "kill row evidence:",
+  "weakening": "Credits designated cells without the matrix oracle."
+ },
+ {
+  "id": "b2m-kill-spares-unchecked",
+  "test_prefix": "kill row evidence:",
+  "weakening": "Credits a kill row despite a failing spare."
+ },
+ {
+  "id": "b2m-attempt-unbound",
+  "test_prefix": "attempt provenance:",
+  "weakening": "Accepts stale evidence relabelled into a new run attempt."
+ },
+ {
+  "id": "b2m-build-assets-ignored",
+  "test_prefix": "build attestation:",
+  "weakening": "Accepts a stale executable after an imported JSON asset changes."
+ },
+ {
+  "id": "b2m-build-config-chain-ignored",
+  "test_prefix": "build attestation:",
+  "weakening": "Accepts an executable built with a different inherited tsconfig."
+ },
+ {
+  "id": "b2m-build-output-unchecked",
+  "test_prefix": "build attestation:",
+  "weakening": "Attests a modified emitted executable as current."
+ },
+ {
+  "id": "b2m-build-unverified-admitted",
+  "test_prefix": "build evidence admission witness:",
+  "weakening": "Admits complete evidence from an unverified executable."
+ },
+ {
+  "id": "b2m-dependency-binding-unchecked",
+  "test_prefix": "shard content and dependency bindings:",
+  "weakening": "Admits shards bound to different installed dependency contents."
+ },
+ {
+  "id": "b2m-shard-content-unbound",
+  "test_prefix": "shard content and dependency bindings:",
+  "weakening": "Admits modified shard case evidence with an old end digest."
+ },
+ {
+  "id": "b2m-provenance-status-unchecked",
+  "test_prefix": "budget measurement evidence:",
+  "weakening": "Credits a bogus-schema or unverified diagnostic measurement report."
+ },
+ {
+  "id": "b2m-provenance-cells-unchecked",
+  "test_prefix": "budget measurement evidence:",
+  "weakening": "Credits six copies of a cell as six passing independent measurements."
+ },
+ {
+  "id": "b2m-provenance-binding-unchecked",
+  "test_prefix": "budget measurement evidence:",
+  "weakening": "Credits measurements declared against another report binding."
+ },
+ {
+  "id": "b2m-gate-known-failure-admitted",
+  "test_prefix": "gate admission witnesses:",
+  "weakening": "Admits annotated counted cases by bypassing standing and gate checks."
+ },
+ {
+  "id": "b2m-gate-unproven-budget-admitted",
+  "test_prefix": "gate admission witnesses:",
+  "weakening": "Admits counted cases without proven budget measurements."
+ },
+ {
+  "id": "b2m-gate-noncounted-failure-admitted",
+  "test_prefix": "gate admission witnesses:",
+  "weakening": "Admits a non-counted manifest case that is pending."
+ },
+ {
+  "id": "b2m-identical-edits-independent",
+  "test_prefix": "loader independence:",
+  "weakening": "Admits renamed copies of the same mutation as independent rows."
+ },
+ {
+  "id": "b2m-family-spares-unchecked",
+  "test_prefix": "loader independence:",
+  "weakening": "Admits a discriminating row without executing its other counted family cases."
+ },
+ {
+  "id": "b2m-anchor-siblings-unchecked",
+  "test_prefix": "loader independence:",
+  "weakening": "Admits overlapping or common-window anchors without reciprocal spares."
+ },
+ {
+  "id": "b2m-anchor-unchanged",
+  "test_prefix": "anchor edit evidence:",
+  "weakening": "Admits edits preserving the purported decision anchor."
+ },
+ {
+  "id": "b2m-intent-novelty-weakened",
+  "test_prefix": "authored content:",
+  "weakening": "Admits one novel word appended to template text."
+ },
+ {
+  "id": "b2m-intent-nonascii-admitted",
+  "test_prefix": "authored content:",
+  "weakening": "Admits homoglyph letters into intents and transitions."
+ },
+ {
+  "id": "b2m-intent-stopword-duplicates",
+  "test_prefix": "authored content:",
+  "weakening": "Admits duplicate fault content distinguished only by stopwords."
+ },
+ {
+  "id": "b2m-transition-punctuation",
+  "test_prefix": "authored content:",
+  "weakening": "Admits the stock transition after punctuation is appended."
+ },
+ {
+  "id": "b2m-extra-control-unexecuted",
+  "test_prefix": "executable contracts:",
+  "weakening": "Admits an additional required control the runner never executes."
+ },
+ {
+  "id": "b2m-control-contract-unchecked",
+  "test_prefix": "executable contracts:",
+  "weakening": "Admits control assertion/challenge IDs that cannot execute."
+ },
+ {
+  "id": "b2m-assertions-unknown",
+  "test_prefix": "executable contracts:",
+  "weakening": "Admits an undefined expected assertion."
+ },
+ {
+  "id": "b2m-eras-duplicated",
+  "test_prefix": "executable contracts:",
+  "weakening": "Admits modern twice as the two required eras."
+ },
+ {
+  "id": "b2m-oracle-late-arguments",
+  "test_prefix": "oracle syntax and ownership:",
+  "weakening": "Admits expected/observed literals as an oracle for a variable predicate."
+ },
+ {
+  "id": "b2m-oracle-case-unbound",
+  "test_prefix": "oracle syntax and ownership:",
+  "weakening": "Admits another case contract as this row's oracle."
+ },
+ {
+  "id": "b2m-matrix-universe-shrunk",
+  "test_prefix": "coverage universe:",
+  "weakening": "Admits a reduced axis universe as the frozen scope."
+ },
+ {
+  "id": "b2m-na-single-axis",
+  "test_prefix": "coverage universe:",
+  "weakening": "Admits a single-axis N/A rule covering at most 1000 tuples."
+ },
+ {
+  "id": "b2m-na-unbounded",
+  "test_prefix": "coverage universe:",
+  "weakening": "Admits an N/A rule covering more than 1000 tuples."
+ },
+ {
+  "id": "b2m-ledger-design-unchecked",
+  "test_prefix": "design ledger identity:",
+  "weakening": "Credits relabelled or moved first-slice ledger records against an unchanged design."
+ },
+ {
+  "id": "b2m-outer-skip-build-ignored",
+  "test_prefix": "outer skip-build admission witness:",
+  "weakening": "Allows a skip-build test process to rebuild an executable."
+ },
+ {
+  "id": "b2m-malformed-json-admitted",
+  "test_prefix": "parser admission witnesses:",
+  "weakening": "Returns a value for malformed evidence JSON instead of refusing it."
+ },
+ {
+  "id": "b2m-malformed-shape-admitted",
+  "test_prefix": "parser admission witnesses:",
+  "weakening": "Returns invalid input as schema-validated evidence."
+ }
+]

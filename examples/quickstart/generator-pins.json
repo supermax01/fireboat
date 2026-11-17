@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "synthea": {
+    "tag": "v4.0.0",
+    "commit": "0185c09ea9d10a822c6f5f3ef9bdcbcbe960c813",
+    "asset": "synthea-with-dependencies.jar",
+    "bytes": 201164144,
+    "sha256": "ed43c20ad40ba5c3bc724503a5af032715fe3c491620b766148e7c2361e6ecc1"
+  },
+  "java": { "major": 17 },
+  "jdk": {
+    "tag": "eclipse-temurin:17.0.20.1_1-jdk-jammy",
+    "indexDigest": "sha256:73ed442231ec66cfe48cae0b263ce619a75ab96d162ab325f38fc0a269ee3aab",
+    "platform": "linux/arm64",
+    "childDigest": "sha256:f6838d4bc55df9a3b03783e04f1d26b3c163b96faf153e3a54468ec3fdcbd7f5",
+    "compressedBytes": 194426706
+  },
+  "hapi": {
+    "tag": "hapiproject/hapi:v8.12.0-2",
+    "indexDigest": "sha256:0ff86aac4c7bd13a1ee226444a70263bb46ed1c28ef543c30a44f865b80ca04e"
+  },
+  "generation": {
+    "seed": 42,
+    "clinicianSeed": 42,
+    "population": 1,
+    "ages": { "min": 60, "max": 85 },
+    "state": "Massachusetts",
+    "modules": "bundled-defaults",
+    "referenceDate": "20260101",
+    "endDate": "20260101",
+    "asOf": "2026-01-01T00:00:00Z",
+    "window": { "start": "2020-01-01", "endExclusive": "2026-01-01" },
+    "locale": "en_US.UTF-8",
+    "timezone": "UTC",
+    "encoding": "UTF-8",
+    "threads": 1,
+    "properties": {
+      "generate.thread_pool_size": 1,
+      "generate.log_patients.detail": "none",
+      "exporter.metadata.export": false,
+      "exporter.fhir.export": true,
+      "exporter.fhir_stu3.export": false,
+      "exporter.fhir_dstu2.export": false,
+      "exporter.ccda.export": false,
+      "exporter.csv.export": false,
+      "exporter.cdw.export": false,
+      "exporter.text.export": false,
+      "exporter.clinical_note.export": false,
+      "exporter.fhir.bulk_data": false,
+      "exporter.fhir.transaction_bundle": true,
+      "exporter.fhir.use_us_core_ig": false,
+      "exporter.years_of_history": 0,
+      "exporter.hospital.fhir.export": true,
+      "exporter.practitioner.fhir.export": true,
+      "exporter.baseDirectory": "/output"
+    }
+  },
+  "seedPools": {
+    "development": [
+      { "first": 100000, "last": 100127 },
+      { "first": 101000, "last": 101127 },
+      { "first": 102000, "last": 102127 }
+    ],
+    "heldout": [
+      { "first": 200000, "last": 200127 },
+      { "first": 201000, "last": 201127 },
+      { "first": 202000, "last": 202127 }
+    ]
+  }
+}
