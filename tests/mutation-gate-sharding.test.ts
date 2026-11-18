@@ -2,12 +2,11 @@
 // aggregate helpers in scripts/mutation-guards.mjs. Synthetic mutant lists
 // and stubbed verdicts only; the real gate never runs here.
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
 
 type Mutant = { id: string; file: string; find: string; replace: string };
 type Verdict = 'killed' | 'survived' | 'inconclusive' | 'anchor-error';
@@ -46,6 +45,7 @@ type GateModule = {
     expectedShardCount?: number; binding: Binding;
   }) => AggregateOutcome;
   readShardReports: (dir: string) => Promise<{ reports: ShardReport[]; errors: string[]; files: string[] }>;
+  validateArgs: (argv: string[]) => void;
 };
 
 const gate = (await import(new URL('../scripts/mutation-guards.mjs', import.meta.url).href)) as GateModule;
@@ -419,18 +419,22 @@ test('custom reports cannot enter the candidate input set or invalidate followin
 });
 
 test('CLI refuses missing, repeated, unknown and incompatible shard arguments before running a gate', () => {
-  const script = new URL('../scripts/mutation-guards.mjs', import.meta.url);
-  for (const argv of [
-    ['--shard'], ['--report'], ['--aggregate'], ['--shards', '4'],
-    ['--list', '--shard', '1/4'], ['--shard', '1/4', '--only', 'scheme-screen'],
-    ['--shard', '1/4', '--shard', '2/4'], ['--unknown'],
-    ['--out', 'x', '--report', 'y'], ['--workers', 'Infinity'],
-  ]) {
-    const result = spawnSync(process.execPath, [fileURLToPath(script), ...argv], { encoding: 'utf8', timeout: 5000 });
-    assert.equal(result.status, 2, `${argv.join(' ')}: ${result.stderr}`);
-    assert.match(result.stderr, /mutation-guards:/);
-    assert.doesNotMatch(result.stdout, /baseline green|judging|shard report written/);
+  // In-process: main() runs validateArgs() before it reads, binds or copies anything, and a
+  // spawned gate could start real suite runs (or recurse inside a gate's worker copy) on a regression.
+  for (const [argv, message] of [
+    [['--shard'], /--shard requires a value/], [['--report'], /--report requires a value/],
+    [['--aggregate'], /--aggregate requires a value/], [['--shards', '4'], /--shards requires --aggregate/],
+    [['--list', '--shard', '1/4'], /--list can only be combined with --scope/],
+    [['--shard', '1/4', '--only', 'scheme-screen'], /--shard cannot be combined with --only/],
+    [['--aggregate', 'x', '--shard', '1/4'], /--aggregate cannot be combined with --shard or --only/],
+    [['--aggregate', 'x', '--only', 'scheme-screen'], /--aggregate cannot be combined with --shard or --only/],
+    [['--shard', '1/4', '--shard', '2/4'], /unknown or repeated option --shard/], [['--unknown'], /unknown or repeated option --unknown/],
+    [['--out', 'x', '--report', 'y'], /--report and --out are alternatives/], [['--workers', 'Infinity'], /invalid --workers value/],
+    [['--shard', '5/4'], /invalid --shard spec/], [['--shard', '0/4'], /invalid --shard spec/],
+  ] as const) {
+    assert.throws(() => gate.validateArgs([...argv]), message, argv.join(' '));
   }
+  assert.doesNotThrow(() => gate.validateArgs(['--shard', '1/4', '--out', 'x']));
 });
 
 test('aggregate: timeout-only labels are required and their count and ids are surfaced', () => {

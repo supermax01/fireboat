@@ -90,7 +90,7 @@ npm run demo -- --check  # no Docker, no keys: synthetic source + real stdio ser
 | `node --import tsx scripts/emit-m3b-contract.mjs --check` | Check that the tool contract is current. |
 | `node --import tsx scripts/generate-r4-checkable-paths.ts --check` | Check that the checkable-path table matches the pinned R4 indexes. |
 | `node --import tsx --test tests/mutation-anchors.test.ts` | Check that every mutation anchor still applies. |
-| `node scripts/mutation-guards.mjs --list` | List the mutation registry (1,718 entries in this tree; the output's `count` field gives the current number). |
+| `node scripts/mutation-guards.mjs --list` | List the mutation registry (1,722 entries in this tree; the output's `count` field gives the current number). Add `--scope gateway` to list the 903 mutants that weaken the gateway itself. |
 
 Give long or parallel test runs their own `TMPDIR` and delete it afterwards. Some suites leave temporary folders behind when they are stopped early.
 
@@ -103,7 +103,7 @@ Shipped documents (`README.md`, `LICENSE`, `NOTICE`, `.github/SECURITY.md`, `pac
 The evidence is local and deterministic. **The project uses no hosted CI.**
 
 1. **Tests that pin behaviour.** Add tests for anything touching authorization, confinement, payload withholding, continuations, strict search, transport budgets, redirects or denials. Prefer tests that use a real MCP SDK client over stdio.
-2. **The mutation gate.** Guarded code has mutants in `scripts/mutation-guards.mjs`. Each mutant is a deliberate weakening that a named test must catch. If you change guarded code, keep its mutants killed, or update their anchors with the same meaning. The registry names killing tests by their titles, so do not rename a test without updating the registry. Every change to guarded code runs the anchor check and an `--only` run of the mutants that edit the files it changed. The full sharded run is required when a change touches the gateway itself (`packages/core`, `packages/auth` or `packages/server`), and before a release; a change confined to the tooling (the quickstart helper, the evals, the isolation-suite bookkeeping, package staging and other scripts) does not need it.
+2. **The mutation gate.** Guarded code has mutants in `scripts/mutation-guards.mjs`. Each mutant is a deliberate weakening that a named test must catch. If you change guarded code, keep its mutants killed, or update their anchors with the same meaning. The registry names killing tests by their titles, so do not rename a test without updating the registry. Every change to guarded code runs the anchor check and an `--only` run of the mutants that edit the files it changed. A change that touches the gateway itself (`packages/core`, `packages/auth` or `packages/server`), or that removes or loosens an existing test, eval task or isolation case, also needs an accepted gateway-scope run: `--shard i/n --scope gateway` for every shard, then `--aggregate <dir> --scope gateway`. The full run of every mutant is required before a release. A change confined to the rest of the tooling (the quickstart helper, the eval and isolation-suite machinery, package staging and other scripts) needs only its own mutants.
 3. **The evals,** in both eras.
 4. **The isolation suite.**
 5. **Byte caps.** Tool descriptions, schemas and server instructions are measured against caps in `docs/contracts/m3b-tools.json`. A wording change needs a fresh capture, and must stay within each tool's cap.

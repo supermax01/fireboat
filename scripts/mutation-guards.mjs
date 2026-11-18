@@ -55,21 +55,49 @@ import { isMainModule } from './is-main.mjs';
  * once than it has candidates.
  *
  * Runs fully offline. Usage:
- *   node scripts/mutation-guards.mjs [--workers N] [--test-concurrency N] [--only id1,id2] [--hints <dir>] [--no-targeted]
- *   node scripts/mutation-guards.mjs --shard i/n [--out <dir> | --report <file>] [--workers N] [--hints <dir>] [--no-targeted]
- *   node scripts/mutation-guards.mjs --aggregate <dir> [--shards n]
- *   node scripts/mutation-guards.mjs --list
+ *   node scripts/mutation-guards.mjs [--scope all|gateway] [--workers N] [--test-concurrency N] [--hints <dir>] [--no-targeted]
+ *   node scripts/mutation-guards.mjs --only id1,id2 [--workers N] [--test-concurrency N] [--hints <dir>] [--no-targeted]
+ *   node scripts/mutation-guards.mjs --shard i/n [--scope all|gateway] [--out <dir> | --report <file>] [--workers N] [--hints <dir>] [--no-targeted]
+ *   node scripts/mutation-guards.mjs --aggregate <dir> [--shards n] [--scope all|gateway]
+ *   node scripts/mutation-guards.mjs --list [--scope all|gateway]
  *
- * Sharding: --shard i/n judges a deterministic partition of the full
- * mutant list and writes one JSON shard report. The frozen list's ordinal
- * assigns mutant i to shard (i % n) + 1.
- * Each report binds the candidate, inputs, survivors and exact runtime.
+ * Scopes: --scope all (the default, and the same as no --scope everywhere)
+ * is every registered mutant. --scope
+ * gateway is every mutant with at least one edit in a file under
+ * packages/core/, packages/auth/ or packages/server/ (GATEWAY_PATH_PREFIXES;
+ * a combined mutant that also edits tooling is in scope), decided from the
+ * parsed registry entries by inMutationScope(). A scope is a frozen, ordered
+ * sublist of the registry with its own list hash; --list --scope <name>
+ * prints its count, hash and ids.
+ *
+ * Sharding: --shard i/n judges a deterministic partition of the scope's
+ * mutant list and writes one JSON shard report (default name
+ * mutation-shard-i-of-n.json, or mutation-shard-<scope>-i-of-n.json for a
+ * scope other than all). The frozen scoped list's ordinal assigns mutant i
+ * to shard (i % n) + 1.
+ * Each report binds the candidate, inputs, survivors, exact runtime, its
+ * scope, the scoped list hash and the in-scope count.
  * --aggregate is
- * the authority for sharded runs: it re-checks the complete result set
- * (exactly once per mutant, no missing shard, no undeclared survivor or
- * inconclusive result, and the global stale-survivor check that --only
- * diagnostic runs deliberately skip). --only cannot be combined with
- * --shard or --aggregate, so a diagnostic subset can never earn acceptance.
+ * the authority for sharded runs: it judges the scope named by --scope
+ * (scope all without it, so a gateway set needs --aggregate <dir> --scope
+ * gateway); every report must carry that scope (a report without a scope
+ * counts as scope all; reports of different scopes are refused) and it
+ * re-checks the complete result set against the current registry's scoped
+ * list (exactly
+ * once per mutant in scope, none outside it, no missing shard, no undeclared
+ * survivor or inconclusive result, and the stale-survivor check that --only
+ * diagnostic runs deliberately skip). In scope gateway the stale-survivor
+ * check covers the declared survivors in scope only; an out-of-scope declared
+ * survivor is not judged, so it is listed as unchecked. Every summary line
+ * of a scope other than all names its scope, so a gateway pass can never be
+ * read as a full pass. --only cannot be combined with --scope, --shard or
+ * --aggregate, so a diagnostic subset can never earn acceptance. All these
+ * refusals are made by validateArgs() before anything is read or copied;
+ * selectRun(), selectionReport(), runSummaryLines() and aggregateSummaryLines() are
+ * the pure steps main() runs between reading and judging. An aggregate refused
+ * on its scope prints one refusal line and no counts.
+ * Every edit's file must be a normalized repository-relative path (forward
+ * slashes, no empty, . or .. segment), so the scope prefixes classify it.
  */
 import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -85,15 +113,12 @@ const execFileAsync = promisify(execFile);
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const CPUS = Math.max(1, availableParallelism());
-const workersArg = args.indexOf('--workers');
-const WORKERS = workersArg >= 0 ? Math.max(1, Number(args[workersArg + 1]) || 1) : Math.max(1, Math.floor(CPUS / 2));
+// The command line is validated and parsed by validateArgs(); only the per-suite test
+// concurrency stays a module value, because the suite runners below default to it.
 const testConcurrencyArg = args.indexOf('--test-concurrency');
 // Node's test runner otherwise parallelises test files up to the full CPU count inside every
 // worker copy, multiplying the load. Across all workers, the CPU slots below bound the total.
 const TEST_CONCURRENCY = testConcurrencyArg >= 0 ? Math.max(1, Number(args[testConcurrencyArg + 1]) || 1) : Math.max(1, Math.min(3, CPUS));
-const TARGETED = !args.includes('--no-targeted');
-const onlyArg = args.indexOf('--only');
-const ONLY = onlyArg >= 0 ? new Set(String(args[onlyArg + 1] ?? '').split(',').filter(Boolean)) : undefined;
 export const BASELINE_TIMEOUT_MS = 240_000;
 const MAX_SUITE_TIMEOUT_MS = 900_000;
 // Each entry is replaced by its own clean measurement before any mutant is judged.
@@ -4024,6 +4049,14 @@ export const MUTANTS = [
   M("stage-document-file-as-folder-staged", "scripts/stage-package.ts", " || (relative.path.endsWith('/') && staged.has(resolved))", "", { suites: ['unit'] }),
   // stage-document-file-as-folder-tracked: a tracked file linked as a folder passes the repository check. Killing test: package links: a file linked as a folder is refused
   M("stage-document-file-as-folder-tracked", "scripts/stage-package.ts", "    else if (link.folder && repository.tracked.has(link.path)) problems.push(`${packagePath}: ${target}`);\n", "", { suites: ['unit'] }),
+  // scope-aggregate-mixed-accepted: Accept shard reports of different scopes in one aggregate. Killing test: aggregate refuses reports of different scopes, or a report without a scope among scoped ones
+  M("scope-aggregate-mixed-accepted", "scripts/mutation-guards.mjs", "    : reportScopes.length > 1 ? `mutation scope disagrees across reports (${[...reportScopes].sort().join(', ')}); a report without a scope counts as scope all`\n", "", { suites: ['unit'] }),
+  // scope-aggregate-absent-from-reports: Take the scope from the reports when the aggregate names none. Killing test: aggregate without a requested scope is scope all, so a complete gateway set is refused
+  M("scope-aggregate-absent-from-reports", "scripts/mutation-guards.mjs", "export function aggregateShardReports(reports, { mutants, declared, expectedShardCount, binding, expectedScope = 'all' } = {}) {\n", "export function aggregateShardReports(reports, { mutants, declared, expectedShardCount, binding, expectedScope = (Array.isArray(reports) && reports[0]?.scope) || 'all' } = {}) {\n", { suites: ['unit'] }),
+  // scope-aggregate-outside-accepted: Accept a registered mutant from outside the scope inside a scoped report. Killing test: aggregate in scope gateway refuses a missing, duplicated or out-of-scope mutant
+  M("scope-aggregate-outside-accepted", "scripts/mutation-guards.mjs", "        errors.push(registryIds.has(result.id) ? `mutant ${result.id}: outside scope ${scope}` : `mutant ${result.id}: not in the current mutant list`);\n", "        if (!registryIds.has(result.id)) errors.push(`mutant ${result.id}: not in the current mutant list`);\n", { suites: ['unit'] }),
+  // scope-aggregate-zero-times-skipped: Skip the check that every mutant in scope ran at least once. Killing tests: aggregate in scope gateway refuses a missing, duplicated or out-of-scope mutant; aggregate: missing mutant (ran zero times) fails
+  M("scope-aggregate-zero-times-skipped", "scripts/mutation-guards.mjs", "  for (const mutant of scoped) {\n", "  for (const mutant of []) {\n", { suites: ['unit'] }),
   // Isolation case-schema machinery: genuine admission and credit weaknesses; full witnesses in counting.test.ts.
   // Weakens the B2 classification requirement.
   C("b2m-count-condition-dropped", [{"file": "tests/isolation/case-schema.ts", "find": "if (c.classification !== 'B2' || c.boundary !== 'decidable'", "replace": "if (c.boundary !== 'decidable'"}], { suites: ["unit", "isolation"] }),
@@ -4292,6 +4325,8 @@ export function mutationEdits(mutant) {
   const edits = mutant.edits ?? [{ file: mutant.file, find: mutant.find, replace: mutant.replace }];
   if (!Array.isArray(edits) || !edits.length || edits.some(edit => !edit || typeof edit.file !== 'string'
     || !edit.file || isAbsolute(edit.file) || edit.file.split(/[\\/]/).some(part => part === '..' || part === '.')
+    // A normalized repository-relative path: forward slashes only, no empty segment.
+    || edit.file.includes('\\') || edit.file.split('/').some(part => !part)
     || ['node_modules', '.git', 'dist', '.local', 'mutation-results', 'artifacts'].includes(edit.file.split(/[\\/]/)[0].toLowerCase())
     || typeof edit.find !== 'string' || !edit.find || typeof edit.replace !== 'string')) throw new Error(`invalid edits for ${mutant.id}`);
   if (edits.some(edit => edit.replace.trim().toLowerCase() === '<empty>')) {
@@ -4338,6 +4373,45 @@ export function mutantListHash(mutants) {
   return sha256Hex(mutants.map(mutant => `${mutant.id}\0${anchorHash(mutant)}`).join('\n'));
 }
 
+/** The gate's scopes: all registered mutants (the default), or those that weaken the gateway itself. */
+export const MUTATION_SCOPES = Object.freeze(['all', 'gateway']);
+/** A mutant is in the gateway scope when any of its edits targets a file under one of these directories. */
+export const GATEWAY_PATH_PREFIXES = Object.freeze(['packages/core/', 'packages/auth/', 'packages/server/']);
+
+/** Validate a scope name. Throws on anything but a known scope. */
+export function parseMutationScope(name) {
+  if (typeof name !== 'string' || !MUTATION_SCOPES.includes(name)) {
+    throw new Error(`unknown mutation scope ${JSON.stringify(name)} (expected ${MUTATION_SCOPES.join(' or ')})`);
+  }
+  return name;
+}
+
+/** Whether a parsed registry entry belongs to a scope, decided from its validated edit list. */
+export function inMutationScope(mutant, scope) {
+  parseMutationScope(scope);
+  const edits = mutationEdits(mutant);
+  if (scope === 'all') return true;
+  return edits.some(edit => GATEWAY_PATH_PREFIXES.some(prefix => edit.file.startsWith(prefix)));
+}
+
+/** The frozen, ordered sublist of the registry in a scope. Scope all is the registry itself. */
+export function scopedMutants(mutants, scope) {
+  parseMutationScope(scope);
+  return mutants.filter(mutant => inMutationScope(mutant, scope));
+}
+
+/**
+ * What --list prints, without the candidate binding. In scope all (with or
+ * without --scope all) it is the historical listing: count, hash and ids of the
+ * whole registry. Any other scope is named, with the registered count beside the
+ * scoped count, hash and ids.
+ */
+export function mutantListing(mutants, scope = 'all') {
+  if (parseMutationScope(scope) === 'all') return { count: mutants.length, mutantListHash: mutantListHash(mutants), ids: mutants.map(mutant => mutant.id) };
+  const listed = scopedMutants(mutants, scope);
+  return { scope, count: listed.length, registered: mutants.length, mutantListHash: mutantListHash(listed), ids: listed.map(mutant => mutant.id) };
+}
+
 /** Parse and validate a `--shard i/n` spec (1-based). Throws on any invalid spec. */
 export function parseShardSpec(spec) {
   const match = /^(\d+)\/(\d+)$/.exec(String(spec ?? '').trim());
@@ -4372,8 +4446,11 @@ export function mutantsForShard(mutants, shardIndex, shardCount) {
   return mutants.filter((_, index) => shardForIndex(index, shardCount) === shardIndex);
 }
 
-export function shardReportFileName(shardIndex, shardCount) {
-  return `mutation-shard-${shardIndex}-of-${shardCount}.json`;
+/** Scope all keeps its historical names; any other scope is named in the file, so the two never overwrite each other. */
+export function shardReportFileName(shardIndex, shardCount, scope = 'all') {
+  return parseMutationScope(scope) === 'all'
+    ? `mutation-shard-${shardIndex}-of-${shardCount}.json`
+    : `mutation-shard-${scope}-${shardIndex}-of-${shardCount}.json`;
 }
 
 /** Reports must never become new candidate inputs for the following shard. */
@@ -4387,14 +4464,19 @@ export function validateReportPath(path, checkout = root) {
   return output;
 }
 
-/** Build the JSON shard report for one judged shard (results as returned by judge()). */
-export function buildShardReport({ shardIndex, shardCount, mutants, binding, baseline, suiteBaselines = {}, results, durationMs, mode = 'shard', scheduledIds, targeting = null }) {
+/**
+ * Build the JSON shard report for one judged shard (results as returned by judge()).
+ * `mutants` is the scope's list (scopedMutants of the registry), so the list hash,
+ * count and ids it records are the scoped ones.
+ */
+export function buildShardReport({ shardIndex, shardCount, mutants, binding, baseline, suiteBaselines = {}, results, durationMs, mode = 'shard', scheduledIds, targeting = null, scope = 'all' }) {
   const byId = new Map(mutants.map(mutant => [mutant.id, mutant]));
   return {
     schema: SHARD_REPORT_SCHEMA,
     shardId: `${shardIndex}/${shardCount}`,
     shardIndex,
     shardCount,
+    scope: parseMutationScope(scope),
     mutantListHash: mutantListHash(mutants),
     mutantCount: mutants.length,
     mutantIds: mutants.map(mutant => mutant.id),
@@ -4425,27 +4507,62 @@ export function buildShardReport({ shardIndex, shardCount, mutants, binding, bas
 }
 
 /**
- * Validate a complete set of shard reports against the full mutant list and
- * the declared survivors. Pure: no I/O, no test runs. `declared` is a Map of
+ * Validate a complete set of shard reports against the current registry and
+ * the declared survivors. Pure: no I/O, no test runs. `mutants` is the full
+ * registry; `expectedScope` (default all) decides the scope, and every report
+ * must carry that scope (a report without a scope counts as scope all). Every
+ * check runs against the registry's scoped list. `declared` is a Map of
  * id -> {justification} (or an array of such entries). Returns
- * {ok, errors, summary}; every acceptance rule of the unsharded gate is
- * re-checked here globally, including the stale-survivor check.
+ * {ok, errors, summary, decisions, timeoutKills, scope, inScope, registered,
+ * inScopeDeclared, outOfScopeSurvivors}; every acceptance rule of the
+ * unsharded gate is re-checked here over the whole scope, including the
+ * stale-survivor check for the declared survivors in scope. A declared
+ * survivor outside the scope is not judged, so it is listed in
+ * outOfScopeSurvivors instead of being checked for staleness.
  */
-export function aggregateShardReports(reports, { mutants, declared, expectedShardCount, binding } = {}) {
+export function aggregateShardReports(reports, { mutants, declared, expectedShardCount, binding, expectedScope = 'all' } = {}) {
   const errors = [];
   const declaredMap = declared instanceof Map ? declared : new Map((declared ?? []).map(entry => [entry.id, entry]));
-  const byId = new Map((mutants ?? []).map(mutant => [mutant.id, mutant]));
-  const listHash = mutantListHash(mutants ?? []);
+  const registry = mutants ?? [];
+  const registryIds = new Set(registry.map(mutant => mutant.id));
   const summary = { killed: 0, survived: 0, inconclusive: 0, anchorErrors: 0, declaredSurvivors: declaredMap.size, total: 0 };
   const decisions = Object.fromEntries(DECIDERS.map(decider => [decider, 0]));
   const timeoutKills = [];
+  const outcome = (fields) => ({ ok: errors.length === 0, errors, summary, decisions, timeoutKills, registered: registry.length, refused: false, ...fields });
   if (!validBinding(binding)) errors.push('expected candidate binding is missing or malformed');
   if (expectedShardCount !== undefined && !validShardCount(expectedShardCount)) errors.push('invalid expected shard count');
-  if (!mutants?.length || byId.size !== mutants.length) errors.push('current mutant list is empty or has duplicate ids');
+  if (!registry.length || registryIds.size !== registry.length) errors.push('current mutant list is empty or has duplicate ids');
+  if (!MUTATION_SCOPES.includes(expectedScope)) {
+    errors.push(`unknown expected mutation scope ${JSON.stringify(expectedScope)}`);
+    // Refused before any result is read: no counts belong to this outcome.
+    return outcome({ ok: false, refused: true, scope: null, inScope: 0, inScopeDeclared: 0, outOfScopeSurvivors: [] });
+  }
+  // The requested scope decides; an aggregate that names none is scope all.
+  const scope = expectedScope;
+  const scoped = scopedMutants(registry, scope);
+  const byId = new Map(scoped.map(mutant => [mutant.id, mutant]));
+  // In scope all every declared survivor is judged; in a narrower scope the ones outside it are not.
+  const outOfScopeSurvivors = [...declaredMap.keys()].filter(id => registryIds.has(id) && !byId.has(id));
+  const inScopeDeclared = [...declaredMap.keys()].filter(id => byId.has(id)).length;
+  const scopeFields = { scope, inScope: scoped.length, inScopeDeclared, outOfScopeSurvivors };
 
   if (!Array.isArray(reports) || reports.length === 0) {
-    return { ok: false, errors: ['no shard reports found'], summary, decisions, timeoutKills };
+    return { ok: false, errors: ['no shard reports found'], summary, decisions, timeoutKills, registered: registry.length, refused: false, ...scopeFields };
   }
+  // One scope for the whole set, never a mixture, and it must be the requested one.
+  const reportScopes = [...new Set(reports.map(report => (report && typeof report === 'object' && Object.hasOwn(report, 'scope') ? report.scope : 'all')))];
+  const unknownScopes = reportScopes.filter(name => !MUTATION_SCOPES.includes(name));
+  const scopeError = unknownScopes.length ? `unknown mutation scope in shard reports: ${unknownScopes.map(name => JSON.stringify(name)).join(', ')}`
+    : reportScopes.length > 1 ? `mutation scope disagrees across reports (${[...reportScopes].sort().join(', ')}); a report without a scope counts as scope all`
+    : reportScopes[0] !== scope ? `the reports' mutation scope ${reportScopes[0]} disagrees with the requested scope ${scope}${scope === 'all' ? ' (an aggregate without --scope is scope all)' : ''}`
+    : undefined;
+  if (scopeError !== undefined) {
+    errors.push(scopeError);
+    // Refused before any result is read: no counts belong to this outcome.
+    return outcome({ ok: false, refused: true, ...scopeFields });
+  }
+  const listHash = mutantListHash(scoped);
+  if (registry.length && !scoped.length) errors.push(`no registered mutant is in scope ${scope}`);
   const counts = new Set();
   const seenShards = new Map();
   for (const [position, report] of reports.entries()) {
@@ -4466,11 +4583,11 @@ export function aggregateShardReports(reports, { mutants, declared, expectedShar
       errors.push(`shard ${report.shardIndex}/${report.shardCount}: candidate/runtime/input binding disagrees`);
     }
     if (report.mode !== 'shard' && !(report.mode === 'full' && report.shardCount === 1)) errors.push(`report ${position + 1}: diagnostic or invalid mode cannot earn acceptance`);
-    const expectedIds = mutantsForShard(mutants ?? [], report.shardIndex, report.shardCount).map(mutant => mutant.id);
+    const expectedIds = mutantsForShard(scoped, report.shardIndex, report.shardCount).map(mutant => mutant.id);
     if (JSON.stringify(report.scheduledIds) !== JSON.stringify(expectedIds)) errors.push(`report ${position + 1}: scheduled ids disagree with the frozen partition`);
     if (report.baseline !== 'green') errors.push(`shard ${report.shardIndex}/${report.shardCount}: baseline was not green (${JSON.stringify(report.baseline)})`);
-    if (report.mutantListHash !== listHash) errors.push(`shard ${report.shardIndex}/${report.shardCount}: mutant list hash disagrees with the current mutant list`);
-    if (report.mutantCount !== mutants?.length || JSON.stringify(report.mutantIds) !== JSON.stringify((mutants ?? []).map(mutant => mutant.id))) errors.push(`report ${position + 1}: full mutant ids/count disagree`);
+    if (report.mutantListHash !== listHash) errors.push(`shard ${report.shardIndex}/${report.shardCount}: mutant list hash disagrees with the current mutant list${scope === 'all' ? '' : ` in scope ${scope}`}`);
+    if (report.mutantCount !== scoped.length || JSON.stringify(report.mutantIds) !== JSON.stringify(scoped.map(mutant => mutant.id))) errors.push(`report ${position + 1}: ${scope === 'all' ? 'full' : `scope ${scope}`} mutant ids/count disagree`);
     if (!Array.isArray(report.results) || report.results.length === 0) errors.push(`shard ${report.shardIndex}/${report.shardCount}: results missing or empty`);
   }
   if (counts.size > 1) errors.push(`shard count disagrees across reports (${[...counts].sort((a, b) => a - b).join(', ')})`);
@@ -4494,8 +4611,11 @@ export function aggregateShardReports(reports, { mutants, declared, expectedShar
       }
       if (verdicts.has(result.id)) errors.push(`mutant ${result.id}: ran more than once (shards ${verdicts.get(result.id).shard} and ${report.shardIndex})`);
       else verdicts.set(result.id, { verdict, shard: report.shardIndex, decidedBy: result.decided_by });
-      if (!byId.has(result.id)) { errors.push(`mutant ${result.id}: not in the current mutant list`); continue; }
-      if (!mutantsForShard(mutants, report.shardIndex, report.shardCount).some(mutant => mutant.id === result.id)) errors.push(`mutant ${result.id}: ran in the wrong shard`);
+      if (!byId.has(result.id)) {
+        errors.push(registryIds.has(result.id) ? `mutant ${result.id}: outside scope ${scope}` : `mutant ${result.id}: not in the current mutant list`);
+        continue;
+      }
+      if (!mutantsForShard(scoped, report.shardIndex, report.shardCount).some(mutant => mutant.id === result.id)) errors.push(`mutant ${result.id}: ran in the wrong shard`);
       if (JSON.stringify(result.suites) !== JSON.stringify(mutationSuites(byId.get(result.id)))) errors.push(`mutant ${result.id}: suite declaration disagrees`);
       if (result.failingTests?.some(name => name.startsWith('isolation:')) && !mutationSuites(byId.get(result.id)).includes('isolation')) errors.push(`mutant ${result.id}: isolation kill outside declared suites`);
       if (result.anchorHash !== anchorHash(byId.get(result.id))) errors.push(`mutant ${result.id}: anchor hash disagrees with the current anchor definition`);
@@ -4515,7 +4635,7 @@ export function aggregateShardReports(reports, { mutants, declared, expectedShar
       }
     }
   }
-  for (const mutant of mutants ?? []) {
+  for (const mutant of scoped) {
     if (!verdicts.has(mutant.id)) errors.push(`mutant ${mutant.id}: ran zero times (no shard reported it)`);
   }
   summary.total = verdicts.size;
@@ -4532,14 +4652,68 @@ export function aggregateShardReports(reports, { mutants, declared, expectedShar
     if (verdict === 'killed' && declaredMap.has(id)) errors.push(`FAIL ${id}: declared survivor was killed; remove the stale entry`);
   }
   for (const [id, entry] of declaredMap) {
-    if (!byId.has(id)) errors.push(`FAIL survivor entry ${id}: no such mutant`);
+    if (!registryIds.has(id)) errors.push(`FAIL survivor entry ${id}: no such mutant`);
     if (!entry?.justification || String(entry.justification).trim().length < 20) errors.push(`FAIL survivor entry ${id}: justification missing or too short`);
   }
-  return { ok: errors.length === 0, errors, summary, decisions, timeoutKills };
+  return outcome(scopeFields);
 }
 
-export function timeoutKillSummary(ids) {
-  return `mutation-guards aggregate timeout-only kills: ${ids.length} [${ids.join(', ')}]`;
+/** The aggregate's label: unchanged for scope all, naming any other scope (or an unknown requested one). */
+function aggregateLabel(scope) {
+  return scope === 'all' ? 'mutation-guards aggregate' : `mutation-guards aggregate (scope ${scope ?? 'unknown'})`;
+}
+
+/** A judging run's label: unchanged for scope all, naming any other scope. */
+function runLabel(scope) {
+  return scope === 'all' ? 'mutation-guards:' : `mutation-guards (scope ${scope}):`;
+}
+
+export function timeoutKillSummary(ids, scope = 'all') {
+  return `${aggregateLabel(scope)} timeout-only kills: ${ids.length} [${ids.join(', ')}]`;
+}
+
+/**
+ * The summary lines and OK line shared by a judging run (kind 'run') and an aggregate
+ * (kind 'aggregate'). Scope all keeps its historical wording byte for byte; every line of
+ * any other scope names that scope, its in-scope count and the registered count, and lists
+ * the declared survivors left unjudged because they are outside the scope.
+ */
+export function summaryLines(kind, { scope, decisions, killed, survived, inconclusive, anchorErrors = 0, declaredTotal, declaredInScope, judged, inScope, registered, reportCount, outOfScopeSurvivors = [], timeoutKills = [], seconds }) {
+  if (kind !== 'run' && kind !== 'aggregate') throw new Error(`unknown summary kind ${JSON.stringify(kind)}`);
+  const all = scope === 'all';
+  const aggregate = kind === 'aggregate';
+  const decidedHead = aggregate ? aggregateLabel(scope) : runLabel(scope);
+  const head = aggregate ? `${aggregateLabel(scope)}:` : runLabel(scope);
+  const details = all
+    ? (aggregate ? `declared survivors: ${declaredTotal}, mutants: ${judged}/${registered}, shard reports: ${reportCount}` : `declared survivors: ${declaredTotal}`)
+    : `declared survivors: ${declaredInScope} in scope of ${declaredTotal}, mutants: ${aggregate ? `${judged}/${inScope} in scope` : `${judged} judged of ${inScope} in scope`}, ${registered} registered${aggregate ? `, shard reports: ${reportCount}` : ''}`;
+  const summary = [
+    ...(aggregate ? [timeoutKillSummary(timeoutKills, scope)] : []),
+    `${decidedHead} decided by: targeted pass ${decisions.targeted}, full path ${decisions.full}, checks before tests ${decisions.precheck}`,
+    `${head} ${killed} killed, ${survived} survived, ${inconclusive} inconclusive${aggregate ? `, ${anchorErrors} anchor-errors` : ''} (${details}), ${seconds}s`,
+    ...(all ? [] : [`${head} declared survivors outside the scope, not judged and so not checked for staleness: ${outOfScopeSurvivors.length} [${outOfScopeSurvivors.join(', ')}]`]),
+  ];
+  const ok = !aggregate ? `${head} OK (no undeclared survivors)`
+    : all ? `${head} OK (every mutant ran exactly once; no undeclared survivors)`
+      : `${head} OK (every mutant in scope ran exactly once; no undeclared survivors)`;
+  return { summary, ok };
+}
+
+/**
+ * The aggregate's summary lines and its OK line, from an aggregateShardReports() outcome.
+ * An aggregate refused before any result was read (an unknown, mixed or other scope)
+ * prints one refusal line and no counts.
+ */
+export function aggregateSummaryLines(outcome, { reportCount, seconds }) {
+  if (outcome.refused) {
+    return { summary: [`${aggregateLabel(outcome.scope)}: refused before any result was judged (${outcome.errors.length} error${outcome.errors.length === 1 ? '' : 's'} above); no counts are reported`], ok: undefined };
+  }
+  const { summary: { killed, survived, inconclusive, anchorErrors, total, declaredSurvivors } } = outcome;
+  return summaryLines('aggregate', {
+    scope: outcome.scope, decisions: outcome.decisions, killed, survived, inconclusive, anchorErrors,
+    declaredTotal: declaredSurvivors, declaredInScope: outcome.inScopeDeclared, judged: total, inScope: outcome.inScope,
+    registered: outcome.registered, reportCount, outOfScopeSurvivors: outcome.outOfScopeSurvivors, timeoutKills: outcome.timeoutKills, seconds,
+  });
 }
 
 /** Read every *.json shard report in a directory. Returns {reports, errors, files}. */
@@ -4995,34 +5169,113 @@ export async function judge(dir, mutant, pristine, targeting = undefined) {
   }
 }
 
-function argValue(name) {
-  const index = args.indexOf(name);
+export function argValue(name, argv = args) {
+  const index = argv.indexOf(name);
   if (index < 0) return undefined;
-  const value = args[index + 1];
+  const value = argv[index + 1];
   if (!value || value.startsWith('--')) throw new Error(`${name} requires a value`);
   return value;
 }
 
-function validateArgs() {
-  const valued = new Set(['--workers', '--test-concurrency', '--only', '--shard', '--report', '--out', '--aggregate', '--shards', '--hints']);
+/**
+ * Every refusal of the command line, before anything is read, bound or copied, and the
+ * parsed options main() runs on. Pure over the argument array, so its refusals are tested
+ * in-process. --scope all is the same as no --scope.
+ */
+export function validateArgs(argv = args) {
+  const value = name => argValue(name, argv);
+  const valued = new Set(['--workers', '--test-concurrency', '--only', '--shard', '--report', '--out', '--aggregate', '--shards', '--hints', '--scope']);
   const flags = new Set(['--list', '--no-targeted']);
   const seen = new Set();
-  for (let i = 0; i < args.length; i++) {
-    const key = args[i];
+  for (let i = 0; i < argv.length; i++) {
+    const key = argv[i];
     if (seen.has(key) || (!flags.has(key) && !valued.has(key))) throw new Error(`unknown or repeated option ${key}`);
     seen.add(key);
-    if (valued.has(key)) { argValue(key); i++; }
+    if (valued.has(key)) { value(key); i++; }
   }
   for (const key of ['--workers', '--test-concurrency', '--shards']) {
-    const value = argValue(key);
-    if (value !== undefined && !validShardCount(Number(value))) throw new Error(`invalid ${key} value`);
+    const number = value(key);
+    if (number !== undefined && !validShardCount(Number(number))) throw new Error(`invalid ${key} value`);
   }
-  if (seen.has('--list') && args.length !== 1) throw new Error('--list cannot be combined with other options');
+  if (seen.has('--shard')) parseShardSpec(value('--shard'));
+  if (seen.has('--aggregate') && (seen.has('--shard') || seen.has('--only'))) throw new Error('--aggregate cannot be combined with --shard or --only');
+  if (seen.has('--shard') && seen.has('--only')) throw new Error('--shard cannot be combined with --only (a diagnostic subset cannot earn aggregate acceptance)');
+  if (seen.has('--scope')) parseMutationScope(value('--scope'));
+  if (seen.has('--list') && [...seen].some(key => key !== '--list' && key !== '--scope')) throw new Error('--list can only be combined with --scope');
+  if (seen.has('--only') && seen.has('--scope')) throw new Error('--only cannot be combined with --scope (a diagnostic subset cannot earn scoped acceptance)');
   if (seen.has('--shards') && !seen.has('--aggregate')) throw new Error('--shards requires --aggregate');
   if (seen.has('--report') && seen.has('--out')) throw new Error('--report and --out are alternatives');
   if (seen.has('--aggregate') && ['--out', '--report'].some(key => seen.has(key))) throw new Error('--aggregate cannot write shard reports');
   if (seen.has('--aggregate') && ['--hints', '--no-targeted'].some(key => seen.has(key))) throw new Error('--hints and --no-targeted apply to judging runs, not --aggregate');
   if (seen.has('--hints') && seen.has('--no-targeted')) throw new Error('--hints needs the targeted pass; drop --no-targeted');
+  const number = name => (value(name) === undefined ? undefined : Number(value(name)));
+  return {
+    list: seen.has('--list'),
+    scope: value('--scope') ?? 'all',
+    shard: seen.has('--shard') ? parseShardSpec(value('--shard')) : undefined,
+    aggregate: value('--aggregate'),
+    shards: number('--shards'),
+    only: seen.has('--only') ? new Set(value('--only').split(',').filter(Boolean)) : undefined,
+    report: value('--report'),
+    out: value('--out'),
+    hints: value('--hints'),
+    targeted: !seen.has('--no-targeted'),
+    workers: number('--workers') ?? Math.max(1, Math.floor(CPUS / 2)),
+  };
+}
+
+/**
+ * Select a judging run: the scope's frozen list, the mutants this run judges, the report's
+ * shard spec, mode, default file name and selection line. Pure; main() runs exactly this.
+ * Throws when nothing is selected, an --only id is unknown, a narrower scope is empty or
+ * there are more shards than mutants in scope.
+ */
+export function selectRun(mutants, { scope = 'all', shard = undefined, only = undefined } = {}) {
+  const inScope = scopedMutants(mutants, scope);
+  if (scope !== 'all' && !inScope.length) throw new Error(`no registered mutant is in scope ${scope}`);
+  const selected = only
+    ? mutants.filter(mutant => only.has(mutant.id))
+    : shard ? mutantsForShard(inScope, shard.shardIndex, shard.shardCount) : inScope;
+  if (!selected.length && !shard) throw new Error('no mutants selected');
+  if (only && [...only].some(id => !mutants.some(mutant => mutant.id === id))) throw new Error('--only contains an unknown mutant id');
+  if (shard && shard.shardCount > inScope.length) throw new Error('empty shards are not allowed');
+  const reportSpec = shard ?? { shardIndex: 1, shardCount: 1 };
+  const selectionLine = shard
+    ? (scope === 'all'
+      ? `mutation-guards: shard ${shard.shardIndex}/${shard.shardCount} selects ${selected.length} of ${mutants.length} mutants`
+      : `mutation-guards: shard ${shard.shardIndex}/${shard.shardCount} selects ${selected.length} of ${inScope.length} mutants in scope ${scope} (${mutants.length} registered)`)
+    : scope === 'all' ? undefined : `mutation-guards: scope ${scope} selects ${inScope.length} of ${mutants.length} mutants`;
+  return {
+    scope, registry: mutants, inScope, selected, reportSpec, selectionLine, label: runLabel(scope),
+    mode: only ? 'diagnostic' : shard ? 'shard' : 'full',
+    reportFileName: shardReportFileName(reportSpec.shardIndex, reportSpec.shardCount, scope),
+  };
+}
+
+/** The shard report of a selected run: always the scope's list, scope and scheduled ids. */
+export function selectionReport(selection, { binding, baseline, suiteBaselines = {}, results, durationMs, targeting = null }) {
+  return buildShardReport({
+    shardIndex: selection.reportSpec.shardIndex, shardCount: selection.reportSpec.shardCount, mutants: selection.inScope, scope: selection.scope,
+    binding, mode: selection.mode, scheduledIds: selection.selected.map(mutant => mutant.id),
+    baseline, suiteBaselines, results, durationMs, targeting,
+  });
+}
+
+/** The closing lines of a selected run from its judge() results and the declared survivors (a Map). */
+export function runSummaryLines(selection, { results, declared, seconds }) {
+  const count = predicate => results.filter(predicate).length;
+  const registryIds = new Set(selection.registry.map(mutant => mutant.id));
+  const inScopeIds = new Set(selection.inScope.map(mutant => mutant.id));
+  return summaryLines('run', {
+    scope: selection.scope,
+    decisions: Object.fromEntries(DECIDERS.map(decider => [decider, count(result => result.decidedBy === decider)])),
+    killed: count(result => result.status === 'killed'), survived: count(result => result.status === 'survived'),
+    inconclusive: count(result => result.status === 'inconclusive'),
+    declaredTotal: declared.size, declaredInScope: [...declared.keys()].filter(id => inScopeIds.has(id)).length,
+    judged: selection.selected.length, inScope: selection.inScope.length, registered: selection.registry.length,
+    outOfScopeSurvivors: [...declared.keys()].filter(id => registryIds.has(id) && !inScopeIds.has(id)),
+    seconds,
+  });
 }
 
 /**
@@ -5056,25 +5309,15 @@ export async function prepareTargeting({ copy, indexPaths, suites, hintsDir, mut
 
 async function main() {
   const started = Date.now();
-  validateArgs();
+  const options = validateArgs();
   const seenIds = new Set();
   for (const mutant of MUTANTS) {
     if (seenIds.has(mutant.id)) { console.error(`mutation-guards: duplicate mutant id ${mutant.id}`); process.exit(2); }
     seenIds.add(mutant.id);
   }
-  if (args.includes('--list')) {
-    console.log(JSON.stringify({ count: MUTANTS.length, mutantListHash: mutantListHash(MUTANTS), ids: MUTANTS.map(mutant => mutant.id), binding: await candidateBinding() }, null, 2));
+  if (options.list) {
+    console.log(JSON.stringify({ ...mutantListing(MUTANTS, options.scope), binding: await candidateBinding() }, null, 2));
     return;
-  }
-  const aggregateDir = argValue('--aggregate');
-  const shardSpec = argValue('--shard');
-  if (aggregateDir !== undefined && (shardSpec !== undefined || ONLY)) {
-    console.error('mutation-guards: --aggregate cannot be combined with --shard or --only');
-    process.exit(2);
-  }
-  if (shardSpec !== undefined && ONLY) {
-    console.error('mutation-guards: --shard cannot be combined with --only (a diagnostic subset cannot earn aggregate acceptance)');
-    process.exit(2);
   }
   const survivorsPath = join(root, 'scripts', 'mutation-survivors.json');
   const survivorEntries = JSON.parse(await readFile(survivorsPath, 'utf8'));
@@ -5082,74 +5325,39 @@ async function main() {
   if (declared.size !== survivorEntries.length) throw new Error('duplicate survivor declaration');
   const binding = await candidateBinding();
 
-  if (aggregateDir !== undefined) {
-    if (!aggregateDir || aggregateDir.startsWith('--')) { console.error('mutation-guards: --aggregate requires a directory'); process.exit(2); }
-    validateReportPath(join(resolve(aggregateDir), 'report.json'));
-    const shardsArg = argValue('--shards');
-    const expectedShardCount = shardsArg === undefined ? undefined : Number(shardsArg);
-    if (expectedShardCount !== undefined && (!Number.isInteger(expectedShardCount) || expectedShardCount < 1)) {
-      console.error(`mutation-guards: invalid --shards value ${JSON.stringify(shardsArg)}`);
-      process.exit(2);
-    }
-    const { reports, errors: readErrors } = await readShardReports(resolve(aggregateDir));
-    const aggregated = aggregateShardReports(reports, { mutants: MUTANTS, declared, expectedShardCount, binding });
+  if (options.aggregate !== undefined) {
+    validateReportPath(join(resolve(options.aggregate), 'report.json'));
+    const { reports, errors: readErrors } = await readShardReports(resolve(options.aggregate));
+    // Without --scope the aggregate is scope all: a gateway set needs --scope gateway.
+    const aggregated = aggregateShardReports(reports, { mutants: MUTANTS, declared, expectedShardCount: options.shards, binding, expectedScope: options.scope });
     for (const error of [...readErrors, ...aggregated.errors]) console.error(error);
-    const { killed, survived, inconclusive, anchorErrors } = aggregated.summary;
-    const { targeted, full, precheck } = aggregated.decisions;
-    console.log(timeoutKillSummary(aggregated.timeoutKills));
-    console.log(`mutation-guards aggregate decided by: targeted pass ${targeted}, full path ${full}, checks before tests ${precheck}`);
-    console.log(`mutation-guards aggregate: ${killed} killed, ${survived} survived, ${inconclusive} inconclusive, ${anchorErrors} anchor-errors (declared survivors: ${declared.size}, mutants: ${aggregated.summary.total}/${MUTANTS.length}, shard reports: ${reports.length}), ${((Date.now() - started) / 1000).toFixed(0)}s`);
+    const lines = aggregateSummaryLines(aggregated, { reportCount: reports.length, seconds: ((Date.now() - started) / 1000).toFixed(0) });
+    for (const line of lines.summary) console.log(line);
     if (readErrors.length || !aggregated.ok) process.exit(1);
-    console.log('mutation-guards aggregate: OK (every mutant ran exactly once; no undeclared survivors)');
+    console.log(lines.ok);
     return;
   }
 
-  let shard;
-  if (shardSpec !== undefined) {
-    try {
-      shard = parseShardSpec(shardSpec);
-    } catch (error) {
-      console.error(`mutation-guards: ${error instanceof Error ? error.message : 'invalid --shard spec'}`);
-      process.exit(2);
-    }
-  }
-  const reportArg = argValue('--report');
-  const outArg = argValue('--out');
-  const reportSpec = shard ?? { shardIndex: 1, shardCount: 1 };
-  const reportPath = reportArg !== undefined
-    ? validateReportPath(reportArg)
-    : (shard || outArg !== undefined)
-      ? validateReportPath(join(outArg !== undefined ? resolve(outArg) : join(root, 'mutation-results'), shardReportFileName(reportSpec.shardIndex, reportSpec.shardCount)))
+  const ONLY = options.only, TARGETED = options.targeted;
+  const selection = selectRun(MUTANTS, options);
+  const runLabel = selection.label;
+  const reportPath = options.report !== undefined
+    ? validateReportPath(options.report)
+    : (options.shard || options.out !== undefined)
+      ? validateReportPath(join(options.out !== undefined ? resolve(options.out) : join(root, 'mutation-results'), selection.reportFileName))
       : undefined;
   let suiteBaselines = {};
   let targetingSummary = { enabled: TARGETED };
   const writeReport = async (baseline, judged) => {
     if (!reportPath) return;
-    const report = buildShardReport({
-      shardIndex: reportSpec.shardIndex,
-      shardCount: reportSpec.shardCount,
-      mutants: MUTANTS,
-      binding,
-      mode: ONLY ? 'diagnostic' : shard ? 'shard' : 'full',
-      scheduledIds: mutants.map(mutant => mutant.id),
-      baseline,
-      suiteBaselines,
-      results: judged,
-      durationMs: Date.now() - started,
-      targeting: targetingSummary,
-    });
+    const report = selectionReport(selection, { binding, baseline, suiteBaselines, results: judged, durationMs: Date.now() - started, targeting: targetingSummary });
     await mkdir(dirname(reportPath), { recursive: true });
     await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
-    console.log(`mutation-guards: shard report written to ${reportPath}`);
+    console.log(`${runLabel} shard report written to ${reportPath}`);
   };
 
-  const mutants = ONLY
-    ? MUTANTS.filter(mutant => ONLY.has(mutant.id))
-    : shard ? mutantsForShard(MUTANTS, shard.shardIndex, shard.shardCount) : MUTANTS;
-  if (!mutants.length && !shard) { console.error('mutation-guards: no mutants selected'); process.exit(2); }
-  if (ONLY && [...ONLY].some(id => !seenIds.has(id))) throw new Error('--only contains an unknown mutant id');
-  if (shard && shard.shardCount > MUTANTS.length) throw new Error('empty shards are not allowed');
-  if (shard) console.log(`mutation-guards: shard ${shard.shardIndex}/${shard.shardCount} selects ${mutants.length} of ${MUTANTS.length} mutants`);
+  const mutants = selection.selected;
+  if (selection.selectionLine) console.log(selection.selectionLine);
   const pristine = new Map();
   for (const file of new Set(mutants.flatMap(mutant => mutationEdits(mutant).map(edit => edit.file)))) pristine.set(file, await readFile(join(root, file), 'utf8'));
 
@@ -5163,7 +5371,7 @@ async function main() {
   const indexDir = TARGETED ? await mkdtemp(join(tmpdir(), 'fhir-mcp-mutation-index-')) : undefined;
   const indexPaths = indexDir ? Object.fromEntries(usedSuites.map(suite => [suite, join(indexDir, `${suite}.jsonl`)])) : {};
   try {
-    for (let i = 0; i < Math.max(1, Math.min(WORKERS, mutants.length)); i++) copies.push(await makeCopy());
+    for (let i = 0; i < Math.max(1, Math.min(options.workers, mutants.length)); i++) copies.push(await makeCopy());
     // Baselines are serial, include anchor maintenance, and cover every path attempt() can use.
     try {
       suiteBaselines = await measureSuiteBaselines([...usedSuites, 'evals:modern', 'evals:legacy'],
@@ -5175,14 +5383,14 @@ async function main() {
     for (const [suite, timing] of Object.entries(suiteBaselines)) testTimeoutMs[suite] = timing.capMs;
     let targeting;
     if (TARGETED) {
-      const prepared = await prepareTargeting({ copy: copies[0], indexPaths, suites: usedSuites, hintsDir: argValue('--hints'),
+      const prepared = await prepareTargeting({ copy: copies[0], indexPaths, suites: usedSuites, hintsDir: options.hints,
         registrySource: await readFile(fileURLToPath(import.meta.url), 'utf8') });
       targetingSummary = prepared.summary;
       if (prepared.summary.indexedNames > 0) targeting = prepared.targeting;
       else { targetingSummary = { ...prepared.summary, enabled: false }; console.log('mutation-guards: the unit baseline produced no test-title index; every mutant is judged on the full path'); }
       console.log(`mutation-guards: targeted pass ${targeting ? 'on' : 'off'} (${prepared.summary.indexedNames} indexed test names, ${prepared.summary.hintMutants} hinted mutants from ${prepared.summary.hintReports} reports)`);
     }
-    console.log(`mutation-guards: judging ${mutants.length} mutants on ${copies.length} worker copies (test-concurrency ${TEST_CONCURRENCY}/suite, at most ${CPUS} test files at once on ${CPUS} CPUs)`);
+    console.log(`${runLabel} judging ${mutants.length} mutants on ${copies.length} worker copies (test-concurrency ${TEST_CONCURRENCY}/suite, at most ${CPUS} test files at once on ${CPUS} CPUs)`);
     let nextIndex = 0;
     await Promise.all(copies.map(async dir => {
       for (;;) {
@@ -5218,14 +5426,10 @@ async function main() {
     const entry = declared.get(id);
     if (!entry.justification || String(entry.justification).trim().length < 20) { console.error(`FAIL survivor entry ${id}: justification missing or too short`); failed = true; }
   }
-  const killed = [...results.values()].filter(result => result.status === 'killed').length;
-  const survived = [...results.values()].filter(result => result.status === 'survived').length;
-  const inconclusive = [...results.values()].filter(result => result.status === 'inconclusive').length;
-  const decidedBy = decider => [...results.values()].filter(result => result.decidedBy === decider).length;
-  console.log(`mutation-guards: decided by: targeted pass ${decidedBy('targeted')}, full path ${decidedBy('full')}, checks before tests ${decidedBy('precheck')}`);
-  console.log(`mutation-guards: ${killed} killed, ${survived} survived, ${inconclusive} inconclusive (declared survivors: ${declared.size}), ${((Date.now() - started) / 1000).toFixed(0)}s`);
+  const lines = runSummaryLines(selection, { results: [...results.values()], declared, seconds: ((Date.now() - started) / 1000).toFixed(0) });
+  for (const line of lines.summary) console.log(line);
   if (failed) process.exit(1);
-  console.log('mutation-guards: OK (no undeclared survivors)');
+  console.log(lines.ok);
 }
 
 if (isMainModule(import.meta.url)) {

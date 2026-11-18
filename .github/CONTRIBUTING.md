@@ -41,9 +41,16 @@ Add tests for anything that touches authorization, patient confinement, payload 
 
 The code that enforces the safety boundaries is guarded by deliberate weakenings, called mutants, listed in `scripts/mutation-guards.mjs`. The gate edits the code to apply each mutant and expects a named test to fail. If a test does not notice, the guard is not doing its job. If you change guarded code, keep every mutant caught, or update its anchor (the code snippet it edits) so it keeps the same meaning. `node --import tsx --test tests/mutation-anchors.test.ts` checks that every anchor still applies. Never weaken a guard, budget, oracle, gate or test to make something pass. If a test looks wrong, say so in the pull request instead of editing it.
 
-A full run of the gate splits the mutants into shards (`--shard i/n`), then combines the shard reports with `--aggregate`. Most mutants are decided by a targeted first pass that runs a few likely test files and kills a mutant only when a named test fails twice; every other mutant is judged by the full path. A few mutants are declared survivors, each with a written justification in `scripts/mutation-survivors.json`. A full run takes about an hour on an 18-CPU Mac, so while iterating run a few mutants with `--only <ids>`; a diagnostic `--only` run never counts as a full pass.
+A full run of the gate splits the mutants into shards (`--shard i/n`), then combines the shard reports with `--aggregate`. Most mutants are decided by a targeted first pass that runs a few likely test files and kills a mutant only when a named test fails twice; every other mutant is judged by the full path. A few mutants are declared survivors, each with a written justification in `scripts/mutation-survivors.json`. A full run takes about an hour on an 18-CPU Mac, so while iterating run a few mutants with `--only <ids>`; a diagnostic `--only` run never counts as a pass.
 
-**When to run what.** For any change to guarded code, run the anchor check and an `--only` run of the mutants whose registry entries edit the files you changed (`grep -n '<path>' scripts/mutation-guards.mjs` finds them). A full run is needed only when the change touches the gateway itself (`packages/core`, `packages/auth` or `packages/server`), and before a release. A change confined to the tooling (the quickstart helper, the evals, the isolation-suite bookkeeping, package staging and other scripts) does not need one. Current results are in [docs/TESTING.md](../docs/TESTING.md).
+**When to run what.**
+
+- For any change to guarded code, run the anchor check and an `--only` run of the mutants whose registry entries edit the files you changed (`grep -n '<path>' scripts/mutation-guards.mjs` finds them).
+- If the change touches the gateway itself (`packages/core`, `packages/auth` or `packages/server`), or removes or loosens an existing test, eval task or isolation case, also run the gateway scope: `--shard i/n --scope gateway --out <dir>` for each shard, then `--aggregate <dir> --scope gateway`. It judges the 903 mutants that weaken the gateway, and took about 43 minutes on the same Mac. Give each scope its own `--out` folder: an aggregate reads every report in its folder and refuses a mixture.
+- Before a release, run the full gate.
+- A change confined to the rest of the tooling (the quickstart helper, the eval and isolation-suite machinery, package staging and other scripts) needs only its own mutants.
+
+Current results are in [docs/TESTING.md](../docs/TESTING.md).
 
 ## Generated files
 

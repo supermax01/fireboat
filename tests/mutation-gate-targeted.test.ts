@@ -1,12 +1,10 @@
 // The mutation gate's targeted first pass: it may only kill, only on a reproduced
 // named failure, and every mutant it does not kill goes down the unchanged full path.
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
 
 type Edit = { file: string; find: string; replace: string };
 type Mutant = Edit & { id: string; edits?: Edit[]; suites?: string[] };
@@ -41,6 +39,7 @@ const gate = await import(new URL('../scripts/mutation-guards.mjs', import.meta.
   buildShardReport: (input: Record<string, unknown>) => Report;
   partitionMutants: (mutants: Mutant[], count: number) => Mutant[][];
   aggregateShardReports: (reports: unknown[], options: { mutants: Mutant[]; declared: Map<string, { justification: string }>; binding: Binding }) => { ok: boolean; errors: string[]; decisions: Record<string, number> };
+  validateArgs: (argv: string[]) => void;
 };
 const targeting = await import(new URL('../scripts/mutation-targeting.mjs', import.meta.url).href) as {
   tapUnescape: (name: string) => string;
@@ -418,11 +417,13 @@ test('aggregate: the targeted pass can only decide reproduced named kills, and d
 });
 
 test('CLI: hint and targeting options are refused where they cannot apply', () => {
-  const script = fileURLToPath(new URL('../scripts/mutation-guards.mjs', import.meta.url));
-  for (const argv of [['--hints'], ['--hints', 'x', '--no-targeted'], ['--aggregate', 'x', '--hints', 'y'], ['--aggregate', 'x', '--no-targeted'], ['--list', '--no-targeted'], ['--no-targeted', '--no-targeted']]) {
-    const result = spawnSync(process.execPath, [script, ...argv], { encoding: 'utf8', timeout: 5000 });
-    assert.equal(result.status, 2, `${argv.join(' ')}: ${result.stderr}`);
-    assert.match(result.stderr, /mutation-guards:/);
+  // In-process, as main() runs validateArgs() first: a spawned gate could start real suite runs on a regression.
+  for (const [argv, message] of [
+    [['--hints'], /--hints requires a value/], [['--hints', 'x', '--no-targeted'], /--hints needs the targeted pass/],
+    [['--aggregate', 'x', '--hints', 'y'], /apply to judging runs, not --aggregate/], [['--aggregate', 'x', '--no-targeted'], /apply to judging runs, not --aggregate/],
+    [['--list', '--no-targeted'], /--list can only be combined with --scope/], [['--no-targeted', '--no-targeted'], /unknown or repeated option --no-targeted/],
+  ] as const) {
+    assert.throws(() => gate.validateArgs([...argv]), message, argv.join(' '));
   }
 });
 

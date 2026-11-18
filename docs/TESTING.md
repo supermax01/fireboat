@@ -29,6 +29,7 @@ Some practical rules:
 | Retrieval evals, legacy | `npm run eval:retrieval -- --era legacy` | The same, protocol version 2025-11-25 | Every arm `85/85 passed`, exit 0 |
 | Isolation suite | `npm run test:isolation` | Every listed attack and control case passes its independent checks | `status=DIAGNOSTIC earned=0 cases=68`, exit 0 |
 | Mutation gate | `npm run mutation:guards` | Every registered weakening of guarded code is caught by a named test | `0 inconclusive`, only declared survivors, exit 0 |
+| Mutation gate, gateway scope | `--shard i/n --scope gateway`, then `--aggregate <dir> --scope gateway` | Every registered weakening of `packages/core`, `packages/auth` and `packages/server` is caught by a named test | the same, for the mutants in scope |
 | Generator and contract checks | three `--check` commands, below | Generated docs, the contract and the checkable-path table match their inputs | `in sync` lines, exit 0 |
 | Package checks | `npm run test:package` | Shipped documents, licence files and (after a complete build) `dist/` files match the approved inventories; links in shipped documents resolve | `fail 0` |
 | Live checks | `npm run test:hapi`, `npm run test:medplum`, `npm run test:smart` | The gateway behaves the same against a real local FHIR server | One summary line (JSON for HAPI and Medplum), exit 0 |
@@ -133,11 +134,14 @@ The full report goes to `artifacts/b2/<run>/report.json` (git-ignored). Exit cod
 ## Mutation gate
 
 ```sh
-npm run mutation:guards                                         # full run in one invocation
-node scripts/mutation-guards.mjs --shard 1/2 --out <dir>        # one shard of a full run
-node scripts/mutation-guards.mjs --aggregate <dir> --shards 2   # combine the shard reports
-node scripts/mutation-guards.mjs --only id1,id2                 # diagnostic subset
-node scripts/mutation-guards.mjs --list                         # the registry: count, list hash and ids
+npm run mutation:guards                                                        # full run in one invocation
+node scripts/mutation-guards.mjs --shard 1/2 --out <dir>                       # one shard of a full run
+node scripts/mutation-guards.mjs --aggregate <dir> --shards 2                  # combine the shard reports
+node scripts/mutation-guards.mjs --shard 1/2 --scope gateway --out <dir>       # one shard of the gateway scope
+node scripts/mutation-guards.mjs --aggregate <dir> --shards 2 --scope gateway  # combine gateway shard reports
+node scripts/mutation-guards.mjs --only id1,id2                                # diagnostic subset
+node scripts/mutation-guards.mjs --list                                        # the registry: count, list hash and ids
+node scripts/mutation-guards.mjs --list --scope gateway                        # the gateway scope: count, list hash and ids
 ```
 
 **What a mutant is.** Each entry in `scripts/mutation-guards.mjs` is an exact `{id, file, find, replace}` edit, or a list of such edits, that disables or weakens one named guard. Its comment names the test or tests expected to kill it (`// Killing test(s):`). The gate applies each mutant to a temporary copy of the tree, never the real checkout, and asks whether the tests notice. The gate runs offline.
@@ -161,11 +165,13 @@ It stops at the first batch that kills. This pass can only kill, and only on a n
 
 **When the gate fails.** The gate fails on an inconclusive result, an anchor that no longer matches exactly once, a surviving mutant without a reviewed entry in `scripts/mutation-survivors.json`, or a declared survivor that is in fact killed (a stale justification). Each declared survivor carries a written reason why the mutation cannot change behaviour today.
 
-**Sharding.** `--shard i/n` judges a fixed partition of the mutant list and writes one report. `--aggregate` is the authority for a sharded run. It fails on a missing or stale shard, a mutant judged zero times or more than once, an inconclusive result or an undeclared survivor. `--only` cannot be combined with `--shard` or `--aggregate`, so a diagnostic subset can never pass for a full run.
+**Sharding.** `--shard i/n` judges a fixed partition of the mutant list and writes one report. `--aggregate` is the authority for a sharded run. It fails on a missing or stale shard, a mutant judged zero times or more than once, an inconclusive result or an undeclared survivor. `--only` cannot be combined with `--shard`, `--aggregate` or `--scope`, so a diagnostic subset can never pass for an accepted run.
 
-**Expected output.** A passing run ends with a line such as `mutation-guards: N killed, 3 survived, 0 inconclusive (declared survivors: 3)`, or for an aggregate, `mutation-guards aggregate: N killed, 3 survived, 0 inconclusive, 0 anchor-errors (...)`, and exits 0. A full run is long, so sharding lets it run in pieces. Parallelism is bounded across all workers (`--workers`, `--test-concurrency`) so that copies of the suite do not overload the machine.
+**Scopes.** `--scope gateway` limits a run to the mutants that edit `packages/core`, `packages/auth` or `packages/server` (a mutant with any such edit is in scope; 903 of the 1,722 today). `--scope all`, the default, is the whole registry. Shards partition the scope's list, and each report records its scope and the scope's list hash. `--aggregate` expects scope `all` unless `--scope` names another, and fails on reports of another or mixed scope, or on a result for a mutant outside the scope. It reads every report in its folder, so each scope needs its own `--out` folder; gateway shard reports are named `mutation-shard-gateway-i-of-n.json`. A gateway aggregate applies the stale-survivor check to the declared survivors in scope and lists the others as not judged.
 
-A passing run covers the guards that have registered mutants, not every line, and holds only for the tree it ran on. A change to guarded code needs its mutants judged again: an `--only` run of the mutants that edit the changed files, and a full run when the gateway itself (`packages/core`, `packages/auth` or `packages/server`) changes, and before a release. A change confined to the tooling (the quickstart helper, the evals, the isolation-suite bookkeeping, package staging and other scripts) is judged by its own mutants only.
+**Expected output.** A passing run ends with a line such as `mutation-guards: N killed, 3 survived, 0 inconclusive (declared survivors: 3)`, or for an aggregate, `mutation-guards aggregate: N killed, 3 survived, 0 inconclusive, 0 anchor-errors (...)`, and exits 0. Every line of a gateway run names its scope, for example `mutation-guards aggregate (scope gateway): N killed, 2 survived, 0 inconclusive, 0 anchor-errors (declared survivors: 2 in scope of 3, mutants: 903/903 in scope, ...)` and `mutation-guards aggregate (scope gateway): OK (every mutant in scope ran exactly once; no undeclared survivors)`. A full run is long, so sharding lets it run in pieces. Parallelism is bounded across all workers (`--workers`, `--test-concurrency`) so that copies of the suite do not overload the machine.
+
+A passing run covers the guards that have registered mutants, not every line, and holds only for the tree it ran on. A change to guarded code needs its mutants judged again: an `--only` run of the mutants that edit the changed files; a gateway-scope run when the gateway itself (`packages/core`, `packages/auth` or `packages/server`) changes, or an existing test, eval task or isolation case is removed or loosened; and a full run before a release. A change confined to the rest of the tooling is judged by its own mutants only. The mutants of the eval and isolation-suite machinery are outside the gateway scope, so a gateway change that left one of their checks unable to fail would be found by the full run before a release, not by the gateway run.
 
 ## Generator and contract checks
 
@@ -238,16 +244,17 @@ The tests use synthetic data only; a few also check real data or generated files
 
 ## Results on this tree
 
-The table below records the gate results for this tree, run on 18 November 2026 (UTC) with Node 24.22.0 on an Apple-silicon Mac. A gate that has not been run on this tree is not claimed. The full set ran on the source tree before the last documentation-only edits; after those edits, `npm run check`, `npm run test:package`, package staging, the generator and contract checks and the mutation anchors were run again and passed.
+The table below records the gate results for this tree, run on 18 November 2026 (UTC) with Node 24.22.0 on an Apple-silicon Mac. A gate that has not been run on this tree is not claimed. The gates below ran on the source tree before the last documentation-only edits; after those edits, `npm run check`, `npm run test:package`, package staging, the generator and contract checks and the mutation anchors were run again and passed.
 
 | Gate | Result |
 | --- | --- |
-| `npm run check` | Passed: 2,735 tests, 2,734 passed and 1 skipped, 0 failed (typecheck, suite and build). The skipped test compares the built files with the approved inventory; it needs the build, which runs after the suite, and it ran in `npm run test:package`. |
+| `npm run check` | Passed: 2,755 tests, 2,754 passed and 1 skipped, 0 failed (typecheck, suite and build). The skipped test compares the built files with the approved inventory; it needs the build, which runs after the suite, and it ran in `npm run test:package`. |
 | `npm run demo -- --check` | Passed, 8 outcomes. |
 | `npm run eval:retrieval` (modern) | Passed: each arm (fhir, compact, selected) 85/85 tasks and 301/301 comparable checks. |
 | `npm run eval:retrieval -- --era legacy` | Passed, with the same counts as the modern era. |
 | `npm run test:isolation` | Passed: 139 of 139 tests, all 68 cases; `status=DIAGNOSTIC earned=0`, as designed. |
-| `npm run mutation:guards` (full, aggregated) | Passed: 1,718 mutants in two shards, each run exactly once. 1,715 killed and 3 declared survivors, with 0 inconclusive, 0 anchor errors and 0 timeout-only kills. The targeted pass decided 1,710 and the full path 8. |
+| `npm run mutation:guards` (full, aggregated) | Not run on this tree. It last passed on the previous public tree (commit `539306e`, 18 November 2026): 1,718 mutants in two shards, each run exactly once, 1,715 killed and 3 declared survivors, with 0 inconclusive, 0 anchor errors and 0 timeout-only kills. Since then only the mutation gate itself, its tests and the documentation changed, so under the rule above this tree is judged by the gate's own mutants (next row). |
+| `node scripts/mutation-guards.mjs --only` (the 25 mutants that edit the mutation gate) | Passed: 25 killed, 0 survived, 0 inconclusive; every kill was a reproduced failure of a named test. |
 | Generator and contract checks | Passed: generated docs, tool contract and R4 checkable-path table in sync; every mutation anchor applies. |
 | `npm run test:package` | Passed, 48 of 48, including the comparison of the built files with the approved inventory; package staging passed against the approved inventory; `npm run licenses:release` passed. |
 | `npm run test:hapi` | Not run on this tree. |
