@@ -305,6 +305,31 @@ test('S55 independent token, metadata and clinical counters: authenticated disco
     await assert.rejects(f.c.capabilitiesV2({ topic: 'support', cursor }), unavailable);
   } finally { await f.close(); }
 });
+for (const topic of ['server', 'support'] as const) for (const era of ['modern', 'legacy'] as const) test(`S55 ${era} ${topic}: a continuation after the token entered its renewal window makes no token or metadata request and returns the next page`, async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.parse('2026-10-19T00:00:00Z') });
+  const f = await fixture({ auth: true, tokenExpiresIn: 60 });
+  const delivery = { era, profile: 'full-text-v1' as const };
+  const rows = (e: GatewayEnvelope02): Any[] => data(e)[topic === 'server' ? 'resources' : 'rows'];
+  try {
+    const first = await f.g.execute('fhir_capabilities', { topic, limit: 1 }, delivery);
+    assert.equal(first.error, undefined); assert.equal(first.budget.upstream_calls, 2);
+    assert.deepEqual(f.work, { auth: 1, metadata: 1, clinical: 0 });
+    const cursor = data(first).next_cursor; assert.match(cursor, /^cur_/);
+    // The whole list, read while the token is still fresh and the metadata cached: no request.
+    const all = await f.g.execute('fhir_capabilities', { topic, limit: 25 }, delivery);
+    assert.equal(all.budget.upstream_calls, 0); assert.ok(rows(all).length > 2);
+    // The token now needs renewal before any upstream request.
+    t.mock.timers.tick(61000);
+    const second = await f.g.execute('fhir_capabilities', { topic, cursor, limit: 1 }, delivery);
+    assert.equal(second.error, undefined, JSON.stringify(second.error));
+    assert.equal(second.budget.upstream_calls, 0);
+    assert.deepEqual(f.work, { auth: 1, metadata: 1, clinical: 0 }, 'no token, discovery or clinical request');
+    assert.deepEqual(rows(second), rows(all).slice(1, 2));
+    // A first page still renews the token before it is served.
+    const fresh = await f.g.execute('fhir_capabilities', { topic, limit: 1 }, delivery);
+    assert.equal(fresh.error, undefined); assert.deepEqual(f.work, { auth: 2, metadata: 1, clinical: 0 });
+  } finally { await f.close(); }
+});
 test('S55 filters use reviewed text only; unsupported conformance and unknown rows never imply clinical access', async () => {
   const f = await fixture();
   try {

@@ -8,7 +8,7 @@ The harness drives each server with the same scripted tool calls. No AI model is
 
 For each server ("arm") and each question, the harness starts a fresh server process, runs the question's scripted plan of searches, reads and page fetches through the server's own tools, and records every raw response. It then scores:
 
-- **Correctness.** Every gold record must come back with the right value, unit, time and identity. For list questions, every record the answer depends on must come back too.
+- **Correctness.** Every gold record must come back with the right value, unit, time and identity. Where the answer is text in the record itself (the conditions in a note, the members of a care team), the returned record must carry that text. For list questions, every record the answer depends on must come back too.
 - **Completeness labels.** When a result is cut short, did the server say so? Each list question gets a verdict:
   - `complete`: everything was returned;
   - `signalled_partial`: part was returned, and the server said so;
@@ -71,6 +71,7 @@ Gold answers are computed from the raw files only, never from a FHIR server or a
 `bench:score` parses every run with the arm's parser and compares it with gold (`run/score-lib.ts`):
 
 - A value passes if the returned record holds a decimal-equal value with the record's unit. A time passes if it is the same instant at the gold's precision. Identity passes if the gold record's id came back and names the question's patient.
+- For the two templates whose answer is text in the gold record itself (N2, the conditions listed in a note's text; K2, the care-team members and roles), some returned copy of that record must yield exactly the gold answer list when the gold rule's own extraction is applied to it (`gold/rules.ts` `ANSWER_FROM_COPY`). A copy that withholds the text fails, the same for every arm.
 - A question is correct when every gold item passes, no other-patient record was returned, no read was suppressed, and, for a list question, the returned records cover every record the answer depends on and include nothing outside that set.
 - The summary score over list questions counts `complete` 1, `signalled_partial` 0.5, and `silent_truncation`, `false_completeness` and "no result" 0. There is no single combined score across measures.
 - Every campaign runs twice (pass 1 and 2). Pass 1 is scored; `consistency.json` lists any difference between the passes.
@@ -197,7 +198,7 @@ npm --prefix bench test
 (cd bench/gold/py && uv run pytest)
 ```
 
-The tests use synthetic data only. A few tests also check the real data or generated files when they are present, and skip when they are not.
+The tests use synthetic data only. A few tests also check the real data or generated files when they are present, and skip with a stated reason when they are not: the MIMIC tests need both the downloaded data and `bench-config.json`. A `bench-config.json` that is present but malformed fails them.
 
 ## Known limits
 
@@ -209,6 +210,7 @@ The tests use synthetic data only. A few tests also check the real data or gener
 - **Unresolved Synthea references.** The shared Organization and Practitioner files are not downloaded, so conditional references to them become logical references.
 - **No token counts.** No tokenizer is part of the harness. Bytes are reported instead.
 - **Scripted plans, not agents.** The scripted track does not follow next links by hand or retry with other parameters, as an agent might. The agent track is a smoke test, not a result.
+- **Some answer fields are not checked on the returned copy.** For questions about a location's name, an encounter's reason, a care plan's activities, an imaging study's series and a patient's demographics, the scorer checks that the right records came back, not that the returned copy still carries the field the answer is read from. No arm in the published runs withheld those fields; compare them across arms by hand for a new campaign or arm.
 - **Latency is descriptive.** Runs share one machine, and arms request different page sizes (fireboat 100, the others 200 against HAPI).
 
 `bench:scripted-report` prints the full list of scoring rules and known limits with every report.

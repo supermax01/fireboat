@@ -5,7 +5,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { FhirGateway, toMcpToolResult, type GatewayConfig } from '../packages/core/src/index.js';
 import type { GatewayTestOptions, HostProfileEntry } from '../packages/core/src/delivery.js';
 import { ResultStore } from '../packages/core/src/store.js';
@@ -196,6 +196,89 @@ test('J-38/J-5 raw stdio: negotiated version restricted and wire result fits cei
     assert.ok(resultBytes <= 4096, `wire result ${resultBytes} exceeds 4096`);
   }
   child.stdin.end();
+});
+
+// Closing standard input ends the session through the same shutdown as a signal, even with an upstream request in flight.
+test('stdio CLI: closing standard input shuts the server down at once, even while an upstream request is in flight', async t => {
+  let arrived!: () => void;
+  const upstream = new Promise<void>(resolve => { arrived = resolve; });
+  // The source never answers, so a request in flight would otherwise hold the process open until its timeout.
+  const hanging = createServer((_req: IncomingMessage, _res: ServerResponse) => { arrived(); });
+  await new Promise<void>(resolve => hanging.listen(0, '127.0.0.1', resolve));
+  t.after(() => { hanging.closeAllConnections(); hanging.close(); });
+  const dir = await mkdtemp(join(tmpdir(), 'fhir-mcp-stdin-end-')); t.after(() => rm(dir, { recursive: true, force: true }));
+  const configPath = join(dir, 'config.json');
+  const port = (hanging.address() as { port: number }).port;
+  await writeFile(configPath, JSON.stringify({ mode: 'synthetic', source: { alias: 'hanging', baseUrl: `http://127.0.0.1:${port}/fhir` }, patientId: a, limits: { timeoutMs: 30000 } }));
+  const child = spawn(process.execPath, ['--import', 'tsx', cliPath, '--config', configPath], { cwd: repoRoot, stdio: ['pipe', 'pipe', 'pipe'] });
+  t.after(() => { child.kill('SIGKILL'); });
+  let stderr = '';
+  child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+  const exited = new Promise<number | null>(resolve => child.once('exit', code => resolve(code)));
+  let buffer = '';
+  const initialized = new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('no initialize response')), 15000);
+    child.stdout.on('data', (chunk: Buffer) => { buffer += chunk.toString(); if (buffer.includes('"id":1')) { clearTimeout(timer); resolve(); } });
+  });
+  child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'stdin-end-test', version: '0' } } })}\n`);
+  await initialized;
+  child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} })}\n`);
+  child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'fhir_capabilities', arguments: { topic: 'server' } } })}\n`);
+  await upstream;
+  const closedAt = Date.now();
+  child.stdin.end();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const code = await Promise.race([exited, new Promise<'running'>(resolve => { timer = setTimeout(() => resolve('running'), 5000); })]);
+  clearTimeout(timer);
+  assert.equal(code, 0, `the server should exit 0 promptly after standard input closes; stderr: ${stderr}`);
+  assert.ok(Date.now() - closedAt < 5000);
+});
+
+// Standard input torn down without reaching its end ('close' without 'end', as when the stream errors) also ends the session.
+test('stdio CLI: standard input closing without reaching its end shuts the server down at once, even while an upstream request is in flight', async t => {
+  let arrived!: () => void;
+  const upstream = new Promise<void>(resolve => { arrived = resolve; });
+  const hanging = createServer((_req: IncomingMessage, _res: ServerResponse) => { arrived(); });
+  await new Promise<void>(resolve => hanging.listen(0, '127.0.0.1', resolve));
+  t.after(() => { hanging.closeAllConnections(); hanging.close(); });
+  const dir = await mkdtemp(join(tmpdir(), 'fhir-mcp-stdin-close-')); t.after(() => rm(dir, { recursive: true, force: true }));
+  const configPath = join(dir, 'config.json');
+  const port = (hanging.address() as { port: number }).port;
+  await writeFile(configPath, JSON.stringify({ mode: 'synthetic', source: { alias: 'hanging', baseUrl: `http://127.0.0.1:${port}/fhir` }, patientId: a, limits: { timeoutMs: 30000 } }));
+  // The real CLI entry, with standard input replaced by a stream that the harness destroys on SIGUSR2: destroying a
+  // stream emits 'close' and never 'end'.
+  const harness = join(dir, 'harness.mjs');
+  const frames = [
+    { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'stdin-close-test', version: '0' } } },
+    { jsonrpc: '2.0', method: 'notifications/initialized', params: {} },
+    { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'fhir_capabilities', arguments: { topic: 'server' } } },
+  ];
+  await writeFile(harness, [
+    "import { PassThrough } from 'node:stream';",
+    'const input = new PassThrough();',
+    "Object.defineProperty(process, 'stdin', { value: input, configurable: true });",
+    "process.on('SIGUSR2', () => { input.destroy(); });",
+    `const { bootstrap } = await import(${JSON.stringify(pathToFileURL(cliPath).href)});`,
+    `const code = await bootstrap(['--config', ${JSON.stringify(configPath)}]);`,
+    'if (code !== 0) process.exit(code);',
+    `for (const frame of ${JSON.stringify(frames)}) input.write(JSON.stringify(frame) + '\\n');`,
+  ].join('\n'));
+  const child = spawn(process.execPath, ['--import', 'tsx', harness], { cwd: repoRoot, stdio: ['ignore', 'pipe', 'pipe'] });
+  t.after(() => { child.kill('SIGKILL'); });
+  let stderr = '';
+  child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+  child.stdout.resume();
+  const exited = new Promise<number | null>(resolve => child.once('exit', code => resolve(code)));
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const reached = await Promise.race([upstream.then(() => true), exited.then(() => false), new Promise<false>(resolve => { timer = setTimeout(() => resolve(false), 15000); })]);
+  clearTimeout(timer);
+  assert.ok(reached, `the tool call should reach the upstream source; stderr: ${stderr}`);
+  const closedAt = Date.now();
+  child.kill('SIGUSR2');
+  const code = await Promise.race([exited, new Promise<'running'>(resolve => { timer = setTimeout(() => resolve('running'), 5000); })]);
+  clearTimeout(timer);
+  assert.equal(code, 0, `the server should exit 0 promptly after standard input closes; stderr: ${stderr}`);
+  assert.ok(Date.now() - closedAt < 5000);
 });
 
 // Per-request version mismatch rejection through the real stdio transport (-32022), proven from wire bytes

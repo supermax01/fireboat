@@ -5,6 +5,8 @@ import type { CallBytes, CountedSignal, GoldItem, GoldRecord, ParsedResult, Ques
 import type { ProbeGoldRecord, ProbeRecord } from '../gold/probes.js';
 import { decimalEquals, isDecimalLexeme, lexemeChangedByFloat } from '../gold/decimal.js';
 import { bandOf } from '../gold/longlist.js';
+import { uniqSorted, type Res } from '../gold/fhir.js';
+import { ANSWER_FROM_COPY, ruleId } from '../gold/rules.js';
 import { instantEqual } from '../agent/grade.js';
 import { parserFor } from '../servers/parsers.js';
 import { isObj, type Obj } from '../servers/items.js';
@@ -58,7 +60,10 @@ export function timeStrings(r: LosslessValue): string[] {
 }
 
 export interface ItemCheck { ref: Ref; found: boolean; identity: boolean; value: boolean | null; unit: boolean | null; time: boolean | null;
-  unit_code: boolean | null; lexeme_eligible: boolean; lexeme_exact: boolean | null }
+  unit_code: boolean | null; lexeme_eligible: boolean; lexeme_exact: boolean | null; text: boolean | null }
+
+/** The gold answer list and the gold rule's own extraction for a template whose answer is text in the item's record. */
+export interface AnswerCheck { from: (copy: Res) => string[] | null; list: readonly string[] }
 
 /**
  * Item checks (value, unit, time, identity) for one gold item against every returned copy of its resource.
@@ -66,10 +71,13 @@ export interface ItemCheck { ref: Ref; found: boolean; identity: boolean; value:
  *       derived values (for example a length of stay) are not item checks. Time is checked when the gold item has one.
  * rule: a value passes if some Quantity or value[x] in the resource is decimal-equal (text: exactly equal); the unit
  *       passes if that same node shows the gold unit (unit, else code, else currency), or none when the gold has none.
+ * rule: for a template whose answer is text in the item's own record (gold/rules.ts ANSWER_FROM_COPY), the text check
+ *       passes only if some returned copy yields exactly the gold answer list (as unique sorted lists) when the gold
+ *       rule's own extraction is applied to it. A copy without the text (extraction null) never passes.
  */
-export function checkItem(g: GoldItem, copies: Obj[], identityOk: boolean): ItemCheck {
+export function checkItem(g: GoldItem, copies: Obj[], identityOk: boolean, answer?: AnswerCheck): ItemCheck {
   const c: ItemCheck = { ref: g.ref, found: copies.length > 0, identity: identityOk && copies.length > 0, value: null, unit: null, time: null,
-    unit_code: null, lexeme_eligible: false, lexeme_exact: null };
+    unit_code: null, lexeme_eligible: false, lexeme_exact: null, text: null };
   if (!c.found) return c;
   const rec = g.value_as_recorded;
   if (rec !== null) {
@@ -81,10 +89,17 @@ export function checkItem(g: GoldItem, copies: Obj[], identityOk: boolean): Item
     if (numeric && lexemeChangedByFloat(rec)) { c.lexeme_eligible = true; c.lexeme_exact = nodes.some(n => n.lexeme === rec); }
   }
   if (g.time !== null) c.time = copies.some(r => timeStrings(r).some(t => instantEqual(t, g.time!)));
+  if (answer) {
+    const want = uniqSorted(answer.list).join('\n');
+    c.text = copies.some(r => {
+      const got = answer.from(r as unknown as Res);
+      return got !== null && uniqSorted(got).join('\n') === want;
+    });
+  }
   return c;
 }
 
-const itemOk = (c: ItemCheck) => c.found && c.identity && c.value !== false && c.unit !== false && c.time !== false;
+const itemOk = (c: ItemCheck) => c.found && c.identity && c.value !== false && c.unit !== false && c.time !== false && c.text !== false;
 
 // ---- completeness ----------------------------------------------------------------------------------------------
 
@@ -197,7 +212,11 @@ export function scoreQuestionRun(run: RunRecord, q: QuestionRecord, g: GoldRecor
     byRef.set(ref, [...(byRef.get(ref) ?? []), r]);
   }
   const identityOf = (ref: Ref) => items.some(i => i.ref === ref && (i.patient === null || i.patient === run.patient_id));
-  const checks = g.items.map(gi => checkItem(gi, byRef.get(gi.ref) ?? [], identityOf(gi.ref)));
+  const from = ANSWER_FROM_COPY[ruleId(q.template_id)];
+  const answer: AnswerCheck | undefined = from ? { from, list: g.answer_list ?? [] } : undefined;
+  const checks = g.items.map(gi => checkItem(gi, byRef.get(gi.ref) ?? [], identityOf(gi.ref), answer));
+  const textChecked = checks.filter(c => c.text !== null);
+  const textMissing = textChecked.some(c => c.text === false);
   const outcomes = new Set(run.op_outcomes.map(o => o.outcome));
   const opsOk = run.op_outcomes.length === q.operations.length && [...outcomes].every(o => o === 'ok');
 
@@ -266,12 +285,14 @@ export function scoreQuestionRun(run: RunRecord, q: QuestionRecord, g: GoldRecor
     notes.push('scored on the completeness verdict (band B4)');
   }
   if (g.items.some(i => i.value_as_recorded === null && i.value !== null)) notes.push('derived item value not checked');
+  if (textMissing) notes.push('no returned copy of a gold record yields the gold answer list from its own text');
 
   const failure: string[] = [...outcomes].filter(o => o !== 'ok');
   if (run.flags.includes('server_start_failed')) failure.push('server_start_failed');
   if (run.flags.some(f => f.includes('param_dropped'))) failure.push('param_dropped');
   if (extras.length) failure.push('extra_records');
   if (suppressedReads.length || suppressedLists.length) failure.push('suppressed_not_found');
+  if (textMissing) failure.push('answer_text_missing');
   return {
     schema: 'fbbench.score/1', campaign: run.campaign, run_id: run.run_id, arm: run.arm, cell: run.cell, pass: run.pass, dataset: run.dataset,
     question_id: q.id, template_id: q.template_id, category: q.category, correct,
@@ -283,6 +304,7 @@ export function scoreQuestionRun(run: RunRecord, q: QuestionRecord, g: GoldRecor
     },
     other_patient_refs: other, verdict, first_page_coverage: fpc, recall, precision, extra_records: extras.length, suppressed_reads: suppressedReads,
     lexeme: { eligible: checks.filter(c => c.lexeme_eligible).length, exact: checks.filter(c => c.lexeme_exact === true).length },
+    ...(answer ? { answer_text: { checked: textChecked.length, ok: textChecked.filter(c => c.text === true).length } } : {}),
     calls: run.calls.length, bytes: sumBytes(run.calls),
     latency_ms: Math.round(run.calls.reduce((a, c) => a + c.latency_ms, 0) * 1000) / 1000,
     ...latencySplit(run.calls),

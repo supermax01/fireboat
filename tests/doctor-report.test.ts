@@ -79,6 +79,21 @@ test('doctor report: metadata and FHIR failures are not-ready; operator faults t
   assert.equal(doctorReport(value).exitCode, 1);
 });
 
+test('doctor report: metadata left unchecked by a failed sign-in is SIGN_IN_UNAVAILABLE, never a metadata fault', () => {
+  const value = input(); value.metadata = { status: 'not-checked', fhir: 'unknown', summary: 'unknown' };
+  const report = doctorReport(value);
+  assert.equal(report.exitCode, 1); assert.equal(report.lines[0], 'doctor: not-ready');
+  assert.ok(report.lines.includes('metadata: not-checked fhir=unknown revision=unknown summary=unknown types=unknown'));
+  assert.ok(report.lines.includes('faults: SIGN_IN_UNAVAILABLE'));
+  // Metadata that was never read claims no metadata facts.
+  for (const facts of [{ fhir: '4.0.1' }, { summary: 'complete' }, { summary: 'partial' }, { capabilityRevision: '0123456789abcdef' }, { typeCount: 2 }] as const) {
+    const claimed = input(); claimed.metadata = { status: 'not-checked', fhir: 'unknown', summary: 'unknown', ...facts }; refuses(claimed);
+  }
+  // An operator fault still takes precedence.
+  const operator = input(); operator.metadata = { status: 'not-checked', fhir: 'unknown', summary: 'unknown' }; operator.faults = ['CONFIG_INVALID'];
+  assert.equal(doctorReport(operator).exitCode, 2);
+});
+
 test('doctor report: the SMART line is closed and appears exactly with SMART auth', () => {
   const standalone = { ...input(), source: { ...input().source, auth: 'smart_standalone_launch' as const },
     smart: { discovery: 'ok' as const, pkce: 'S256' as const, grant: 'present' as const, patientContext: 'match' as const, scope: 'exact' as const, grantedTypes: 28, servedTypes: 28 } };

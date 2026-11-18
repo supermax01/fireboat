@@ -44,12 +44,85 @@ export const DOCUMENT_SOURCES: Readonly<Record<string, string>> = { 'SECURITY.md
 /** The package's licenses/ folder is kept at packaging/licenses/ in the repository. */
 export const LICENSES_SOURCE = 'packaging/licenses';
 export const documentSource = (path: string): string => DOCUMENT_SOURCES[path] ?? path;
+/** The public repository: links to files the package does not ship point here. Images use the raw host so they render. */
+export const PUBLIC_BLOB_BASE = 'https://github.com/supermax01/fireboat/blob/main/';
+export const PUBLIC_RAW_BASE = 'https://raw.githubusercontent.com/supermax01/fireboat/main/';
 export const HELPER_ASSETS = [
   'docker/compose.quickstart.yaml', 'examples/quickstart/seed-manifest.json', 'examples/quickstart/generator-pins.json',
   'examples/quickstart/backend-evidence.json', 'examples/quickstart/config.json', 'examples/quickstart/host-config.example.json',
   'packages/evals/fixtures/quickstart/resources.ndjson', 'packages/evals/fixtures/quickstart/seed-manifest.json',
   'packages/evals/fixtures/quickstart/generation.properties', 'packages/evals/fixtures/quickstart/edges.json',
 ];
+
+/** The package path a repository file (or folder) is staged at, by the rules prepareFiles copies with; undefined when it is not staged. */
+export function packagePathOf(repoPath: string): string | undefined {
+  const document = DOCUMENTS.find(p => documentSource(p) === repoPath);
+  if (document) return document;
+  if (repoPath === LICENSES_SOURCE || repoPath.startsWith(`${LICENSES_SOURCE}/`)) return `licenses${repoPath.slice(LICENSES_SOURCE.length)}`;
+  if (HELPER_ASSETS.includes(repoPath)) return `quickstart/${repoPath}`;
+  if (repoPath === 'examples/quickstart/package.json' || repoPath === 'examples/quickstart/package-lock.json') return `quickstart/${repoPath.slice('examples/quickstart/'.length)}`;
+  if (repoPath === 'packaging/npm-shrinkwrap.json') return 'npm-shrinkwrap.json';
+  return undefined;
+}
+const stagedTarget = (path: string, staged: ReadonlySet<string>): boolean => staged.has(path) || [...staged].some(p => p.startsWith(`${path}/`));
+const LINK_TARGETS = /(!?)\[((?:[^[\]]|\[[^[\]]*\])*)\]\((\s*)([^\s()]+)/g;
+const ATTRIBUTE_TARGETS = /\b(src|srcset|href)=(["'])([^"']*)\2/g;
+const DEFINITION_TARGETS = /^( {0,3}\[[^\]]+\]:[ \t]*)(\S+)/gm;
+const FENCE = /^ {0,3}(```|~~~)/;
+/** Calls `map` on every link and image target outside fenced code (inline links and images, src/srcset/href, definitions). */
+function mapMarkdownTargets(text: string, map: (target: string, image: boolean) => string): string {
+  let fenced = false;
+  return text.split('\n').map(line => {
+    if (FENCE.test(line)) { fenced = !fenced; return line; }
+    if (fenced) return line;
+    return line
+      .replace(LINK_TARGETS, (_all, bang: string, label: string, space: string, target: string) => `${bang}[${label}](${space}${map(target, bang === '!')}`)
+      .replace(ATTRIBUTE_TARGETS, (_all, name: string, quote: string, value: string) => `${name}=${quote}${name === 'srcset'
+        ? value.split(',').map(candidate => candidate.replace(/^(\s*)(\S+)/, (_m, lead: string, url: string) => `${lead}${map(url, true)}`)).join(',')
+        : map(value, name === 'src')}${quote}`)
+      .replace(DEFINITION_TARGETS, (_all, lead: string, target: string) => `${lead}${map(target, false)}`);
+  }).join('\n');
+}
+const isRelativeTarget = (target: string): boolean => target !== '' && !target.startsWith('#') && !target.startsWith('//') && !/^[A-Za-z][A-Za-z0-9+.-]*:/.test(target);
+const splitAnchor = (target: string): [string, string] => { const at = target.indexOf('#'); return at < 0 ? [target, ''] : [target.slice(0, at), target.slice(at)]; };
+
+/**
+ * Rewrites the repository-relative links and images of a staged markdown document. A target the package ships becomes
+ * its package-relative path; any other target becomes an absolute URL on the public repository (the raw host for
+ * images). Anchors are kept. `repoSource` is where the document lives in the repository; `staged` holds every package path.
+ */
+export function stagedMarkdown(packagePath: string, repoSource: string, body: Buffer, staged: ReadonlySet<string>): Buffer {
+  return Buffer.from(mapMarkdownTargets(body.toString('utf8'), (target, image) => {
+    if (!isRelativeTarget(target)) return target;
+    const [path, anchor] = splitAnchor(target);
+    const folder = path.endsWith('/');
+    const repoTarget = posix.normalize(posix.join(posix.dirname(repoSource), path)).replace(/\/$/, '');
+    if (repoTarget === '..' || repoTarget.startsWith('../')) return target;
+    const packageTarget = packagePathOf(repoTarget);
+    const suffix = folder ? '/' : '';
+    if (packageTarget !== undefined && stagedTarget(packageTarget, staged)) return `${posix.relative(posix.dirname(packagePath), packageTarget)}${suffix}${anchor}`;
+    return image ? `${PUBLIC_RAW_BASE}${repoTarget}${suffix}` : `${PUBLIC_BLOB_BASE}${repoTarget}${suffix}${anchor}`;
+  }));
+}
+
+/** The relative links and images of a staged markdown document whose target is not in the package, as `<document>: <target>`. */
+export function brokenMarkdownLinks(packagePath: string, body: Buffer, staged: ReadonlySet<string>): string[] {
+  const broken: string[] = [];
+  mapMarkdownTargets(body.toString('utf8'), target => {
+    if (isRelativeTarget(target)) {
+      const resolved = posix.normalize(posix.join(posix.dirname(packagePath), splitAnchor(target)[0])).replace(/\/$/, '');
+      if (resolved === '..' || resolved.startsWith('../') || !stagedTarget(resolved, staged)) broken.push(`${packagePath}: ${target}`);
+    }
+    return target;
+  });
+  return broken;
+}
+
+/** Refuses a stage in which a markdown document links to, or shows, a file the package does not ship. */
+export function assertStagedLinks(files: readonly { path: string; body: Buffer }[], staged: ReadonlySet<string>): void {
+  const broken = files.filter(file => file.path.endsWith('.md')).flatMap(file => brokenMarkdownLinks(file.path, file.body, staged));
+  if (broken.length) throw fault('STAGE_DOCUMENT_LINK', broken);
+}
 
 /** Only the helper's narrow pure shared modules/seed live under an eval path. No gateway eval module is admitted. */
 export function allowedProductionFile(path: string): boolean {
@@ -339,11 +412,12 @@ export async function prepareFiles(root: string, scratch: string): Promise<{ fil
 
   // Re-emit into scratch and compare selected build outputs; stale dist/source substitutions cannot be staged.
   await verifyCheckedBuild(root, scratch, [...GATEWAY_MODULES, ...boundary.modules]);
-  const files: StagedFile[] = [];
+  const files: StagedFile[] = [], sources = new Map<string, string>();
   const add = (path: string, body: Buffer, mode = 0o644): void => { assertProductionFile(path); files.push({ path, body, mode }); };
   const copy = async (source: string, target = source, mode = 0o644): Promise<void> => {
     const info = await lstat(join(root, source)); if (!info.isFile() || info.isSymbolicLink()) throw fault('STAGE_FORBIDDEN');
     const body = await readFile(join(root, source)); add(target, source.endsWith('.js') ? withoutSourceMap(body) : body, mode);
+    sources.set(target, source);
   };
   for (const p of GATEWAY_MODULES) await copy(`dist/${p}`, `dist/${p}`, p === 'packages/server/src/cli.js' ? 0o755 : 0o644);
   for (const p of [...RUNTIME_FILES, 'packages/server/src/generated/release.json']) await copy(`dist/${p}`);
@@ -358,6 +432,10 @@ export async function prepareFiles(root: string, scratch: string): Promise<{ fil
   for (const p of HELPER_ASSETS) await copy(p, `quickstart/${p}`);
   await copy('dist/examples/quickstart/timing.js', 'quickstart/fireboat-timing.mjs', 0o755);
   const paths = [...files.map(f => f.path), 'package.json', 'dist/package.json'].sort(order);
+  // Markdown links and images point inside the package or to the public repository; the source files are not changed.
+  const staged = new Set(paths);
+  for (const file of files) if (file.path.endsWith('.md')) file.body = stagedMarkdown(file.path, sources.get(file.path)!, file.body, staged);
+  assertStagedLinks(files, staged);
   if (!isDeepStrictEqual(pkg.files, paths)) throw fault('STAGE_FILES_ALLOWLIST');
   const manifest = jsonBytes(stagedManifest(pkg, paths));
   add('package.json', manifest); add('dist/package.json', manifest);

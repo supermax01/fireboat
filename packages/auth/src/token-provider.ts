@@ -101,6 +101,8 @@ export abstract class TokenProvider {
 
   protected cached: CachedToken | null = null;
   private inflight: Flight | null = null;
+  /** Every acquisition still running, abandoned ones included: an aborted refresh still has to release its grant lock. */
+  private readonly running = new Set<Promise<CachedToken>>();
   protected generation = 0;
   protected closed = false;
 
@@ -177,11 +179,25 @@ export abstract class TokenProvider {
     this.abandon(this.inflight);
   }
 
+  /**
+   * Resolves once every acquisition still running has settled, or after `settleMs`, whichever comes first. Closing
+   * aborts an acquisition, but its cleanup is asynchronous: a refresh still releases the grant lock it holds, and
+   * finishes writing a rotated refresh token it already received. A process that exits first leaves the lock for
+   * other servers to wait out.
+   */
+  async settled(settleMs: number): Promise<void> {
+    if (this.running.size === 0) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([Promise.allSettled([...this.running]), new Promise<void>(resolve => { timer = setTimeout(resolve, settleMs); })]);
+    clearTimeout(timer);
+  }
+
   private startFlight(): Flight {
     const controller = new AbortController();
     const flight: Flight = { controller, waiters: 0, promise: this.acquire(this.generation, controller.signal) };
     this.inflight = flight;
-    const settled = () => { if (this.inflight === flight) this.inflight = null; };
+    this.running.add(flight.promise);
+    const settled = () => { this.running.delete(flight.promise); if (this.inflight === flight) this.inflight = null; };
     flight.promise.then(settled, settled);
     return flight;
   }

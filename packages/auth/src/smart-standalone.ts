@@ -1,3 +1,4 @@
+import { isAbsolute } from 'node:path';
 import { controlledFetch, type HttpFetch } from '../../core/src/transport.js';
 import { JWT_BEARER_ASSERTION, loadAssertionKey, signClientAssertion, validateAssertionConfig, type AssertionKey, type AssertionKeySource } from './client-assertion.js';
 import { newState, pkcePair, stateMatches } from './pkce.js';
@@ -148,7 +149,7 @@ export class SmartStandaloneProvider extends TokenProvider {
     this.patientId = options.patientId;
     this.env = options.env ?? process.env;
     if (config.tokenFile !== undefined) {
-      if (typeof config.tokenFile !== 'string' || !config.tokenFile.startsWith('/') || config.tokenFile.length > 4_096 || config.tokenFile.includes('\0')) {
+      if (typeof config.tokenFile !== 'string' || !isAbsolute(config.tokenFile) || config.tokenFile.length > 4_096 || config.tokenFile.includes('\0')) {
         throw fault('INVALID_CONFIG', 'SMART tokenFile must be an absolute path.');
       }
       this.tokenFile = config.tokenFile;

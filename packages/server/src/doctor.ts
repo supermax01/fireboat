@@ -4,12 +4,13 @@ import r4Index from '../../core/src/generated/r4-index.json' with { type: 'json'
 import { ARCHITECTURES, NODE_VERSION, PLATFORMS, SEMVER, SHA256, runtimeVersionAdmitted } from './release.js';
 
 export type DoctorFault = 'RUNTIME_UNSUPPORTED' | 'CONFIG_INVALID' | 'PROFILE_INVALID' | 'ASSET_MISSING' | 'ASSET_INVALID'
-  | 'DTO_INVALID' | 'METADATA_UNAVAILABLE' | 'METADATA_INVALID' | 'FHIR_VERSION_UNSUPPORTED' | 'WORKFLOW_TYPE_UNAVAILABLE';
+  | 'DTO_INVALID' | 'SIGN_IN_UNAVAILABLE' | 'METADATA_UNAVAILABLE' | 'METADATA_INVALID' | 'FHIR_VERSION_UNSUPPORTED' | 'WORKFLOW_TYPE_UNAVAILABLE';
 export interface DoctorInput {
   release: { name: string; version: string; schema: '0.4'; catalog: 'm3b-catalog/3' };
   runtime: { node: string; platform: string; arch: string; lossless: 'ok' | 'unsupported'; cell: 'recorded' | 'unverified' };
   source: { alias: string; loopback: 'literal-ok'; auth: 'none' | 'client_credentials' | 'smart_backend_services' | 'smart_standalone_launch'; classification: 'operator-declared-synthetic' };
-  metadata: { status: 'ready' | 'unavailable' | 'invalid'; fhir: '4.0.1' | 'other' | 'unknown';
+  /** `not-checked`: the outbound sign-in yielded no usable credential, so the metadata could not be read or judged. */
+  metadata: { status: 'ready' | 'unavailable' | 'invalid' | 'not-checked'; fhir: '4.0.1' | 'other' | 'unknown';
     capabilityRevision?: string; summary: 'complete' | 'partial' | 'unknown'; typeCount?: number };
   workflow: { id: 'recent-labs-v1'; patient: 'ready' | 'not-ready'; observation: 'ready' | 'not-ready';
     searchProfile: 'generic-r4' | 'synthetic-fixture-r4-v1' | 'hapi-r4-labs-v1'; proof: 'qualified' | 'unproved' };
@@ -27,7 +28,7 @@ export interface DoctorSmart {
 export type DoctorReportInput = DoctorInput & { smart?: DoctorSmart };
 export interface DoctorReport { lines: string[]; exitCode: 0 | 1 | 2 }
 const FAULTS = ['RUNTIME_UNSUPPORTED', 'CONFIG_INVALID', 'PROFILE_INVALID', 'ASSET_MISSING', 'ASSET_INVALID', 'DTO_INVALID',
-  'METADATA_UNAVAILABLE', 'METADATA_INVALID', 'FHIR_VERSION_UNSUPPORTED', 'WORKFLOW_TYPE_UNAVAILABLE'] as const;
+  'SIGN_IN_UNAVAILABLE', 'METADATA_UNAVAILABLE', 'METADATA_INVALID', 'FHIR_VERSION_UNSUPPORTED', 'WORKFLOW_TYPE_UNAVAILABLE'] as const;
 const OPERATOR_FAULTS: readonly DoctorFault[] = FAULTS.slice(0, 6);
 const ready = z.enum(['ready', 'not-ready']);
 const count = (min: number, max: number) => z.number().int().min(min).max(max);
@@ -36,8 +37,10 @@ const doctorSchema = z.strictObject({
   release: z.strictObject({ name: z.string().regex(/^[A-Za-z0-9._-]{1,80}$/), version: z.string().max(128).regex(SEMVER), schema: z.literal('0.4'), catalog: z.literal('m3b-catalog/3') }),
   runtime: z.strictObject({ node: z.string().max(32).regex(NODE_VERSION), platform: z.enum(PLATFORMS), arch: z.enum(ARCHITECTURES), lossless: z.enum(['ok', 'unsupported']), cell: z.enum(['recorded', 'unverified']) }),
   source: z.strictObject({ alias: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/), loopback: z.literal('literal-ok'), auth: z.enum(['none', 'client_credentials', 'smart_backend_services', 'smart_standalone_launch']), classification: z.literal('operator-declared-synthetic') }),
-  metadata: z.strictObject({ status: z.enum(['ready', 'unavailable', 'invalid']), fhir: z.enum(['4.0.1', 'other', 'unknown']),
-    capabilityRevision: z.string().regex(/^[a-f0-9]{16}$/).optional(), summary: z.enum(['complete', 'partial', 'unknown']), typeCount: count(0, resourceTypes).optional() }),
+  metadata: z.strictObject({ status: z.enum(['ready', 'unavailable', 'invalid', 'not-checked']), fhir: z.enum(['4.0.1', 'other', 'unknown']),
+    capabilityRevision: z.string().regex(/^[a-f0-9]{16}$/).optional(), summary: z.enum(['complete', 'partial', 'unknown']), typeCount: count(0, resourceTypes).optional() })
+    // Metadata that was never read carries no metadata facts.
+    .refine(metadata => metadata.status !== 'not-checked' || (metadata.fhir === 'unknown' && metadata.summary === 'unknown' && metadata.capabilityRevision === undefined && metadata.typeCount === undefined)),
   workflow: z.strictObject({ id: z.literal('recent-labs-v1'), patient: ready, observation: ready,
     searchProfile: z.enum(eligibleSearchProfileIds() as [string, ...string[]]), proof: z.enum(['qualified', 'unproved']) }),
   output: z.strictObject({ defaultFormat: z.literal('fhir'), delivery: z.enum(['full-text-v1', 'structured-evidence-v1']),
@@ -82,6 +85,7 @@ export function doctorReport(input: DoctorReportInput): DoctorReport {
   if (input.runtime.lossless !== 'ok' || !runtimeVersionAdmitted(input.runtime.node)) faults.add('RUNTIME_UNSUPPORTED');
   if (input.metadata.status === 'unavailable') faults.add('METADATA_UNAVAILABLE');
   if (input.metadata.status === 'invalid') faults.add('METADATA_INVALID');
+  if (input.metadata.status === 'not-checked') faults.add('SIGN_IN_UNAVAILABLE');
   if (input.metadata.status === 'ready' && input.metadata.fhir !== '4.0.1') faults.add('FHIR_VERSION_UNSUPPORTED');
   if (input.workflow.patient !== 'ready' || input.workflow.observation !== 'ready') faults.add('WORKFLOW_TYPE_UNAVAILABLE');
   const exitCode = [...faults].some(fault => OPERATOR_FAULTS.includes(fault)) ? 2 : faults.size ? 1 : 0;

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PatientData, SharedData } from '../gold/reader.js';
-import { computeCore, Excluded, type Ctx } from '../gold/rules.js';
+import { ANSWER_FROM_COPY, computeCore, Excluded, ruleId, type Ctx } from '../gold/rules.js';
 import { TEMPLATES } from '../gold/templates.js';
 import type { Res } from '../gold/fhir.js';
 
@@ -124,4 +124,66 @@ test('K1: depends_on is every CarePlan the search for active plans returns', () 
   const g = gold('K1', { record: 'CarePlan/c1', display: 'Diet' }, ctxOf([plan('c1', 'active', 'Diet'), plan('c2', 'active', 'Exercise'), plan('c3', 'completed', 'Diet')]));
   assert.deepEqual(g.answer_list, ['Diet activity']);
   assert.deepEqual(g.depends_on, ['CarePlan/c1', 'CarePlan/c2']);
+});
+
+// ---- answer text in the gold record itself (scoring: run/score-lib.ts checkItem) --------------------------------
+
+const b64 = (t: string) => Buffer.from(t, 'utf8').toString('base64');
+const note = (id: string, date: string, text: string): Res => ({ resourceType: 'DocumentReference', id, status: 'current', subject: P, date,
+  type: { text: 'Note' }, content: [{ attachment: { contentType: 'text/plain', data: b64(text) } }] });
+
+test('N2: the gold answer list equals ANSWER_FROM_COPY.N2 on the latest note; none for a note that lists nothing', () => {
+  const latest = note('d2', '2020-02-01T00:00:00Z', 'Note.\n\nPatient has a history of Hypertension, Asthma.\nPatient is presenting with Sprain of ankle.\n');
+  const g = gold('N2', {}, ctxOf([note('d1', '2020-01-01T00:00:00Z', 'Patient has a history of Otitis media.\n'), latest]));
+  assert.deepEqual(g.answer_list, ['Asthma', 'Hypertension', 'Sprain of ankle']);
+  assert.deepEqual([...ANSWER_FROM_COPY.N2!(latest)!].sort(), g.answer_list);
+  assert.deepEqual(refs(g.items), ['DocumentReference/d2']);
+  const empty = note('d3', '2020-03-01T00:00:00Z', 'Note.\n\nNothing to report.\n');
+  const n = gold('N2', {}, ctxOf([empty]));
+  assert.equal(n.answer_list, null);
+  assert.deepEqual(ANSWER_FROM_COPY.N2!(empty), []);
+  // A copy without the note body yields null, never an empty list.
+  assert.equal(ANSWER_FROM_COPY.N2!({ ...empty, content: [{ attachment: { contentType: 'text/plain' } }] }), null);
+});
+
+test('K2: the gold answer list equals ANSWER_FROM_COPY.K2 on the named CareTeam', () => {
+  const team: Res = { resourceType: 'CareTeam', id: 'ct1', status: 'active', subject: P, period: { start: '2020-01-01T00:00:00Z' }, participant: [
+    { role: [{ coding: [{ code: '116154003', display: 'Patient' }] }], member: { reference: `Patient/${PID}`, display: 'Ms. Synthetic Person' } },
+    { role: [{ coding: [{ code: '223366009', display: 'Healthcare professional' }] }], member: { reference: 'Practitioner/pr1', display: 'Dr. Example Doctor' } },
+    { member: { reference: 'Organization/org1' } },
+  ] };
+  const g = gold('K2', { record: 'CareTeam/ct1' }, ctxOf([team]));
+  assert.deepEqual(g.answer_list, ['Dr. Example Doctor (Healthcare professional)', 'Ms. Synthetic Person (Patient)', 'Organization/org1 (no role)']);
+  assert.deepEqual([...ANSWER_FROM_COPY.K2!(team)!].sort(), g.answer_list);
+});
+
+/**
+ * Every template whose answer is not text in its own record, with the check that decides it (read from gold/rules.ts):
+ * - value: the recorded value (and unit) is checked on the returned copy of each item;
+ * - time: the answer is an item's own date-time, checked on the returned copy;
+ * - count: the answer is the number of gold records, decided by identity and coverage of depends_on;
+ * - records: the answer names the gold records themselves (one entry per record, from its code), decided by identity and coverage;
+ * - record fields: the answer is read from a structured field of the item's record (E2 Location.name, E4 Encounter.reasonCode,
+ *   K1 CarePlan activity codes, M1 ImagingStudy series modality and body site, M2 its series and instance arrays, D1 Patient
+ *   birthDate, gender and deceased), not checked against the returned copy; each belongs in ANSWER_FROM_COPY if an arm
+ *   withholds its field. Nothing detects that automatically: compare these fields across arms by hand for each new campaign or arm.
+ * A new template must be put in ANSWER_FROM_COPY or here, with its reason.
+ */
+const DECIDED_WITHOUT_ANSWER_TEXT: Record<string, 'value' | 'time' | 'count' | 'records' | 'record fields'> = {
+  L1: 'value', L2: 'value', L5: 'value', L6: 'value', L7: 'value', L8: 'value', L9: 'value', L10: 'value', G2: 'value', O2: 'value', O4: 'value',
+  E3: 'time', F1: 'value', F3: 'value', CL1: 'value', LS2: 'value', B2: 'value',
+  P2: 'time', E5: 'time', I2: 'time',
+  L3: 'count', L4: 'count', G3: 'count', N1: 'count', I1: 'count', F2: 'count', C2: 'count', E1: 'count',
+  G1: 'records', O3: 'records', O1: 'records', B1: 'records', C1: 'records', C3: 'records', P1: 'records', A1: 'records', V1: 'records', N3: 'records', LS1: 'records',
+  E2: 'record fields', E4: 'record fields', K1: 'record fields', M1: 'record fields', M2: 'record fields', D1: 'record fields',
+};
+
+test('every template is either answered from its record\'s text (ANSWER_FROM_COPY) or listed with the check that decides it', () => {
+  const rules = new Set([...TEMPLATES.keys()].map(ruleId));
+  for (const id of rules) {
+    const inCopy = id in ANSWER_FROM_COPY, listed = id in DECIDED_WITHOUT_ANSWER_TEXT;
+    assert.ok(inCopy !== listed, `${id}: must be in exactly one of ANSWER_FROM_COPY and DECIDED_WITHOUT_ANSWER_TEXT`);
+  }
+  for (const id of [...Object.keys(ANSWER_FROM_COPY), ...Object.keys(DECIDED_WITHOUT_ANSWER_TEXT)]) assert.ok(rules.has(id), `${id}: no such template`);
+  assert.deepEqual(Object.keys(ANSWER_FROM_COPY).sort(), ['K2', 'N2']);
 });

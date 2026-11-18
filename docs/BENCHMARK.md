@@ -2,10 +2,12 @@
 
 A scripted, tool-level comparison of fireboat with the WSO2 fhir-mcp-server. No AI model was involved: every server got the same planned tool calls, and its answers were checked against gold answers computed from the raw data files. The methods, the scoring rules and the commands are in the [harness README](../bench/README.md).
 
-**Which version was measured.** The fireboat arms (FBd, FB and FBt) were built from this repository's source tree (changes made after the measurement are documentation only), with the harness in [`bench/`](../bench/). The main questions, the long-list and decimal question sets, the confinement and write probes, the fuzz cases and the latency sessions were run with that build on 16 and 17 November 2026 (UTC). WSO2 (W) was run again in the same campaign, at the same pinned version. The questions, gold answers and probes were regenerated from the data by this repository's harness and are identical, byte for byte, to those of the earlier published run. Some numbers come from earlier runs and were not repeated; each is labelled where it appears:
+**Which version was measured.** The fireboat arms (FBd, FB and FBt) were built from this repository's source tree as it stood when they were measured, with the harness in [`bench/`](../bench/). The main questions, the long-list and decimal question sets, the confinement and write probes, the fuzz cases and the latency sessions were run with that build on 16 and 17 November 2026 (UTC). WSO2 (W) was run again in the same campaign, at the same pinned version. The questions, gold answers and probes were regenerated from the data by this repository's harness and are identical, byte for byte, to those of the earlier published run. The repository has changed since: SMART on FHIR sign-in, which the benchmark did not use, later fixes, and the scoring correction below. The benchmark was not run again on the current tree. Some numbers come from earlier runs and were not repeated; each is labelled where it appears:
 - FB0, the first public preview, which cannot be rebuilt from this repository;
 - W against Medplum (the two Medplum rows in the confinement table);
 - the AWS HealthLake section, measured on an earlier development version of fireboat.
+
+**Correction, 17 November 2026.** An earlier version of this page gave fireboat 148 (default settings) and 149 (operator settings) of 150 on the fresh Synthea sample, and 148 and 149 on AWS HealthLake. Those figures were too high. Six questions ask which conditions the patient's most recent clinical note lists, and three ask who is on a care team. fireboat returns a note's metadata but never its text, and it withholds the patient's name on references to the patient, so its responses to these questions lack the answer. The scorer only checked that the right records came back with the right dates, so it counted fireboat correct on most of them. The scorer now recomputes each of these answers from what the server actually returned. Every question score on this page (main questions, long lists and decimal values, on HAPI and on HealthLake) was recomputed from the stored raw responses of the same runs: no server was run again, and no question or gold answer changed. fireboat's fresh Synthea scores fell to 140 and 141, and its HealthLake scores by the same amount. The WSO2 and AWS servers' scores did not change, and no MIMIC, long-list, decimal, probe, fuzz or latency number changed.
 
 **Read this first.** fireboat's maintainer built both fireboat and this benchmark. The improved fireboat was developed while looking at earlier runs of the same harness. To limit that bias:
 - the main results use a fresh sample of Synthea patients that was drawn from a public random beacon after development finished;
@@ -39,18 +41,20 @@ Questions come from fixed templates: labs, medications, encounters, conditions, 
 
 | Arm | Fresh Synthea (150) | MIMIC (147) | Tool calls | Text per correct answer | Silently incomplete |
 | --- | --- | --- | --- | --- | --- |
-| FB0 | 96 | 93 | 682 | 21.5 KiB | 6 |
-| FBd | **148** | 134 | 446 | 23.2 KiB | 0 |
-| FB | **149** | 140 | 446 | 23.2 KiB | 0 |
-| FBt | 149 | 147 | 447 | 22.7 KiB | 0 |
+| FB0 | 92 | 93 | 682 | 22.0 KiB | 6 |
+| FBd | 140 | 134 | 446 | 23.9 KiB | 0 |
+| FB | 141 | 140 | 446 | 23.8 KiB | 0 |
+| FBt | 141 | 147 | 447 | 23.3 KiB | 0 |
 | W | 148 | 147 | 359 | 36.3 KiB | 0 |
 
 - A second pass gave the same results for every arm.
 - The FB0 row comes from the earlier run of 15 November 2026. The FBd, FB, FBt and W rows are from this repository's build, and they are the same as the earlier run on development versions of fireboat, number for number.
 - **Shared directory records.** Since that earlier run, fireboat delivers Practitioner, Organization and Location records only when a record of the patient's that it has already delivered names them, and searches them only by `_id`. No score in this document's re-run tables changed with it.
 - Text per correct answer counts the text copy only. WSO2's structured copy is smaller than its text copy, and fireboat's two copies are equal. No token or cost claim is made.
-- **Larger responses:** with the response limit raised to 128 KiB, FB answers all 150 fresh Synthea questions (FBd 149). W does not use this setting, so its row is unchanged.
-- **Where FB and FBd miss on MIMIC:** questions that need drug or location names. By default fireboat withholds shared records whose profile or identifier system the operator has not listed. Every such miss is reported to the caller as partial, never silently.
+- **Silently incomplete** counts list answers that looked complete but were not. It does not count single-record reads that came back empty without a partial signal; FBd has three of those on MIMIC (below), and FB0 three.
+- **Larger responses:** raising the response limit to 128 KiB changes no fresh Synthea score (FB 141, FBd 140). W does not use this setting, so its row is unchanged.
+- **Where fireboat misses on the fresh Synthea sample:** the six questions about what the latest clinical note says and the three about who is on a care team. fireboat returns notes as metadata only and withholds the patient's name on references to the patient. Its response lists the note text and the name as withheld, so the scripted plan cannot answer those questions with any settings. (An agent could read the patient's name from the Patient record itself; that was not tested.) With default settings it also misses one medication-name question, reported as partial.
+- **Where FB and FBd miss on MIMIC:** questions that need drug or location names. By default fireboat withholds shared records whose profile or identifier system the operator has not listed. These misses are reported to the caller as partial, with one exception: with default settings, three questions that need a care unit's name read a Location record, and fireboat answers that read with `NOT_FOUND` and no partial signal, the same answer it gives for a record that does not exist.
 - **FB0's misses:** mostly resource types and search parameters that the first public preview did not support.
 
 ### Long lists (results that need more than one page)
@@ -133,17 +137,17 @@ On 16 November 2026, the same fresh Synthea questions were run against an AWS He
 - `source.selfLinkOptional`: accept a page without a self link, but only when fireboat checks every returned record against every filter itself;
 - `source.continuationTokenParameter`: follow a next link that repeats the original query exactly and adds one opaque token.
 
-The results below use both settings. fireboat was changed twice between runs after seeing its results on these questions (18, then 144, then 149 of 150). The AWS server was run once and not adjusted.
+The results below use both settings. fireboat was changed twice between runs after seeing its results on these questions (18, then 137, then 141 of 150, under the corrected scoring described at the top; first reported as 18, 144 and 149). The AWS server was run once and not adjusted.
 
 | | fireboat, operator lists | fireboat, default lists | AWS HealthLake MCP server |
 | --- | --- | --- | --- |
-| Main questions (150) | **149** | **148** | 124 |
+| Main questions (150) | **141** | **140** | 124 |
 | Lists of 21–200 records (20) | 20 | 20 | 8 |
 | Lists of 201–1,000 records (30) | 27 | 27 | 3 |
 | Exact decimal values (30) | 30 | 30 | 30 |
 | Probes that returned another patient's records (50) | 0 | 0 | 30 |
 
-- **fireboat's misses:** each was reported as partial. The three long-list misses hit the harness's limit of 20 calls per question.
+- **fireboat's misses:** the questions about a clinical note's text and a care team's members, whose answers fireboat's responses lack (they list the note text and the patient's name as withheld); each other miss was reported as partial. The three long-list misses hit the harness's limit of 20 calls per question.
 - **The AWS server's misses on the main questions:**
   - 13 were date ranges. Its search tool takes each parameter name once, so the harness sent one bound and the answer included extra records; an agent could filter those itself.
   - Most of the rest, and 39 of the 50 list questions, were follow-up pages. On a follow-up page, version 0.0.21 rebuilds the request from the page token and `_count` only, without the original search parameters, and HealthLake answered "Invalid pagination token" every time (55 calls in that run). The harness passed each token back unchanged, as the tool's description asks.
@@ -166,7 +170,8 @@ The results below use both settings. fireboat was changed twice between runs aft
 - **Same generator.** The fresh Synthea patients are new, but they come from the same generator, with the same record shapes, as the development sample.
 - **Band design.** The long-list size bands were set around the 200-record page given to WSO2.
 - **Size settings.** fireboat's default response limit (48 KiB, counted on one copy of each response) was chosen during this work, partly from a size sweep on development data.
-- **Gold fixes.** Seven gold rulings and one later fix were made from the template text and the data, never from server scores. The fix: items on the MIMIC care-unit questions had been stamped with a time their record does not carry, so no server could match them. They are listed in [`bench/GOLD-RULINGS.md`](../bench/GOLD-RULINGS.md).
+- **Gold fixes.** Seven gold rulings and one later fix were made from the template text and the data, never from server scores. The fix: items on the MIMIC care-unit questions had been stamped with a time their record does not carry, so no server could match them. They are listed in [`bench/GOLD-RULINGS.md`](../bench/GOLD-RULINGS.md). One scoring fix was made after publication (17 November 2026, described at the top). It was found while checking why fireboat scored on questions it cannot answer, and it lowered only fireboat's scores.
+- **Notes are metadata only.** By design fireboat withholds note bodies and other attachments, and the patient's name on references to the patient. It scores 0 on questions whose answer is in a note's text, or in the patient's name on a reference, with any settings.
 - **Operating mode.** fireboat has only a `synthetic` mode, and the benchmark used it for the de-identified MIMIC data too. The mode is declared by the operator, not verified by fireboat.
 - **One unit re-run.** The machine went to sleep during one fireboat run (FBt, first pass, one long-list question on the fresh Synthea sample), and its paging cursor expired. That one question was re-run after the machine woke; the interrupted record is kept beside the results, excluded.
 - **WSO2's configuration.** WSO2 was run as its README describes for local use, with authorization disabled because the test server has no sign-in. Its maintainers were not consulted before publication, and neither were AWS's.

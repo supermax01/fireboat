@@ -64,10 +64,19 @@ function resourceView(gateway: FhirGateway, type: 'Patient' | 'Observation') {
 
 /** Reduce public discovery results to the closed DTO; no resource, message, URL, or handle crosses it. */
 async function runDoctor(gateway: FhirGateway, config: GatewayConfig, release: ReleaseMetadata): Promise<number> {
-  const server = await gateway.execute('fhir_capabilities', { topic: 'server' });
+  // Sign-in is its own phase: the credential is obtained first, with no metadata or clinical request, so a sign-in
+  // failure is never confused with a metadata fault that raises the same code (a redirect, say).
+  const signInFault = config.source.auth ? await gateway.checkSignIn() : undefined;
+  const server = signInFault === undefined ? await gateway.execute('fhir_capabilities', { topic: 'server' }) : undefined;
   const faults: DoctorFault[] = [];
   let metadata: DoctorInput['metadata'];
-  if (server.error) {
+  // No server result means the sign-in phase failed. After a token was obtained, CONNECTION_REQUIRED from /metadata means
+  // the source rejected that token: the metadata was requested but never judged, so that too is the sign-in. Either way
+  // name the sign-in, never the metadata.
+  if (!server || (server.error?.code === 'CONNECTION_REQUIRED' && config.source.auth)) {
+    metadata = { status: 'not-checked', fhir: 'unknown', summary: 'unknown' };
+    faults.push('SIGN_IN_UNAVAILABLE');
+  } else if (server.error) {
     const unsupported = server.error.code === 'UNSUPPORTED_FHIR_VERSION';
     const invalid = unsupported || ['INVALID_RESPONSE', 'UNSUPPORTED_CONTENT', 'UNSUPPORTED_PRECISION', 'OUTPUT_LIMIT', 'INTERNAL_ERROR'].includes(server.error.code);
     metadata = { status: invalid ? 'invalid' : 'unavailable', fhir: unsupported ? 'other' : 'unknown', summary: 'unknown' };
@@ -80,7 +89,7 @@ async function runDoctor(gateway: FhirGateway, config: GatewayConfig, release: R
       ...(typeof data.resource_count === 'number' ? { typeCount: data.resource_count } : {}) };
   }
   let patient: 'ready' | 'not-ready' = 'not-ready', observation: 'ready' | 'not-ready' = 'not-ready';
-  if (!server.error) {
+  if (metadata.status === 'ready') {
     const patientView = await resourceView(gateway, 'Patient');
     const observationView = await resourceView(gateway, 'Observation');
     const executable = (view: typeof patientView, interaction: string): boolean => !view.error
@@ -169,6 +178,9 @@ export function withEraGuard(server: McpServer, era: 'modern' | 'legacy'): McpSe
   return server;
 }
 
+/** How long shutdown waits, at most, for in-flight sign-in work to unwind before the process exits. */
+const SHUTDOWN_SETTLE_MS = 1_500;
+
 export async function main(argv: string[], release: ReleaseMetadata): Promise<number> {
   let opts: CliOptions;
   try { opts = parseArgs(argv); }
@@ -202,10 +214,16 @@ export async function main(argv: string[], release: ReleaseMetadata): Promise<nu
   const shutdown = (): void => {
     if (shuttingDown) return;
     shuttingDown = true;
-    void handle.close().catch(() => undefined).finally(() => { gateway.close(); process.exit(0); });
+    // Closing aborts a token request in flight, but a refresh releases its grant lock (and finishes a grant write it
+    // started) asynchronously, so that is given a bounded moment before exiting. Tool requests are not waited for.
+    void handle.close().catch(() => undefined).then(() => gateway.closeAndSettle(SHUTDOWN_SETTLE_MS)).catch(() => undefined)
+      .finally(() => { process.exit(0); });
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
-  process.stdin.once('end', () => { gateway.close(); });
+  // The client closing standard input ends the session: shut down the same way as on a signal. Like the SDK, treat
+  // 'close' (a stream torn down without reaching its end) as the end of input too.
+  process.stdin.once('end', shutdown);
+  process.stdin.once('close', shutdown);
   return 0;
 }

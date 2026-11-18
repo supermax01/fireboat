@@ -147,6 +147,79 @@ test('doctor CLI: invalid, unavailable and unsupported metadata emit finite code
   }
 });
 
+test('doctor CLI: a client-credentials sign-in that yields no token is SIGN_IN_UNAVAILABLE, and the metadata is not checked', async t => {
+  const source = await backend(metadata()); t.after(source.close);
+  for (const [tokenPath, env] of [
+    // The configured secret is not set: nothing is sent.
+    [`/token-${CANARY}`, {}],
+    // The token endpoint answers with something that is not a token: only the token request is sent.
+    [`/not-a-token-${CANARY}`, { DOCTOR_SECRET: CANARY }],
+  ] as const) {
+    source.requests.length = 0;
+    const config = await configFile(source.baseUrl, { source: { alias: 'doctor-source', baseUrl: source.baseUrl, auth: {
+      type: 'client_credentials', tokenUrl: `${source.origin}${tokenPath}`, clientId: CANARY, clientSecretEnv: 'DOCTOR_SECRET', scopes: [CANARY],
+    } } }); t.after(config.close);
+    const result = await invoke(['--doctor', '--config', config.path], { DOCTOR_SECRET: undefined, ...env });
+    assert.equal(result.code, 1, result.stderr); assert.match(result.stdout, /^doctor: not-ready\n/);
+    assert.match(result.stdout, /^metadata: not-checked fhir=unknown revision=unknown summary=unknown types=unknown$/m);
+    assert.match(result.stdout, /^faults: SIGN_IN_UNAVAILABLE,WORKFLOW_TYPE_UNAVAILABLE$/m);
+    assert.deepEqual(source.requests, 'DOCTOR_SECRET' in env ? [{ method: 'POST', path: tokenPath }] : [], tokenPath);
+    privateOutput(result);
+  }
+});
+
+test('doctor CLI: SMART discovery naming an off-origin or non-literal token endpoint, or a redirect from discovery or the token endpoint, is SIGN_IN_UNAVAILABLE before any FHIR request', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'doctor-smart-')); t.after(() => rm(directory, { recursive: true, force: true }));
+  const cases: [string, Parameters<typeof startSmartStub>[0]][] = [
+    ['off-origin token endpoint', { discovery: doc => ({ ...doc, token_endpoint: 'http://127.0.0.1:9/auth/token' }) }],
+    ['non-literal token endpoint', { discovery: (doc, origin) => ({ ...doc, token_endpoint: `${origin.replace('127.0.0.1', 'localhost')}/auth/token` }) }],
+    ['discovery redirect', { discoveryReply: res => { res.statusCode = 302; res.setHeader('location', 'http://127.0.0.1:9/elsewhere'); res.end(); return true; } }],
+    ['token endpoint redirect', { tokenReply: () => ({ status: 307, headers: { location: 'http://127.0.0.1:9/elsewhere' } }) }],
+  ];
+  for (const [label, options] of cases) {
+    const stub = await startSmartStub(options);
+    try {
+      const path = join(directory, 'config.json'); await writeFile(path, JSON.stringify(smartConfig(stub)));
+      const result = await invoke(['--doctor', '--config', path], { [KEY_ENV]: stub.keys.pem });
+      assert.equal(result.code, 1, `${label}: ${result.stderr}`);
+      assert.match(result.stdout, /^metadata: not-checked fhir=unknown revision=unknown summary=unknown types=unknown$/m, label);
+      assert.match(result.stdout, /^faults: SIGN_IN_UNAVAILABLE,WORKFLOW_TYPE_UNAVAILABLE$/m, label);
+      assert.equal(stub.fhirRequests.length, 0, `${label}: no FHIR request was sent`);
+      privateOutput(result);
+    } finally { await stub.close(); }
+  }
+});
+
+test('doctor CLI: after a good sign-in, a redirect on /metadata is a metadata fault and a token the source rejects is SIGN_IN_UNAVAILABLE', async t => {
+  const auth = (origin: string) => ({ type: 'client_credentials', tokenUrl: `${origin}/token-${CANARY}`, clientId: CANARY, clientSecretEnv: 'DOCTOR_SECRET', scopes: [CANARY] });
+  for (const [label, status, signIn, metadataLine, fault] of [
+    ['redirected metadata', 302, true, /^metadata: unavailable fhir=unknown /m, 'METADATA_UNAVAILABLE'],
+    ['rejected token', 401, true, /^metadata: not-checked fhir=unknown revision=unknown summary=unknown types=unknown$/m, 'SIGN_IN_UNAVAILABLE'],
+    ['redirected metadata without sign-in', 302, false, /^metadata: unavailable fhir=unknown /m, 'METADATA_UNAVAILABLE'],
+  ] as const) {
+    const source = await backend(status === 302 ? metadata() : { resourceType: 'OperationOutcome', issue: [{ diagnostics: CANARY }] }, status); t.after(source.close);
+    const config = await configFile(source.baseUrl, signIn ? { source: { alias: 'doctor-source', baseUrl: source.baseUrl, auth: auth(source.origin) } } : {}); t.after(config.close);
+    const result = await invoke(['--doctor', '--config', config.path], { DOCTOR_SECRET: CANARY });
+    assert.equal(result.code, 1, `${label}: ${result.stderr}`);
+    assert.match(result.stdout, metadataLine, label);
+    assert.match(result.stdout, new RegExp(`^faults: ${fault},WORKFLOW_TYPE_UNAVAILABLE$`, 'm'), label);
+    // One token request at most: the credential obtained for the sign-in phase is the one the metadata request carries.
+    assert.deepEqual(source.requests, [...signIn ? [{ method: 'POST', path: `/token-${CANARY}` }] : [], { method: 'GET', path: '/fhir/metadata' }], label);
+    privateOutput(result);
+  }
+});
+
+test('doctor CLI: without configured sign-in, a source that refuses the metadata is METADATA_UNAVAILABLE', async t => {
+  const source = await backend({ resourceType: 'OperationOutcome', issue: [{ diagnostics: CANARY }] }, 401); t.after(source.close);
+  const config = await configFile(source.baseUrl); t.after(config.close);
+  const result = await invoke(['--doctor', '--config', config.path]);
+  assert.equal(result.code, 1, result.stderr);
+  assert.match(result.stdout, /^metadata: unavailable fhir=unknown /m);
+  assert.match(result.stdout, /^faults: METADATA_UNAVAILABLE,WORKFLOW_TYPE_UNAVAILABLE$/m);
+  assert.deepEqual(source.requests, [{ method: 'GET', path: '/fhir/metadata' }]);
+  privateOutput(result);
+});
+
 test('doctor CLI: config, profile, path and argument faults never echo their inputs', async t => {
   for (const [overrides, code] of [
     [{ mode: CANARY }, 'CONFIG_INVALID'],
@@ -178,7 +251,10 @@ test('doctor CLI: a SMART standalone source reports discovery, PKCE and the stor
   const path = join(directory, 'config.json'); await writeFile(path, JSON.stringify(config));
   const absent = await invoke(['--doctor', '--config', path]);
   assert.equal(absent.code, 1, absent.stderr);
-  assert.match(absent.stdout, /^faults: METADATA_UNAVAILABLE,WORKFLOW_TYPE_UNAVAILABLE$/m);
+  // Without a stored grant the sign-in fails before /metadata is sent: doctor names the sign-in, not the metadata.
+  assert.match(absent.stdout, /^metadata: not-checked fhir=unknown revision=unknown summary=unknown types=unknown$/m);
+  assert.match(absent.stdout, /^faults: SIGN_IN_UNAVAILABLE,WORKFLOW_TYPE_UNAVAILABLE$/m);
+  assert.equal(stub.fhirRequests.length, 0, 'no FHIR request was sent');
   assert.match(absent.stdout, /^smart: discovery=ok pkce=S256 grant=absent patient_context=n\/a scope=unknown granted_types=unknown\/28$/m);
   assert.match(absent.stdout, /^source: alias=smart-launch loopback=literal-ok auth=smart_standalone_launch /m);
   privateOutput(absent);

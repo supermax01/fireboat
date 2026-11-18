@@ -22,9 +22,9 @@
     },
     {
       "path": "README.md",
-      "size": 23746,
+      "size": 25732,
       "mode": 420,
-      "sha256": "3296eb07f9012446682e081cfffc83f21130b3798bf8f854fc90f3de5ffd6254"
+      "sha256": "23a3f62e1a7888a027ef5e346b61570a5d8a3258dc0d6ddde2851c0f3b11bbf3"
     },
     {
       "path": "SECURITY.md",
@@ -88,21 +88,21 @@
     },
     {
       "path": "dist/packages/auth/src/smart-standalone.js",
-      "size": 22983,
+      "size": 23019,
       "mode": 420,
-      "sha256": "7d89cd946092e1de0b53c35a4facea89a77485cc5d51d1b310656e032b1baf70"
+      "sha256": "99a10a667de38e4159437c8dfc7758a0ac67c780ce54df30e406a3a1d07b0ae8"
     },
     {
       "path": "dist/packages/auth/src/token-provider.js",
-      "size": 16648,
+      "size": 17556,
       "mode": 420,
-      "sha256": "06f66c9092d6500150bca03dc9b8e6194117da7bad5563d099197f61e6f58e7f"
+      "sha256": "728dd7e9b4a3a760c5b687da7991c4147fc5480935de529287c504ccfa08863a"
     },
     {
       "path": "dist/packages/auth/src/token-store.js",
-      "size": 19138,
+      "size": 20539,
       "mode": 420,
-      "sha256": "4499ef41fea3ad50e098886ad914bc6f2cc56a774a00c100e91a875467428fbf"
+      "sha256": "c585820bf8f28765ef2aaf2f8dea0eddd7f642609ffc4b1f6dfdfd70029e85b8"
     },
     {
       "path": "dist/packages/core/src/catalog.js",
@@ -112,9 +112,9 @@
     },
     {
       "path": "dist/packages/core/src/contracts.js",
-      "size": 77461,
+      "size": 77528,
       "mode": 420,
-      "sha256": "57eeafdc1e9611353b45012bfc595e6aec762a68f66ce93722288f35a18956fb"
+      "sha256": "4e6b50c4293779b80791def5a902ecdb76417e075f1a0bf04c91b775e1ef1c3d"
     },
     {
       "path": "dist/packages/core/src/data/compact-profiles.json",
@@ -184,9 +184,9 @@
     },
     {
       "path": "dist/packages/core/src/index.js",
-      "size": 163636,
+      "size": 164760,
       "mode": 420,
-      "sha256": "0aefc72b0617ec860cb6e2e305a9a1fde1ffbe6401fa0e59b47e947b8057a384"
+      "sha256": "ec7ce0de88ac190d15a9b9c8ace7ccfdbf97abf8184d8eb1525ad02d9f9d8007"
     },
     {
       "path": "dist/packages/core/src/privacy.js",
@@ -262,9 +262,9 @@
     },
     {
       "path": "dist/packages/server/src/doctor.js",
-      "size": 8269,
+      "size": 8677,
       "mode": 420,
-      "sha256": "980f47cf979a68aa42457b108528c9ab9ca99169462e7105496e0156d355976f"
+      "sha256": "fbf1ad6b1f0d633d4d4b01d61f32e444b92462e3e47878a84f2a3fb850cbd9fe"
     },
     {
       "path": "dist/packages/server/src/generated/release.json",
@@ -286,9 +286,9 @@
     },
     {
       "path": "dist/packages/server/src/main.js",
-      "size": 12253,
+      "size": 13816,
       "mode": 420,
-      "sha256": "66d3645c80ed21c0811bd19e54e09e1e6bd964d81413af76a8f363a233350c1e"
+      "sha256": "bcd8b09c03d5757d1fba28d535da20e01b264d2abe4e4c3d246f89989866c446"
     },
     {
       "path": "dist/packages/server/src/release.js",
@@ -334,9 +334,9 @@
     },
     {
       "path": "docs/QUICKSTART.md",
-      "size": 36401,
+      "size": 36469,
       "mode": 420,
-      "sha256": "fe81aebb8a4156bed779b8db7a578c5729ce56ae72a53f30114db8da1a36e38c"
+      "sha256": "e0a8d5853a22a9734ddad6e9ea75634ba3f7c4b927411009ba4d978ba83b76c9"
     },
     {
       "path": "docs/SUPPORT-MATRIX.md",

@@ -244,8 +244,9 @@ const GUARD_GENERATIONS = 8;
  * Takes the reclaim guard, `<lock>.reclaim.<n>`, created the same exclusive way as the lock with the owner already
  * written. A guard is held only for the few file operations of one takeover, so a guard older than the stale limit was
  * left by a reclaimer that crashed: it is never moved or removed here (removing it by name could remove a fresh guard
- * that replaced it), but stepped over to the next generation. Returns undefined when another reclaimer holds the guard;
- * the caller then waits as for a held lock.
+ * that replaced it), but stepped over to the next generation. A guard taken above generation 0 is kept only while every
+ * leftover it stepped over is still in place. Returns undefined when another reclaimer holds the guard, or may hold a
+ * lower generation; the caller then waits as for a held lock.
  */
 async function acquireReclaimGuard(lock: string, owner: string, staleMs: number): Promise<ReclaimGuard | undefined> {
   const skipped: ReclaimGuard['skipped'] = [];
@@ -253,9 +254,14 @@ async function acquireReclaimGuard(lock: string, owner: string, staleMs: number)
     const name = `${lock}.reclaim.${generation}`;
     const created = await createLock(name, owner);
     if (created) {
-      try { const info = await created.stat(); return { name, ino: info.ino, dev: info.dev, skipped }; }
+      let guard: ReclaimGuard;
+      try { const info = await created.stat(); guard = { name, ino: info.ino, dev: info.dev, skipped }; }
       catch { await unlink(name).catch(() => undefined); throw fault('CREDENTIAL_UNAVAILABLE', 'The stored SMART grant could not be locked.'); }
       finally { await created.close().catch(() => undefined); }
+      // A lower generation that is no longer the leftover stepped over was cleaned up meanwhile, and another reclaimer
+      // may hold it afresh: give this guard back and wait, so two reclaimers never hold guards at once.
+      if (!await leftoversUnchanged(skipped, staleMs)) { await releaseOwnGuard(guard, owner); return undefined; }
+      return guard;
     }
     const state = await inspectLock(name);
     if (!state) return undefined;
@@ -263,6 +269,21 @@ async function acquireReclaimGuard(lock: string, owner: string, staleMs: number)
     skipped.push({ name, state });
   }
   return undefined;
+}
+
+/** Whether every guard stepped over as a leftover is still that same untouched file, older than the stale limit. */
+async function leftoversUnchanged(skipped: ReclaimGuard['skipped'], staleMs: number): Promise<boolean> {
+  for (const { name, state } of skipped) {
+    const current = await inspectLock(name).catch(() => undefined);
+    if (!current || current.ino !== state.ino || current.dev !== state.dev || current.owner !== state.owner || !(age(current) > staleMs)) return false;
+  }
+  return true;
+}
+
+/** Removes this reclaimer's own guard, only if it is still the file this reclaimer created. */
+async function releaseOwnGuard(guard: ReclaimGuard, owner: string): Promise<void> {
+  const mine = await inspectLock(guard.name).catch(() => undefined);
+  if (mine && mine.owner === owner && mine.ino === guard.ino && mine.dev === guard.dev) await unlink(guard.name).catch(() => undefined);
 }
 
 /**
@@ -275,8 +296,7 @@ async function releaseReclaimGuard(guard: ReclaimGuard, owner: string, staleMs: 
     const now = await inspectLock(name).catch(() => undefined);
     if (now && now.ino === state.ino && now.dev === state.dev && now.owner === state.owner && age(now) > staleMs) await unlink(name).catch(() => undefined);
   }
-  const mine = await inspectLock(guard.name).catch(() => undefined);
-  if (mine && mine.owner === owner && mine.ino === guard.ino && mine.dev === guard.dev) await unlink(guard.name).catch(() => undefined);
+  await releaseOwnGuard(guard, owner);
 }
 
 /**
@@ -330,10 +350,11 @@ export async function withGrantLock<T>(path: string, work: (held: LockHeld) => P
     const created = await createLock(lock, owner);
     if (created) { handle = created; break; }
     const seen = await inspectLock(lock);
-    // Released meanwhile, or a stale lock taken over: try to create it again at once.
-    if (!seen || (age(seen) > staleMs && await reclaimStale(lock, seen, owner, staleMs))) continue;
+    // Released meanwhile, or a stale lock taken over: try to create it again at once, but only within the wait limit,
+    // which applies on every attempt so a run of vanishing or reclaimed locks cannot outlast it.
+    const again = !seen || (age(seen) > staleMs && await reclaimStale(lock, seen, owner, staleMs));
     if (performance.now() - started > waitMs) throw fault('TOKEN_TIMEOUT', 'The stored SMART grant is locked by another process.', true);
-    await sleep(20);
+    if (!again) await sleep(20);
   }
   const touch = () => { const now = new Date(); return handle.utimes(now, now).catch(() => undefined); };
   const heartbeat = setInterval(() => { void touch(); }, heartbeatMs);

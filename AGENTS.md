@@ -90,13 +90,13 @@ npm run demo -- --check  # no Docker, no keys: synthetic source + real stdio ser
 | `node --import tsx scripts/emit-m3b-contract.mjs --check` | Check that the tool contract is current. |
 | `node --import tsx scripts/generate-r4-checkable-paths.ts --check` | Check that the checkable-path table matches the pinned R4 indexes. |
 | `node --import tsx --test tests/mutation-anchors.test.ts` | Check that every mutation anchor still applies. |
-| `node scripts/mutation-guards.mjs --list` | List the mutation registry (1,636 entries in this tree; the output's `count` field gives the current number). |
+| `node scripts/mutation-guards.mjs --list` | List the mutation registry (1,659 entries in this tree; the output's `count` field gives the current number). |
 
 Give long or parallel test runs their own `TMPDIR` and delete it afterwards. Some suites leave temporary folders behind when they are stopped early.
 
 The synthetic FHIR source listens on port 8080 by default. Set `SYNTHETIC_FHIR_PORT` (only that variable is read) to move it, for example when 8080 is busy, and point a copy of the config at the same port.
 
-Shipped documents (`README.md`, `LICENSE`, `NOTICE`, `.github/SECURITY.md`, `packaging/THIRD_PARTY_NOTICES.md`, `docs/QUICKSTART.md`, `docs/LIMITS.md`, the generated reference docs, `docs/contracts/m3b-tools.json` and `packaging/licenses/*`; the package stages the `.github/` and `packaging/` ones at its root as `SECURITY.md`, `THIRD_PARTY_NOTICES.md` and `licenses/*`) are hash-bound in `packaging/npm-files.json`; after an intended change, run `npm run build`, re-approve with `npm run stage:package -- --approve-inventory <dir>` (a new absolute directory, deleted afterwards), then run `npm run test:package`.
+Shipped documents (`README.md`, `LICENSE`, `NOTICE`, `.github/SECURITY.md`, `packaging/THIRD_PARTY_NOTICES.md`, `docs/QUICKSTART.md`, `docs/LIMITS.md`, the generated reference docs, `docs/contracts/m3b-tools.json` and `packaging/licenses/*`; the package stages the `.github/` and `packaging/` ones at its root as `SECURITY.md`, `THIRD_PARTY_NOTICES.md` and `licenses/*`) are hash-bound in `packaging/npm-files.json` (Markdown as staged, with relative links rewritten to package paths or to the public repository; staging refuses a link left outside the package); after an intended change, run `npm run build`, re-approve with `npm run stage:package -- --approve-inventory <dir>` (a new absolute directory, deleted afterwards), then run `npm run test:package`.
 
 ## How changes are judged
 

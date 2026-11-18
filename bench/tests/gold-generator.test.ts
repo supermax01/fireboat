@@ -9,7 +9,10 @@ import { candidateOrder, makeCandidate, select, splitEvenly, type Candidate } fr
 import { GROUPS, TEMPLATES, type Proposal } from '../gold/templates.js';
 import { DEV_SEED_HEX } from '../lib/hash.js';
 import { stringifyLossless } from '../lib/json.js';
-import { BENCH, mimicDevPatients, MIMIC_FHIR_DIR } from '../lib/paths.js';
+import { BENCH, LOCAL_CONFIG, mimicDevPatients, MIMIC_FHIR_DIR } from '../lib/paths.js';
+
+/** MIMIC checks need the downloaded data and the local config; a present but malformed config still fails. */
+const mimicSkip = () => (!existsSync(MIMIC_FHIR_DIR) ? 'MIMIC data not downloaded' : !existsSync(LOCAL_CONFIG) ? 'no bench-config.json (see bench/README.md)' : false);
 
 const prop = (key: string, extra: Partial<Proposal> = {}): Proposal => ({ key, dedupe: key, parameters: {}, operations: [], ...extra });
 
@@ -68,7 +71,7 @@ test('no randomness and no restricted literal in gold code', () => {
   }
 });
 
-test('MIMIC development generation is deterministic, development-only and has gold for every question', { skip: !existsSync(MIMIC_FHIR_DIR) }, async () => {
+test('MIMIC development generation is deterministic, development-only and has gold for every question', { skip: mimicSkip() }, async () => {
   const a = await generate('mimic');
   const b = await generate('mimic');
   assert.equal(a.questions.map(q => stringifyLossless(q)).join('\n'), b.questions.map(q => stringifyLossless(q)).join('\n'));

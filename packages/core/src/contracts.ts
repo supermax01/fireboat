@@ -9,7 +9,7 @@ export type FhirResource = Record<string, unknown> & { resourceType: string; id?
 
 export interface GatewayConfig {
   mode: 'synthetic';
-  /** Shipped search-profile allowlist: the eligible registry profiles (`generic-r4` and the qualified synthetic fixture profile). */
+  /** Shipped search-profile allowlist: the eligible registry profiles (`generic-r4`, the qualified synthetic fixture profile and `hapi-r4-labs-v1`). */
   source: { alias: string; baseUrl: string; /** One of `eligibleSearchProfileIds()`; the config schema enforces the closed set. */ searchProfile?: string;
     /** Judge a first page without a self link by its records. Off by default. */
     selfLinkOptional?: boolean;
@@ -32,7 +32,7 @@ export interface GatewayConfig {
   // There is no constructor-level era option. Era is
   // supplied per call (`ExecuteOptions.era`, required for adapter calls); direct
   // library calls default conservatively to `modern`, the larger wire shape.
-  /** Trusted operator choice: default `envelope` text is the serialized bounded envelope; `summary` is concise but still carries cursor/handle/expiry/warnings/manifest reasons/error. */
+  /** Trusted operator choice: `envelope` (the default) text is the serialized bounded envelope. `summary` was removed: construction refuses it with INVALID_CONFIG (see `assertSummaryAllowed`). */
   textMode?: 'envelope' | 'summary';
   /** Trusted operator options. Never model-controlled. */
   workflow?: 'recent-labs-v1';
@@ -935,7 +935,7 @@ export const RECIPE_IDS = {
   DiagnosticReport: 'r4-compact-2026-10-18.1/DiagnosticReport.compact.1',
   DocumentReference: 'r4-compact-2026-10-18.1/DocumentReference.compact.1',
 } as const;
-/** Reserved for a lab-evidence profile; deliberately not implemented or advertised. */
+/** The Observation lab-evidence compact recipe: implemented in projection.ts and advertised as the Observation `compact_recipe` in the support matrix. */
 export const LAB_EVIDENCE_RECIPE_ID = 'r4-lab-evidence-v1/Observation.2' as const;
 export const WORKFLOW_ID = 'recent-labs-v1' as const;
 export const OBSERVED_CODE_SCAN_RECIPE_ID = 'observed-code-scan-v1' as const;

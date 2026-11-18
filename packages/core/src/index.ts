@@ -426,6 +426,11 @@ export class FhirGateway {
     this.pageLoads.clear();
     for (const waiter of this.waiters.splice(0)) waiter.reject(new GatewayFault('GATEWAY_CLOSED', 'Gateway is closed.'));
   }
+  /** Shutdown: close(), then up to `settleMs` for in-flight credential work (a refresh holding the grant lock) to unwind. */
+  async closeAndSettle(settleMs: number): Promise<void> {
+    this.close();
+    await this.credentials?.settled(settleMs);
+  }
   private credentialFault(error: unknown): GatewayFault {
     // The token provider normalizes transport size faults. Our pre-send work
     // refusal is local admission, not evidence that a credential failed.
@@ -915,7 +920,9 @@ export class FhirGateway {
         if (input.context_handle !== undefined && input.context_handle !== this.contextId) throw new GatewayFault(tool === 'fhir_capabilities' && input.cursor ? 'DISCOVERY_EXPIRED' : 'CONTEXT_REQUIRED', 'Context does not match the trusted configured patient.');
         if (tool === 'fhir_read' || tool === 'fhir_search') assertClinicalResource(input.resource_type!);
         await this.admit(budget); admitted = true; this.throwIfCancelled(budget);
-        if (this.credentials) await this.authorizationFor(this.transport.base, budget);
+        // A discovery continuation is served from its frozen local snapshot, which is bound to the auth epoch: it needs
+        // no credential, so it makes no token request (and cannot renew or fail one).
+        if (this.credentials && !(tool === 'fhir_capabilities' && input.cursor)) await this.authorizationFor(this.transport.base, budget);
         // A type the current grant does not permit for this interaction is refused before any FHIR request.
         if ((tool === 'fhir_read' || tool === 'fhir_search') && this.credentials && !this.credentials.allows(input.resource_type!, tool === 'fhir_read' ? 'read' : 'search')) throw new GatewayFault('POLICY_DENIED', 'The granted scope does not permit this resource type.', false, undefined, 'SCOPE_NOT_GRANTED');
         if (this.capabilities && this.capabilityPolicyRevision !== this.policyRevision) this.invalidateState();
@@ -1202,7 +1209,7 @@ export class FhirGateway {
           if (input.cursor) throw new GatewayFault('DISCOVERY_EXPIRED', 'Discovery snapshot is unavailable or expired; repeat the original discovery query.');
           throw new GatewayFault('CONTEXT_REQUIRED', 'Context does not match the trusted configured patient.');
         }
-        if (this.credentials) await this.authorizationFor(this.transport.base, budget);
+        // execute() already checked the credential (except for a continuation); discovery authorizes its own request.
         budget.epoch = this.authEpoch; budget.stateGeneration = this.stateGeneration;
         // A continuation uses its frozen local snapshot. Expired metadata does not
         // trigger a refresh, renew the snapshot or consume upstream work.
@@ -1677,6 +1684,15 @@ export class FhirGateway {
   /** `fireboat logout` only: the stored standalone grant's file path. */
   smartTokenFile(): string | undefined {
     return this.credentials instanceof SmartStandaloneProvider ? this.credentials.tokenFile : undefined;
+  }
+  /**
+   * For doctor: obtains the outbound credential for the source base and sends nothing else (no metadata or clinical
+   * request). Resolves to undefined once a credential is held, or when no sign-in is configured; otherwise to the fault code.
+   */
+  async checkSignIn(): Promise<string | undefined> {
+    if (!this.credentials) return undefined;
+    try { await this.authorizationFor(this.transport.base); return undefined; }
+    catch (error) { return error instanceof GatewayFault ? error.code : 'CONNECTION_REQUIRED'; }
   }
   /** For doctor: whether the current grant permits `interaction` on `type`. Sends nothing; always true without a SMART grant. */
   grantPermits(type: string, interaction: 'read' | 'search'): boolean {

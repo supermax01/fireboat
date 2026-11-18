@@ -44,7 +44,8 @@ SMART sign-in decides whether the FHIR server will answer fireboat. It does not 
    token if there is one, and otherwise asks you to run `fireboat login` again. Refreshes, sign-ins and `logout` are
    serialized with a lock file, so several fireboat processes can share one token file without overwriting each other's
    grant. A process that is still working keeps its lock; a lock left by a process that stopped is taken over after a
-   minute.
+   minute. A server that shuts down (its input closes, or it gets SIGINT or SIGTERM) stops a sign-in in progress and waits up to
+   about 1.5 seconds for it to unwind, so it normally releases a lock it holds.
 
 ## Standalone patient launch
 
@@ -146,7 +147,11 @@ If the token file stays locked by another process, `login` prints `TOKEN_TIMEOUT
 
 `fireboat --doctor` reports discovery, PKCE support, whether a grant is stored, the patient match and how the granted scopes
 compare with the request, as categories and counts only. Under SMART, the `recent-labs-v1` workflow counts as ready only
-when the grant also permits reading Patient and searching Observation.
+when the grant also permits reading Patient and searching Observation. Doctor signs in before it reads the metadata. If
+that fails (before `fireboat login`, a grant that expired with no refresh token, SMART discovery or a token endpoint
+that redirects, a discovered endpoint that the loopback rules refuse, or a token endpoint error), or the source rejects the
+token, doctor prints `metadata: not-checked` and the fault `SIGN_IN_UNAVAILABLE`: a failed sign-in is reported as the
+sign-in, not as a metadata fault.
 
 ## Example configurations
 

@@ -16,6 +16,7 @@ import { appendFile, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpDir } from '../lib/paths.js';
 import type { Obj } from '../servers/items.js';
+import { ANSWER_FROM_COPY } from '../gold/rules.js';
 
 const P = 'pat-1';
 const obs = (id: string, value: string, opts: { patient?: string; unit?: string | null; time?: string } = {}) => {
@@ -334,4 +335,100 @@ test('summarise: per-arm latency split; scores without the new fields still aggr
 
 test('report orders the fireboat arms FB0, FBd, FB, FBt before the other servers', () => {
   assert.deepEqual(['W', 'FBt', 'H', 'FB', 'M', 'FBd', 'FB0', 'Zz'].sort(byArm), ['FB0', 'FBd', 'FB', 'FBt', 'W', 'M', 'H', 'Zz']);
+});
+
+// ---- answer text in the gold record itself (N2, K2) ----------------------------------------------------------------
+
+const b64 = (s: string) => Buffer.from(s, 'utf8').toString('base64');
+const NOTE_TIME = '2020-03-01T10:00:00Z';
+/** A synthetic Synthea-style note; `text` null = metadata only (no attachment data). */
+const noteDoc = (id: string, text: string | null) =>
+  `{"resourceType":"DocumentReference","id":"${id}","status":"current","subject":{"reference":"Patient/${P}"},"date":"${NOTE_TIME}","type":{"text":"Note"},` +
+  `"content":[{"attachment":{"contentType":"text/plain"${text === null ? '' : `,"data":"${b64(text)}"`}}}]}`;
+/** fireboat-shaped tool result: the envelope in structuredContent. */
+const fbLine = (resources: string[]) => {
+  const env = `{"schema_version":"0.3","data":{"resources":[${resources.join(',')}]},"coverage":{"state":"complete_for_query","scope":"query","reasons":[]},"pagination":{"has_more":false}}`;
+  return `{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":${JSON.stringify(env)}}],"structuredContent":${env},"isError":false}}`;
+};
+const noteGold = (ref: string, list: string[] | null, time = NOTE_TIME): GoldRecord => ({
+  ...gold([gi(ref, null, { value_as_recorded: null, unit: null, unit_code: null, unit_system: null, time })], [ref]),
+  answer_form: 'list', answer_kind: list ? 'list' : 'none', answer_list: list,
+});
+const listQuestion = (template_id: string, type: string): QuestionRecord => ({
+  ...question([{ op: 'drain', type, params: [['patient', `Patient/${P}`]], call_cap: 20 }]), template_id, category: 'R', answer_form: 'list',
+});
+const okRun = (line: string, arm: RunRecord['arm'] = 'W') => runRec([callRec('search', line)], [{ op_index: 0, outcome: 'ok', detail: '' }], arm);
+const NOTE = 'Note.\n\nPatient has a history of Asthma, Hypertension.\nPatient is presenting with Sprain of ankle.\n';
+const N2_LIST = ['Asthma', 'Hypertension', 'Sprain of ankle'];
+
+test('answer text: N2 with the full note text passes; answer_text is recorded', () => {
+  const s = scoreQuestionRun(okRun(wLine(bundle([noteDoc('d1', NOTE)]))), listQuestion('N2', 'DocumentReference'), noteGold('DocumentReference/d1', N2_LIST));
+  assert.equal(s.correct, 1);
+  assert.deepEqual(s.answer_text, { checked: 1, ok: 1 });
+  assert.ok(!s.failure.includes('answer_text_missing'));
+});
+
+test('answer text: N2 with note metadata only fails with answer_text_missing; identity and time still pass', () => {
+  const g = noteGold('DocumentReference/d1', N2_LIST);
+  const run = okRun(fbLine([noteDoc('d1', null)]), 'FB');
+  const r = parseLossless(noteDoc('d1', null)) as Obj;
+  const c = checkItem(g.items[0]!, [r], true, { from: ANSWER_FROM_COPY.N2!, list: N2_LIST });
+  assert.deepEqual([c.found, c.identity, c.time, c.text], [true, true, true, false]);
+  const s = scoreQuestionRun(run, listQuestion('N2', 'DocumentReference'), g);
+  assert.equal(s.correct, 0);
+  assert.equal(s.verdict, 'complete');
+  assert.deepEqual(s.answer_text, { checked: 1, ok: 0 });
+  assert.ok(s.failure.includes('answer_text_missing'));
+});
+
+test('answer text: N2 whose returned note lists other conditions fails', () => {
+  const other = 'Note.\n\nPatient has a history of Asthma.\nPatient is presenting with Otitis media.\n';
+  const s = scoreQuestionRun(okRun(wLine(bundle([noteDoc('d1', other)]))), listQuestion('N2', 'DocumentReference'), noteGold('DocumentReference/d1', N2_LIST));
+  assert.equal(s.correct, 0);
+  assert.ok(s.failure.includes('answer_text_missing'));
+});
+
+test('answer text: an N2 gold "none" passes only when the copy carries text that lists nothing', () => {
+  const g = noteGold('DocumentReference/d1', null);
+  const q = listQuestion('N2', 'DocumentReference');
+  assert.equal(scoreQuestionRun(okRun(wLine(bundle([noteDoc('d1', 'Note.\n\nNothing to report.\n')]))), q, g).correct, 1);
+  const bare = scoreQuestionRun(okRun(fbLine([noteDoc('d1', null)]), 'FB'), q, g);
+  assert.equal(bare.correct, 0);
+  assert.ok(bare.failure.includes('answer_text_missing'));
+});
+
+test('answer text: the same DocumentReference gets the same verdict in the WSO2 and fireboat envelopes', () => {
+  const q = listQuestion('N2', 'DocumentReference');
+  const g = noteGold('DocumentReference/d1', N2_LIST);
+  for (const doc of [noteDoc('d1', NOTE), noteDoc('d1', null)]) {
+    const w = scoreQuestionRun(okRun(wLine(bundle([doc]))), q, g);
+    const fb = scoreQuestionRun(okRun(fbLine([doc]), 'FB'), q, g);
+    assert.deepEqual([fb.correct, fb.answer_text, fb.failure], [w.correct, w.answer_text, w.failure]);
+  }
+});
+
+const careTeam = (patientDisplay: boolean) =>
+  `{"resourceType":"CareTeam","id":"ct1","status":"active","subject":{"reference":"Patient/${P}"},"period":{"start":"2020-01-01T00:00:00Z"},"participant":[` +
+  `{"role":[{"coding":[{"code":"116154003","display":"Patient"}]}],"member":{"reference":"Patient/${P}"${patientDisplay ? ',"display":"Ms. Synthetic Person"' : ''}}},` +
+  `{"role":[{"coding":[{"code":"223366009","display":"Healthcare professional"}]}],"member":{"reference":"Practitioner/pr1","display":"Dr. Example Doctor"}}]}`;
+const K2_LIST = ['Dr. Example Doctor (Healthcare professional)', 'Ms. Synthetic Person (Patient)'];
+
+test('answer text: K2 passes with every member display and fails with the patient\'s own display removed', () => {
+  const q = listQuestion('K2', 'CareTeam');
+  const g = noteGold('CareTeam/ct1', K2_LIST, '2020-01-01T00:00:00Z');
+  const full = scoreQuestionRun(okRun(fbLine([careTeam(true)]), 'FB'), q, g);
+  assert.equal(full.correct, 1);
+  assert.deepEqual(full.answer_text, { checked: 1, ok: 1 });
+  const withheld = scoreQuestionRun(okRun(fbLine([careTeam(false)]), 'FB'), q, g);
+  assert.equal(withheld.correct, 0);
+  assert.deepEqual(withheld.answer_text, { checked: 1, ok: 0 });
+  assert.ok(withheld.failure.includes('answer_text_missing'));
+});
+
+test('answer text: a value template is not text-checked', () => {
+  const r = parseLossless(obs('o1', '5')) as Obj;
+  assert.equal(checkItem(gi('Observation/o1', '5'), [r], true).text, null);
+  const s = scoreQuestionRun(okRun(wLine(bundle([obs('o1', '5')]))), question([drainOp]), gold([gi('Observation/o1', '5')], ['Observation/o1']));
+  assert.equal(s.correct, 1);
+  assert.equal(s.answer_text, undefined);
 });

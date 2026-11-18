@@ -2,15 +2,18 @@ import assert from 'node:assert/strict';
 import { chmod, lstat, mkdir, mkdtemp, readFile, rm, stat, symlink, unlink, utimes, writeFile } from 'node:fs/promises';
 import { lstatSync, readdirSync, readFileSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { spawn } from 'node:child_process';
 import { createRequire, syncBuiltinESMExports } from 'node:module';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test, type TestContext } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { FhirGateway } from '../packages/core/src/index.js';
 import { listenLoopbackCallback } from '../packages/server/src/login.js';
-import { prepareGrantDirectory, readTokenFile, withGrantLock, writeTokenFile, type StoredGrant } from '../packages/auth/src/token-store.js';
+import { prepareGrantDirectory, readTokenFile, removeStoredGrant, withGrantLock, writeTokenFile, type StoredGrant } from '../packages/auth/src/token-store.js';
 import { CredentialFault } from '../packages/auth/src/token-provider.js';
+import { SmartStandaloneProvider } from '../packages/auth/src/smart-standalone.js';
 import { approve, standaloneConfig, startSmartStub, type Rec, type SmartStub, type StubOptions } from './smart-helpers.js';
 import { guardAgainstUncaught } from './no-uncaught.js';
 
@@ -225,6 +228,33 @@ test('SMART standalone serving: a re-login with a different grant expires handle
       assert.equal((await search(gateway, 'Encounter')).error?.code, 'POLICY_DENIED');
     } else assert.equal(retained.error, undefined, 'the same grant keeps retained results');
   }
+});
+
+test('SMART standalone serving: a discovery continuation needs no token, and expires once a later call finds the grant logged out', async t => {
+  const s = await setup(t);
+  await s.login();
+  // Ninety seconds of a one-hour token remain: usable now, inside the 30-second expiry margin a minute later.
+  await s.rewrite(grant => ({ ...grant, issuedAt: Date.now() - 3_510_000, expiresAt: Date.now() + 90_000 }));
+  const realNow = Date.now.bind(Date);
+  let offset = 0;
+  t.mock.method(Date, 'now', () => realNow() + offset);
+  const gateway = s.serve();
+  const first = await gateway.execute('fhir_capabilities', { topic: 'server', limit: 1 });
+  assert.equal(first.error, undefined, JSON.stringify(first.error));
+  const cursor = (first.data as Rec).next_cursor as string;
+  assert.match(cursor, /^cur_/);
+  assert.equal(await removeStoredGrant(s.tokenFile), true);
+  offset = 61_000; // the token now needs renewal; the continuation's snapshot is still within its lifetime
+  const before = s.requests();
+  const second = await gateway.execute('fhir_capabilities', { topic: 'server', cursor, limit: 1 });
+  assert.equal(second.error, undefined, JSON.stringify(second.error));
+  assert.equal(second.budget.upstream_calls, 0);
+  assert.deepEqual(s.requests(), before, 'no discovery, token or FHIR request');
+  // A call that needs the credential finds the grant gone; the continuation's snapshot expires with the old grant.
+  assert.equal((await gateway.execute('fhir_capabilities', { topic: 'server', limit: 1 })).error?.code, 'CONNECTION_REQUIRED');
+  const third = await gateway.execute('fhir_capabilities', { topic: 'server', cursor: (second.data as Rec).next_cursor as string, limit: 1 });
+  assert.equal(third.error?.code, 'DISCOVERY_EXPIRED');
+  assert.deepEqual(s.requests(), before, 'still no request');
 });
 
 test('SMART standalone serving canary: tool output and the audit trail carry no token, refresh token or code', async t => {
@@ -552,6 +582,76 @@ test('SMART grant lock: a stale lock that cannot be moved aside is refused at on
   assert.deepEqual(readdirSync(r.dir), ['grant.json.lock'], 'no guard or temporary file is left behind');
 });
 
+test('SMART grant lock: a lock that keeps vanishing before it can be inspected still ends at the wait limit', async t => {
+  const r = await lockRace(t);
+  const started = Date.now();
+  let attempts = 0;
+  // Each attempt finds a lock in place when it links, and none when it then inspects the lock, so it is told to retry at
+  // once. After two seconds the interference stops, so a loop that ignores the wait limit ends with the lock instead.
+  const interfering = () => Date.now() - started < 2_000;
+  r.hooks.afterOpen = (name, target) => {
+    if (name === 'flapping' && target.startsWith(`${r.lock}.`) && target.endsWith('.tmp') && interfering()) { attempts++; writeFileSync(r.lock, 'flapping-holder', { mode: 0o600 }); }
+  };
+  r.hooks.afterLink = (name, to) => {
+    if (name === 'flapping' && to === r.lock && interfering()) { try { if (readFileSync(r.lock, 'utf8') === 'flapping-holder') unlinkSync(r.lock); } catch { /* already gone */ } }
+  };
+  await assert.rejects(r.names.run('flapping', () => withGrantLock(r.path, async () => 'ran', { waitMs: 200 })),
+    (error: unknown) => error instanceof CredentialFault && error.code === 'TOKEN_TIMEOUT');
+  assert.ok(Date.now() - started < 2_000, 'the wait limit ended the attempts, not the end of the interference');
+  assert.ok(attempts > 1, 'the lock was retried at once');
+  r.hooks.afterOpen = undefined; r.hooks.afterLink = undefined;
+  assert.deepEqual(readdirSync(r.dir), [], 'no lock, guard or temporary file is left behind');
+});
+
+test('SMART grant lock: a reclaimer whose stepped-over leftover guard was replaced gives its own guard back and never moves the lock', async t => {
+  const r = await lockRace(t);
+  await r.stale();
+  const lower = `${r.lock}.reclaim.0`;
+  writeFileSync(lower, 'crashed-reclaimer', { mode: 0o600 });
+  const old = new Date(Date.now() - 600_000);
+  utimesSync(lower, old, old);
+  let replaced = false;
+  // The late reclaimer has opened the leftover guard to judge it. Meanwhile another reclaimer finished, removed that
+  // leftover, and a third reclaimer now holds generation 0 afresh.
+  r.hooks.afterOpen = (name, target) => {
+    if (name !== 'late' || target !== lower || replaced) return;
+    replaced = true;
+    unlinkSync(lower); writeFileSync(lower, 'fresh-reclaimer', { mode: 0o600 });
+  };
+  await assert.rejects(r.names.run('late', () => withGrantLock(r.path, async () => 'ran', { waitMs: 300 })),
+    (error: unknown) => error instanceof CredentialFault && error.code === 'TOKEN_TIMEOUT');
+  assert.ok(replaced);
+  assert.deepEqual(r.moved, [], 'the stale lock was never moved while another reclaimer held a lower guard');
+  assert.equal(readFileSync(r.lock, 'utf8'), 'crashed-holder');
+  assert.equal(readFileSync(lower, 'utf8'), 'fresh-reclaimer', "the other reclaimer's guard is left in place");
+  assert.deepEqual(readdirSync(r.dir).sort(), ['grant.json.lock', 'grant.json.lock.reclaim.0'], 'the higher guard was given back');
+});
+
+test('SMART grant lock: a leftover guard is removed only while it is still the same untouched file', async t => {
+  const r = await lockRace(t);
+  const lower = `${r.lock}.reclaim.0`;
+  for (const replacement of ['fresh', 'aged'] as const) {
+    await r.stale();
+    writeFileSync(lower, 'crashed-reclaimer', { mode: 0o600 });
+    const old = new Date(Date.now() - 600_000);
+    utimesSync(lower, old, old);
+    let replaced = false;
+    // Just before this reclaimer moves the stale lock, the leftover it stepped over is replaced by another file: a
+    // reclaimer's fresh guard, or one whose reclaimer has since stalled past the stale limit.
+    r.hooks.beforeRename = (name, from) => {
+      if (name !== 'reclaimer' || from !== r.lock || replaced) return;
+      replaced = true;
+      unlinkSync(lower); writeFileSync(lower, 'other-reclaimer', { mode: 0o600 });
+      if (replacement === 'aged') utimesSync(lower, old, old);
+    };
+    assert.equal(await r.names.run('reclaimer', () => withGrantLock(r.path, async () => 'ran', { waitMs: 300 })), 'ran', replacement);
+    assert.ok(replaced, replacement);
+    assert.equal(readFileSync(lower, 'utf8'), 'other-reclaimer', `${replacement}: the replacement guard is left in place`);
+    assert.deepEqual(readdirSync(r.dir), ['grant.json.lock.reclaim.0'], `${replacement}: only the replacement guard is left`);
+    unlinkSync(lower);
+  }
+});
+
 test('SMART standalone serving: a refresh whose grant lock was taken over stores nothing', async t => {
   let path = '';
   const s = await setup(t, { tokenReply: (body, _call, _scope) => {
@@ -641,4 +741,80 @@ test('SMART standalone: a login stores its grant only after the grant lock is fr
   await unlink(lock);
   await assert.rejects(expiring, (error: unknown) => error instanceof CredentialFault && error.code === 'TOKEN_EXPIRED');
   assert.deepEqual(await readTokenFile(s.tokenFile), previous, 'the previous grant is untouched');
+});
+
+test('SMART standalone: a tokenFile that is not an absolute path is refused as configuration', () => {
+  const build = (tokenFile: string) => new SmartStandaloneProvider('http://127.0.0.1:1/fhir',
+    { type: 'smart_standalone_launch', clientId: 'synthetic-client', tokenFile } as never, { patientId: 'synthetic-patient', servedTypes: ['Patient'], alias: 'synthetic' });
+  build(join(tmpdir(), 'grant.json')).close();
+  for (const tokenFile of ['grant.json', './grant.json', '../grant.json', '']) {
+    assert.throws(() => build(tokenFile), (error: unknown) => error instanceof CredentialFault && error.code === 'INVALID_CONFIG', JSON.stringify(tokenFile));
+  }
+});
+
+const cliPath = fileURLToPath(new URL('../packages/server/src/cli.ts', import.meta.url));
+/** Serves the config through the real CLI over stdio and starts one fhir_capabilities call, which needs the credential. */
+async function serveOverStdio(t: TestContext, config: Rec, dir: string) {
+  const configPath = join(dir, 'config.json');
+  await writeFile(configPath, JSON.stringify(config));
+  const child = spawn(process.execPath, ['--import', 'tsx', cliPath, '--config', configPath], { cwd: fileURLToPath(new URL('../', import.meta.url)), stdio: ['pipe', 'pipe', 'pipe'] });
+  t.after(() => { child.kill('SIGKILL'); });
+  let stderr = '', stdout = '';
+  child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+  const exited = new Promise<number | null>(resolve => child.once('exit', code => resolve(code)));
+  const initialized = new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`no initialize response: ${stderr}`)), 15_000);
+    child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); if (stdout.includes('"id":1')) { clearTimeout(timer); resolve(); } });
+  });
+  child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'shutdown-test', version: '0' } } })}\n`);
+  await initialized;
+  child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} })}\n`);
+  child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'fhir_capabilities', arguments: { topic: 'server' } } })}\n`);
+  /** Exit code, or 'running' when the process is still alive `withinMs` after the call. */
+  const exitWithin = async (withinMs: number): Promise<number | null | 'running'> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const code = await Promise.race([exited, new Promise<'running'>(resolve => { timer = setTimeout(() => resolve('running'), withinMs); })]);
+    clearTimeout(timer);
+    return code;
+  };
+  return { child, exitWithin, stderr: () => stderr };
+}
+
+test('SMART standalone serving: shutting down while a refresh holds the grant lock removes the lock and exits within the bound', async t => {
+  for (const how of ['end of standard input', 'SIGTERM'] as const) {
+    let refreshing!: () => void;
+    const arrived = new Promise<void>(resolve => { refreshing = resolve; });
+    // The token endpoint takes the refresh request and never answers, so the refresh is inside the grant lock at shutdown.
+    const s = await setup(t, { holdToken: request => request.form.get('grant_type') === 'refresh_token' ? (refreshing(), new Promise<void>(() => undefined)) : undefined }, { offlineAccess: true });
+    await s.login();
+    await s.rewrite(expire);
+    const before = await s.stored();
+    const server = await serveOverStdio(t, s.config, s.dir);
+    await arrived;
+    await lstat(`${s.tokenFile}.lock`);
+    const startedAt = Date.now();
+    if (how === 'SIGTERM') server.child.kill('SIGTERM'); else server.child.stdin.end();
+    const code = await server.exitWithin(4_000);
+    assert.equal(code, 0, `${how}: the server exits 0 within the bound; stderr: ${server.stderr()}`);
+    assert.ok(Date.now() - startedAt < 4_000, how);
+    await assert.rejects(lstat(`${s.tokenFile}.lock`), `${how}: no lock is left behind`);
+    assert.deepEqual(await s.stored(), before, `${how}: the unanswered refresh stored nothing`);
+  }
+});
+
+test('SMART standalone serving: a refresh that cannot finish does not keep a shutting-down server alive past the bound', async t => {
+  const s = await setup(t, {}, { offlineAccess: true });
+  await s.login();
+  await s.rewrite(expire);
+  // Another process holds the grant lock, so the refresh waits for it (up to the lock wait limit, well past the bound).
+  await writeFile(`${s.tokenFile}.lock`, 'another-process', { mode: 0o600 });
+  const server = await serveOverStdio(t, s.config, s.dir);
+  await sleep(750);
+  const startedAt = Date.now();
+  server.child.stdin.end();
+  const code = await server.exitWithin(5_000);
+  assert.equal(code, 0, `the server exits 0 within the bound; stderr: ${server.stderr()}`);
+  assert.ok(Date.now() - startedAt < 5_000);
+  assert.equal(s.stub.tokenRequests.filter(r => r.form.get('grant_type') === 'refresh_token').length, 0, 'the refresh never got the lock');
+  assert.equal(await readFile(`${s.tokenFile}.lock`, 'utf8'), 'another-process', "the other process's lock is left in place");
 });

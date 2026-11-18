@@ -11,7 +11,10 @@ import { canonicalDecimal, compareDecimal, decimalEquals, isDecimalLexeme, lexem
 import { compareInstant, parseInstant, utcDate } from '../gold/fhir.js';
 import { parseResource, readSyntheaBundle } from '../gold/reader.js';
 import { hoursBetween, noteConditions, obsValue, quantityInfo } from '../gold/rules.js';
-import { mimicDevPatients, MIMIC_FHIR_DIR, tmpDir } from '../lib/paths.js';
+import { LOCAL_CONFIG, mimicDevPatients, MIMIC_FHIR_DIR, tmpDir } from '../lib/paths.js';
+
+/** MIMIC checks need the downloaded data and the local config; a present but malformed config still fails. */
+const mimicSkip = () => (!existsSync(MIMIC_FHIR_DIR) ? 'MIMIC data not downloaded' : !existsSync(LOCAL_CONFIG) ? 'no bench-config.json (see bench/README.md)' : false);
 
 const TRICKY = ['7.0', '12.3400', '0.0', '-0.0', '1e-3', '1E+2', '2.5E-10', '9007199254740993', '12345678901234567890123', '0.10000000000000000001', '-3.0666', '112.41600000000001'];
 
@@ -105,7 +108,7 @@ test('Synthea bundle reader rewrites urn:uuid references and keeps lexemes', asy
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
-test('MIMIC development records: every valueQuantity lexeme equals the raw file text', { skip: !existsSync(MIMIC_FHIR_DIR) }, async () => {
+test('MIMIC development records: every valueQuantity lexeme equals the raw file text', { skip: mimicSkip() }, async () => {
   const file = join(MIMIC_FHIR_DIR, 'MimicObservationVitalSignsED.ndjson.gz');
   const lines = createInterface({ input: createReadStream(file).pipe(createGunzip()), crlfDelay: Infinity });
   let checked = 0, trailing = 0;

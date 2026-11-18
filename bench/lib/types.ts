@@ -230,6 +230,9 @@ export interface ScoreRecord {
   extra_records?: number; // list-operation records outside the gold set
   suppressed_reads?: Ref[]; // reads answered NOT_FOUND although HAPI served them (silent truncation)
   lexeme: { eligible: number; exact: number };
+  // Templates whose answer is text in the item's own record (gold/rules.ts ANSWER_FROM_COPY): gold items with a returned
+  // copy (checked) and those where some copy yields the gold answer list (ok). Absent for other templates and in older scores.
+  answer_text?: { checked: number; ok: number };
   calls: number;
   bytes: CallBytes;
   latency_ms: number; // sum of call latencies

@@ -148,7 +148,7 @@ npm run doctor -- --config "$PWD/.local/fireboat.config.json"
 node dist/packages/server/src/cli.js --config "$PWD/.local/fireboat.config.json"
 ```
 
-`npm run doctor` alone wraps `--doctor --config examples/local.config.json`, so it checks port 8080. The extra `--config` above overrides it because the last one wins. If doctor prints `METADATA_UNAVAILABLE`, check that the source is running on the port in `source.baseUrl`.
+`npm run doctor` alone wraps `--doctor --config examples/local.config.json`, so it checks port 8080. The extra `--config` above overrides it because the last one wins. If doctor prints `METADATA_UNAVAILABLE`, check that the source is running on the port in `source.baseUrl`. If it prints `SIGN_IN_UNAVAILABLE`, the configured sign-in gave no usable token (for example, no `fireboat login` yet, a client secret that is not set, a token endpoint that failed or redirected, or a discovered endpoint that the loopback rules refuse), or the source rejected the token, so the metadata was not checked.
 
 Point an MCP host at `node /absolute/path/to/dist/packages/server/src/cli.js --config /absolute/path/to/config.json`. Use absolute paths for Node, the CLI and configuration. Only Claude Code has been tested; generated configuration does not establish host compatibility.
 
@@ -159,7 +159,8 @@ Doctor checks configuration and source metadata. It prints:
 - the gateway release, schema and catalog revision;
 - the runtime cell;
 - the source alias, with its loopback check, auth type and data classification;
-- the FHIR version and metadata coverage;
+- the FHIR version and metadata coverage, or `metadata: not-checked` when the configured sign-in failed or the source
+  rejected its token (the fault is then `SIGN_IN_UNAVAILABLE`, not a metadata fault);
 - the readiness of the `recent-labs-v1` workflow (under SMART sign-in, this also needs Patient read and Observation search
   in the granted scope);
 - the search-profile proof state;

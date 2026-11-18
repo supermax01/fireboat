@@ -251,6 +251,17 @@ export function noteText(doc: Res): string {
   return Buffer.from(data, 'base64').toString('utf8');
 }
 
+/** K2 entries of one CareTeam: "<member display> (<role>)" per participant, the reference when there is no display. */
+export function careTeamEntries(team: Res): string[] {
+  return get(team, 'participant').filter(isObj).map(pt => `${getStr(pt, 'member.display') ?? refStr(pt.member) ?? 'unknown'} (${ccName(get1(pt, 'role')) ?? 'no role'})`);
+}
+
+/** Templates whose answer is text in the item's own record: recompute the answer list from one returned copy; null = the copy lacks the text. */
+export const ANSWER_FROM_COPY: Record<string, (copy: Res) => string[] | null> = {
+  N2: c => { const d = getStr(c, 'content.attachment.data'); return d ? noteConditions(Buffer.from(d, 'base64').toString('utf8')) : null; },
+  K2: careTeamEntries,
+};
+
 const encStart = (r: Res) => getStr(r, 'period.start');
 const procTime = (r: Res) => getStr(r, 'performedDateTime') ?? getStr(r, 'performedPeriod.start');
 const maTime = (r: Res) => getStr(r, 'effectiveDateTime') ?? getStr(r, 'effectivePeriod.start');
@@ -546,8 +557,7 @@ const RULES: Record<string, Rule> = {
   // Members and roles of the care team.
   K2: (p, ctx) => {
     const team = resolve(ctx, p.record!);
-    const entries = get(team, 'participant').filter(isObj).map(pt => `${getStr(pt, 'member.display') ?? refStr(pt.member) ?? 'unknown'} (${ccName(get1(pt, 'role')) ?? 'no role'})`);
-    return listResult(entries, [goldItem(team, null, getStr(team, 'period.start'), null)], [refOf(team)], [refOf(team)],
+    return listResult(careTeamEntries(team), [goldItem(team, null, getStr(team, 'period.start'), null)], [refOf(team)], [refOf(team)],
       ['entries are "<member display> (<role>)"; member names come from reference displays (shared Practitioner files not loaded)']);
   },
   // Modality and body site of the most recent imaging study.
