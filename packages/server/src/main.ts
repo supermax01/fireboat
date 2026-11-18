@@ -180,6 +180,13 @@ export function withEraGuard(server: McpServer, era: 'modern' | 'legacy'): McpSe
 
 /** How long shutdown waits, at most, for in-flight sign-in work to unwind before the process exits. */
 const SHUTDOWN_SETTLE_MS = 1_500;
+/**
+ * The hard bound on the whole shutdown: the process exits 0 this long after shutdown starts, whatever is still pending.
+ * Closing the MCP connection can wait for standard output to drain, which never happens while a client keeps the pipe
+ * open without reading it. The credential settle runs alongside that close, so the margin covers only the grant-lock
+ * release after the settle bound (a few file operations) and leaves the rest as slack.
+ */
+const SHUTDOWN_EXIT_MS = SHUTDOWN_SETTLE_MS + 1_000;
 
 export async function main(argv: string[], release: ReleaseMetadata): Promise<number> {
   let opts: CliOptions;
@@ -214,10 +221,12 @@ export async function main(argv: string[], release: ReleaseMetadata): Promise<nu
   const shutdown = (): void => {
     if (shuttingDown) return;
     shuttingDown = true;
-    // Closing aborts a token request in flight, but a refresh releases its grant lock (and finishes a grant write it
-    // started) asynchronously, so that is given a bounded moment before exiting. Tool requests are not waited for.
-    void handle.close().catch(() => undefined).then(() => gateway.closeAndSettle(SHUTDOWN_SETTLE_MS)).catch(() => undefined)
-      .finally(() => { process.exit(0); });
+    setTimeout(() => { process.exit(0); }, SHUTDOWN_EXIT_MS).unref();
+    // Closing stops a token acquisition that has not yet sent its request, but a refresh releases its grant lock
+    // asynchronously, and a refresh request already sent is answered and written back only if its response arrives in
+    // time, so that is given a bounded moment before exiting. It runs alongside the connection close, which may never
+    // finish (see SHUTDOWN_EXIT_MS), so a grant lock is released either way. Tool requests are not waited for.
+    void Promise.allSettled([handle.close(), gateway.closeAndSettle(SHUTDOWN_SETTLE_MS)]).finally(() => { process.exit(0); });
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);

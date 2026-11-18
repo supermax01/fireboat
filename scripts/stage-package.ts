@@ -3,6 +3,7 @@ import { isMainModule } from './is-main.mjs';
 // Release staging has no install, fetch, lifecycle, or serving operation.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -47,6 +48,8 @@ export const documentSource = (path: string): string => DOCUMENT_SOURCES[path] ?
 /** The public repository: links to files the package does not ship point here. Images use the raw host so they render. */
 export const PUBLIC_BLOB_BASE = 'https://github.com/supermax01/fireboat/blob/main/';
 export const PUBLIC_RAW_BASE = 'https://raw.githubusercontent.com/supermax01/fireboat/main/';
+/** The public repository's front page: a link to the repository root (`./` from the root, `../` from docs/) points here. */
+export const PUBLIC_ROOT = 'https://github.com/supermax01/fireboat';
 export const HELPER_ASSETS = [
   'docker/compose.quickstart.yaml', 'examples/quickstart/seed-manifest.json', 'examples/quickstart/generator-pins.json',
   'examples/quickstart/backend-evidence.json', 'examples/quickstart/config.json', 'examples/quickstart/host-config.example.json',
@@ -64,54 +67,325 @@ export function packagePathOf(repoPath: string): string | undefined {
   if (repoPath === 'packaging/npm-shrinkwrap.json') return 'npm-shrinkwrap.json';
   return undefined;
 }
-const stagedTarget = (path: string, staged: ReadonlySet<string>): boolean => staged.has(path) || [...staged].some(p => p.startsWith(`${path}/`));
-const LINK_TARGETS = /(!?)\[((?:[^[\]]|\[[^[\]]*\])*)\]\((\s*)([^\s()]+)/g;
-const ATTRIBUTE_TARGETS = /\b(src|srcset|href)=(["'])([^"']*)\2/g;
-const DEFINITION_TARGETS = /^( {0,3}\[[^\]]+\]:[ \t]*)(\S+)/gm;
-const FENCE = /^ {0,3}(```|~~~)/;
-/** Calls `map` on every link and image target outside fenced code (inline links and images, src/srcset/href, definitions). */
-function mapMarkdownTargets(text: string, map: (target: string, image: boolean) => string): string {
-  let fenced = false;
-  return text.split('\n').map(line => {
-    if (FENCE.test(line)) { fenced = !fenced; return line; }
-    if (fenced) return line;
-    return line
-      .replace(LINK_TARGETS, (_all, bang: string, label: string, space: string, target: string) => `${bang}[${label}](${space}${map(target, bang === '!')}`)
-      .replace(ATTRIBUTE_TARGETS, (_all, name: string, quote: string, value: string) => `${name}=${quote}${name === 'srcset'
-        ? value.split(',').map(candidate => candidate.replace(/^(\s*)(\S+)/, (_m, lead: string, url: string) => `${lead}${map(url, true)}`)).join(',')
-        : map(value, name === 'src')}${quote}`)
-      .replace(DEFINITION_TARGETS, (_all, lead: string, target: string) => `${lead}${map(target, false)}`);
-  }).join('\n');
+const listedPath = (path: string, paths: ReadonlySet<string>): boolean => paths.has(path) || [...paths].some(p => p.startsWith(`${path}/`));
+const stagedTarget = listedPath;
+
+// Markdown scanning. A small CommonMark-shaped scanner finds every link and image target a renderer would follow:
+// fenced code (in block quotes and list items too), code spans and backslash escapes are skipped; inline links and
+// images (wrapped across lines, angle-bracket or parenthesised destinations), reference definitions and the
+// definitions behind reference-style images, and URL attributes of HTML tags are found at their exact offsets. The
+// stage's rewrite and both link checks share it. Where the scanner cannot tell, it reports a target rather than skip
+// one, so a doubtful form is checked instead of missed. A rewritten target is escaped for the syntax around it.
+// Known limits, each erring towards checking text that is not a link rather than missing one: indented code blocks
+// and HTML comments are scanned as prose; backslash escapes or backticks inside HTML attribute values are masked as
+// in prose; a `]` inside inline HTML within link text ends the text; a tab after `>` in a block quote counts as one
+// column; spaced thematic breaks (`* * *`) and ordered markers that cannot interrupt a paragraph are read as list
+// markers, which can move the column a following four-space-indented fence is judged against; a block quote inside a
+// list item is not modelled; a definition is accepted at the start of any line; a reference label wrapped across
+// lines inside a block quote keeps its `>` markers when it is compared.
+/** Where a target sits, which decides how a rewritten one is escaped. */
+type TargetContext = 'destination' | 'angle' | 'double' | 'single' | 'unquoted';
+type TargetSpan = { start: number; end: number; image: boolean; context: TargetContext; srcset?: boolean };
+type FenceState = { char: string; length: number; quotes: number; column: number };
+const ASCII_PUNCTUATION = /[!-/:-@[-`{-~]/;
+const LIST_MARKER = /^(?:[-+*]|\d{1,9}[.)])(?=[ \t\r]|$)/;
+const FENCE_OPEN = /^(`{3,}|~{3,})(.*)$/;
+const isBlank = (text: string): boolean => /^[ \t\r]*$/.test(text);
+/** The width of the white space of `line` starting at `from` (a tab advances to the next multiple of four) and where it ends. */
+function indentation(line: string, from: number): { width: number; index: number } {
+  let width = 0, index = from;
+  for (; index < line.length && (line[index] === ' ' || line[index] === '\t'); index++) width = line[index] === '\t' ? width + 4 - (width % 4) : width + 1;
+  return { width, index };
 }
+const blanked = (text: string): string => text.replace(/[^\n]/g, ' ');
+
+/** A same-length copy of `text` with fenced code (fence lines included) and block-quote and list markers blanked. */
+function maskBlocks(text: string): string {
+  const lines = text.split('\n');
+  let fence: FenceState | undefined, lists: number[] = [], listQuotes = 0;
+  for (let n = 0; n < lines.length; n++) {
+    const line = lines[n]!, ends: number[] = [];
+    // Block-quote markers, each with the one space or tab after it; `ends` holds where each one's content starts.
+    for (let at = 0, m: RegExpExecArray | null; (m = /^ {0,3}>[ \t]?/.exec(line.slice(at)));) { at += m[0].length; ends.push(at); }
+    if (fence) {
+      // A fence ends with its container: fewer block-quote markers, or a line indented less than the list item's content.
+      const at = fence.quotes ? ends[fence.quotes - 1] ?? -1 : 0;
+      if (at >= 0 && (isBlank(line.slice(at)) || indentation(line, at).width >= fence.column)) {
+        const { width, index } = indentation(line, at);
+        // A closing fence uses the opening character, at least as many times, and nothing else.
+        if (width - fence.column <= 3 && new RegExp(`^\\${fence.char}{${fence.length},}[ \\t\\r]*$`).test(line.slice(index))) fence = undefined;
+        lines[n] = blanked(line);
+        continue;
+      }
+      fence = undefined;
+    }
+    const quotes = ends.length, at = quotes ? ends[quotes - 1]! : 0;
+    let chars = line.split('');
+    for (let k = 0; k < at; k++) if (chars[k] === '>') chars[k] = ' ';
+    if (quotes !== listQuotes) { lists = []; listQuotes = quotes; }
+    if (isBlank(line.slice(at))) { lines[n] = chars.join(''); continue; }
+    let { width, index } = indentation(line, at);
+    while (lists.length && width < lists.at(-1)!) lists.pop();
+    for (let marker: RegExpExecArray | null; (marker = width - (lists.at(-1) ?? 0) < 4 ? LIST_MARKER.exec(line.slice(index)) : null);) {
+      for (let k = index; k < index + marker[0].length; k++) chars[k] = ' ';
+      const after = indentation(line, index + marker[0].length), column = width + marker[0].length;
+      const empty = isBlank(line.slice(after.index));
+      lists.push(empty || after.width > 4 ? column + 1 : column + after.width);
+      if (empty) break;
+      width = column + after.width; index = after.index;
+    }
+    const open = width - (lists.at(-1) ?? 0) <= 3 ? FENCE_OPEN.exec(line.slice(index)) : null;
+    if (open && !(open[1]![0] === '`' && open[2]!.includes('`'))) {
+      fence = { char: open[1]![0]!, length: open[1]!.length, quotes, column: lists.at(-1) ?? 0 };
+      chars = blanked(line).split('');
+    }
+    lines[n] = chars.join('');
+  }
+  return lines.join('\n');
+}
+
+/** [start, end) of every run of non-blank lines of a masked text: inline syntax never crosses a blank line. */
+function blockRanges(masked: string): [number, number][] {
+  const ranges: [number, number][] = [];
+  let start = -1, at = 0;
+  for (const line of masked.split('\n')) {
+    if (!isBlank(line) && start < 0) start = at;
+    if (isBlank(line) && start >= 0) { ranges.push([start, at - 1]); start = -1; }
+    at += line.length + 1;
+  }
+  if (start >= 0) ranges.push([start, masked.length]);
+  return ranges;
+}
+
+/** Also blanks code spans (backticks included) and stands a letter in for each backslash-escaped character. */
+function maskInline(masked: string): string {
+  const chars = masked.split('');
+  for (const [start, end] of blockRanges(masked)) {
+    for (let i = start; i < end; i++) {
+      if (masked[i] === '\\' && i + 1 < end && ASCII_PUNCTUATION.test(masked[i + 1]!)) { chars[i + 1] = 'e'; i++; continue; }
+      if (masked[i] !== '`') continue;
+      let run = i; while (run < end && masked[run] === '`') run++;
+      const length = run - i;
+      // A code span closes at the next backtick run of exactly the same length; backslashes do not escape inside it.
+      let close = -1;
+      for (let k = run; k < end;) {
+        if (masked[k] !== '`') { k++; continue; }
+        let stop = k; while (stop < end && masked[stop] === '`') stop++;
+        if (stop - k === length) { close = stop; break; }
+        k = stop;
+      }
+      if (close < 0) { i = run - 1; continue; }
+      for (let k = i; k < close; k++) if (chars[k] !== '\n') chars[k] = ' ';
+      i = close - 1;
+    }
+  }
+  return chars.join('');
+}
+
+/** A link destination at `at`: inside angle brackets (no line break), or a run without white space and with balanced parentheses. */
+function destinationAt(masked: string, at: number, end: number): { start: number; end: number } | undefined {
+  if (masked[at] === '<') {
+    for (let k = at + 1; k < end; k++) {
+      if (masked[k] === '>') return { start: at + 1, end: k };
+      if (masked[k] === '<' || masked[k] === '\n') return undefined;
+    }
+    return undefined;
+  }
+  let depth = 0, k = at;
+  for (; k < end && masked[k]! > ' '; k++) {
+    if (masked[k] === '(') depth++;
+    else if (masked[k] === ')') { if (!depth) break; depth--; }
+  }
+  return k > at ? { start: at, end: k } : undefined;
+}
+/** Skips spaces and tabs, at most one line break, then spaces and tabs again. */
+function skipSpace(masked: string, at: number, end: number): number {
+  const lead = /[ \t]*(?:\r?\n[ \t]*)?/y; lead.lastIndex = at;
+  return Math.min(end, at + (lead.exec(masked)?.[0].length ?? 0));
+}
+const referenceLabel = (label: string): string => label.trim().replace(/\s+/g, ' ').toLowerCase();
+
+type HtmlAttribute = { tag: string; name: string; start: number; end: number; quote: '"' | "'" | '' };
+/** The attributes of every HTML start tag outside code: names in lower case, value offsets without quotes. */
+function htmlAttributes(masked: string): HtmlAttribute[] {
+  const found: HtmlAttribute[] = [];
+  for (const [start, end] of blockRanges(masked)) {
+    for (let i = masked.indexOf('<', start); i >= 0 && i < end; i = masked.indexOf('<', i + 1)) {
+      const name = /[A-Za-z][A-Za-z0-9-]*/y; name.lastIndex = i + 1;
+      const tag = name.exec(masked)?.[0].toLowerCase();
+      if (!tag) continue;
+      for (let k = i + 1 + tag.length; k < end;) {
+        const space = /[ \t\r\n]*/y; space.lastIndex = k; k += space.exec(masked)![0].length;
+        if (masked[k] === '>' || masked.startsWith('/>', k)) break;
+        const attribute = /[A-Za-z_:][A-Za-z0-9_.:-]*/y; attribute.lastIndex = k;
+        const key = attribute.exec(masked)?.[0];
+        if (!key) break;
+        k += key.length; space.lastIndex = k; k += space.exec(masked)![0].length;
+        if (masked[k] !== '=') continue;
+        k++; space.lastIndex = k; k += space.exec(masked)![0].length;
+        const quote = masked[k];
+        if (quote === '"' || quote === "'") {
+          const close = masked.indexOf(quote, k + 1);
+          if (close < 0 || close >= end) break;
+          found.push({ tag, name: key.toLowerCase(), start: k + 1, end: close, quote }); k = close + 1;
+        } else {
+          const bare = /[^ \t\r\n"'=<>`]+/y; bare.lastIndex = k;
+          const value = bare.exec(masked)?.[0];
+          if (!value) break;
+          found.push({ tag, name: key.toLowerCase(), start: k, end: k + value.length, quote: '' }); k += value.length;
+        }
+      }
+    }
+  }
+  return found;
+}
+/** URL attributes and whether each loads its target as an image or media file (raw host) rather than a page. */
+const URL_ATTRIBUTES: Readonly<Record<string, (tag: string) => boolean>> = {
+  href: tag => tag === 'image', 'xlink:href': tag => tag === 'image', src: () => true, srcset: () => true, poster: () => true,
+  data: () => true, background: () => true, cite: () => false, longdesc: () => false, action: () => false, formaction: () => false,
+};
+
+/** Every link and image target of a markdown text outside code, in order, without overlaps. */
+function markdownTargets(text: string): TargetSpan[] {
+  const blocks = maskBlocks(text), masked = maskInline(blocks), spans: TargetSpan[] = [];
+  const definitions: { label: string; span: TargetSpan }[] = [], imageLabels = new Set<string>();
+  for (const [start, end] of blockRanges(masked)) {
+    // Reference definitions, at the start of any line; the destination may be on the next line.
+    for (let line = start; line < end;) {
+      const head = /[ \t]*\[(?!\^)([^[\]]+)\]:/y; head.lastIndex = line;
+      const match = head.exec(masked);
+      const destination = match ? destinationAt(masked, skipSpace(masked, line + match[0].length, end), end) : undefined;
+      if (match && destination) definitions.push({ label: referenceLabel(text.slice(line + match[0].indexOf('[') + 1, line + match[0].length - 2)),
+        span: { ...destination, image: false, context: masked[destination.start - 1] === '<' ? 'angle' : 'destination' } });
+      const next = masked.indexOf('\n', line);
+      line = next < 0 ? end : next + 1;
+    }
+    // Inline links and images, and reference-style images, from every opening bracket (so nested images are found too).
+    for (let i = masked.indexOf('[', start); i >= 0 && i < end; i = masked.indexOf('[', i + 1)) {
+      let close = -1;
+      for (let k = i + 1, depth = 1; k < end; k++) {
+        if (masked[k] === '[') depth++;
+        else if (masked[k] === ']' && !--depth) { close = k; break; }
+      }
+      if (close < 0) continue;
+      const image = i > start && masked[i - 1] === '!';
+      if (masked[close + 1] === '(') {
+        const destination = destinationAt(masked, skipSpace(masked, close + 2, end), end);
+        if (destination) spans.push({ ...destination, image, context: masked[destination.start - 1] === '<' ? 'angle' : 'destination' });
+      } else if (image) {
+        const label = masked[close + 1] === '[' ? masked.indexOf(']', close + 2) : -1;
+        const named = label > close + 2 && label < end ? text.slice(close + 2, label) : '';
+        const used = named.trim() ? named : text.slice(i + 1, close);
+        if (!used.startsWith('^')) imageLabels.add(referenceLabel(used));
+      }
+    }
+  }
+  for (const { label, span } of definitions) spans.push({ ...span, image: imageLabels.has(label) });
+  for (const { tag, name, start, end, quote } of htmlAttributes(masked)) {
+    const image = URL_ATTRIBUTES[name]?.(tag), context: TargetContext = quote === '"' ? 'double' : quote === "'" ? 'single' : 'unquoted';
+    if (image === undefined) continue;
+    if (name !== 'srcset') {
+      // Surrounding white space is not part of the URL. Offsets come from the block-stripped text, so a value wrapped
+      // inside a block quote does not take its `>` markers.
+      const value = blocks.slice(start, end), lead = value.length - value.trimStart().length, trail = value.length - value.trimEnd().length;
+      if (lead < value.length) spans.push({ start: start + lead, end: end - trail, image, context });
+      continue;
+    }
+    // A srcset holds candidates, each a URL and optional descriptors, read as HTML does: a URL is a run without white
+    // space (so a data: URL keeps its commas), trailing commas end it, and otherwise its descriptors run to a comma.
+    for (let at = start; at < end;) {
+      while (at < end && /[\s,]/.test(blocks[at]!)) at++;
+      let stop = at;
+      while (stop < end && !/\s/.test(blocks[stop]!)) stop++;
+      if (stop === at) break;
+      let last = stop;
+      while (last > at && blocks[last - 1] === ',') last--;
+      spans.push({ start: at, end: last, image: true, context, srcset: true });
+      if (last < stop) { at = stop; continue; }
+      while (stop < end && blocks[stop] !== ',') stop++;
+      at = stop + 1;
+    }
+  }
+  spans.sort((a, b) => a.start - b.start || b.end - a.end);
+  let reach = 0;
+  return spans.filter(span => span.start >= reach && (reach = span.end, true));
+}
+/** Calls `map` on every link and image target outside code and replaces the target with what it returns. */
+function mapMarkdownTargets(text: string, map: (target: string, image: boolean) => string): string {
+  let out = '', at = 0;
+  for (const span of markdownTargets(text)) {
+    const target = text.slice(span.start, span.end), mapped = map(target, span.image);
+    out += text.slice(at, span.start) + (mapped === target ? target : escapeTarget(mapped, span)); at = span.end;
+  }
+  return out + text.slice(at);
+}
+/** Characters a rewritten target may not carry in its place: they would end the destination, the attribute or the candidate. */
+const UNSAFE_IN: Readonly<Record<TargetContext, RegExp>> = {
+  destination: /[\s()<>\\]/gu, angle: /[\s<>\\]/gu, double: /[\s"]/gu, single: /[\s']/gu, unquoted: /[\s"'=<>`]/gu,
+};
+const percent = (c: string): string => [...Buffer.from(c)].map(b => `%${b.toString(16).toUpperCase().padStart(2, '0')}`).join('');
+/** Percent-encodes what would break the syntax around a rewritten target (a srcset candidate may not hold a comma either). */
+const escapeTarget = (target: string, span: TargetSpan): string => {
+  const escaped = target.replace(UNSAFE_IN[span.context], percent);
+  return span.srcset ? escaped.replace(/,/g, percent) : escaped;
+};
+
+const unescapeTarget = (target: string): string => target.replace(/\\([!-/:-@[-`{-~])/g, '$1');
 const isRelativeTarget = (target: string): boolean => target !== '' && !target.startsWith('#') && !target.startsWith('//') && !/^[A-Za-z][A-Za-z0-9+.-]*:/.test(target);
 const splitAnchor = (target: string): [string, string] => { const at = target.indexOf('#'); return at < 0 ? [target, ''] : [target.slice(0, at), target.slice(at)]; };
+const decoded = (text: string): string | undefined => { try { return decodeURIComponent(text); } catch { return undefined; } };
+/** A relative target's path (unescaped and percent-decoded), query and anchor; undefined when it is not relative, starts at a root, or cannot be decoded. */
+function relativeTarget(target: string): { path: string; query: string; anchor: string } | undefined {
+  const plain = unescapeTarget(target);
+  if (!isRelativeTarget(plain)) return undefined;
+  const [location, anchor] = splitAnchor(plain), at = location.indexOf('?');
+  // A query (`?plain=1`, `?raw=true`) is not part of the path: it is kept on the rewritten link, not looked up.
+  const [raw, query] = at < 0 ? [location, ''] : [location.slice(0, at), location.slice(at)], path = decoded(raw);
+  // A path starting at a root (written `/docs/x.md`, or decoded to it) is refused, and so is an encoded slash (`%2F`),
+  // which cannot be told from a separator.
+  return path === undefined || /%2f/i.test(raw) || path.startsWith('/') ? undefined : { path, query, anchor };
+}
+/** Percent-encodes a path for a link destination: spaces, parentheses, angle brackets, `%`, `#`, `?` and non-ASCII. */
+const encodePath = (path: string): string => path.replace(/[^A-Za-z0-9\-._~!$&'*+,;=:@/]/gu, c => percent(c));
+/** Where a relative link of a document kept at `repoSource` points in the repository, or undefined when the stage leaves it unchanged. */
+function repositoryLink(repoSource: string, target: string): { path: string; folder: boolean; query: string; anchor: string } | undefined {
+  const relative = relativeTarget(target);
+  if (!relative) return undefined;
+  const path = posix.normalize(posix.join(posix.dirname(repoSource), relative.path)).replace(/\/$/, '');
+  return path === '..' || path.startsWith('../') ? undefined : { path, folder: relative.path.endsWith('/') || path === '.', query: relative.query, anchor: relative.anchor };
+}
 
 /**
  * Rewrites the repository-relative links and images of a staged markdown document. A target the package ships becomes
  * its package-relative path; any other target becomes an absolute URL on the public repository (the raw host for
  * images). Anchors are kept. `repoSource` is where the document lives in the repository; `staged` holds every package path.
+ * A query is kept after the path. A link to the repository root becomes the public repository's front page. Targets
+ * starting at a root (`/docs/x.md`) and targets outside the repository are left as written, for the link check to refuse.
  */
 export function stagedMarkdown(packagePath: string, repoSource: string, body: Buffer, staged: ReadonlySet<string>): Buffer {
   return Buffer.from(mapMarkdownTargets(body.toString('utf8'), (target, image) => {
-    if (!isRelativeTarget(target)) return target;
-    const [path, anchor] = splitAnchor(target);
-    const folder = path.endsWith('/');
-    const repoTarget = posix.normalize(posix.join(posix.dirname(repoSource), path)).replace(/\/$/, '');
-    if (repoTarget === '..' || repoTarget.startsWith('../')) return target;
-    const packageTarget = packagePathOf(repoTarget);
-    const suffix = folder ? '/' : '';
-    if (packageTarget !== undefined && stagedTarget(packageTarget, staged)) return `${posix.relative(posix.dirname(packagePath), packageTarget)}${suffix}${anchor}`;
+    const link = repositoryLink(repoSource, target);
+    if (!link) return target;
+    if (link.path === '.') return `${PUBLIC_ROOT}${link.query}${link.anchor}`;
+    const packageTarget = packagePathOf(link.path), repoTarget = encodePath(link.path), suffix = `${link.folder ? '/' : ''}${link.query}`, anchor = link.anchor;
+    if (packageTarget !== undefined && stagedTarget(packageTarget, staged)) return `${encodePath(posix.relative(posix.dirname(packagePath), packageTarget) || '.')}${suffix}${anchor}`;
     return image ? `${PUBLIC_RAW_BASE}${repoTarget}${suffix}` : `${PUBLIC_BLOB_BASE}${repoTarget}${suffix}${anchor}`;
   }));
 }
 
-/** The relative links and images of a staged markdown document whose target is not in the package, as `<document>: <target>`. */
+/**
+ * The relative links and images of a staged markdown document whose target is not in the package, as `<document>: <target>`.
+ * A target starting at a root (`/docs/x.md`) is refused: the package has no repository root to resolve it against.
+ */
 export function brokenMarkdownLinks(packagePath: string, body: Buffer, staged: ReadonlySet<string>): string[] {
   const broken: string[] = [];
   mapMarkdownTargets(body.toString('utf8'), target => {
-    if (isRelativeTarget(target)) {
-      const resolved = posix.normalize(posix.join(posix.dirname(packagePath), splitAnchor(target)[0])).replace(/\/$/, '');
-      if (resolved === '..' || resolved.startsWith('../') || !stagedTarget(resolved, staged)) broken.push(`${packagePath}: ${target}`);
+    if (isRelativeTarget(unescapeTarget(target))) {
+      const relative = relativeTarget(target);
+      // Undecodable, root-relative or encoded-slash targets have no resolution: refused.
+      if (!relative) { broken.push(`${packagePath}: ${target}`); return target; }
+      const resolved = posix.normalize(posix.join(posix.dirname(packagePath), relative.path)).replace(/\/$/, '');
+      if (resolved === '..' || resolved.startsWith('../') || !stagedTarget(resolved, staged) || (relative.path.endsWith('/') && staged.has(resolved))) broken.push(`${packagePath}: ${target}`);
     }
     return target;
   });
@@ -122,6 +396,127 @@ export function brokenMarkdownLinks(packagePath: string, body: Buffer, staged: R
 export function assertStagedLinks(files: readonly { path: string; body: Buffer }[], staged: ReadonlySet<string>): void {
   const broken = files.filter(file => file.path.endsWith('.md')).flatMap(file => brokenMarkdownLinks(file.path, file.body, staged));
   if (broken.length) throw fault('STAGE_DOCUMENT_LINK', broken);
+}
+
+/** `[text](destination)`, `![alt](destination)` and `[text][label]` reduced to their text, with code spans and escapes respected and balanced parentheses in destinations. */
+function withoutLinkSyntax(source: string): string {
+  const masked = maskInline(source), drop = new Array<boolean>(source.length).fill(false);
+  for (let i = masked.indexOf('['); i >= 0; i = masked.indexOf('[', i + 1)) {
+    let close = -1, end = -1;
+    for (let k = i + 1, depth = 1; k < masked.length; k++) {
+      if (masked[k] === '[') depth++;
+      else if (masked[k] === ']' && !--depth) { close = k; break; }
+    }
+    if (close < 0) continue;
+    if (masked[close + 1] === '(') {
+      for (let k = close + 2, depth = 0; k < masked.length; k++) {
+        if (masked[k] === '(') depth++;
+        else if (masked[k] === ')') { if (!depth) { end = k; break; } depth--; }
+      }
+    } else if (masked[close + 1] === '[') end = masked.indexOf(']', close + 2);
+    if (end < 0) continue;
+    if (i > 0 && masked[i - 1] === '!') drop[i - 1] = true;
+    drop[i] = true;
+    for (let k = close; k <= end; k++) drop[k] = true;
+  }
+  return source.split('').filter((_c, n) => !drop[n]).join('');
+}
+/** The text a heading renders, as GitHub slugs it: code keeps its content; link, image, emphasis and HTML markup go. */
+function headingText(heading: string): string {
+  const escapes: string[] = [], source = withoutLinkSyntax(heading);
+  return source.trim().split(/(?<!`)(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/).map((part, n) => {
+    if (n % 3 === 1) return '';
+    if (n % 3 === 2) return part.length > 2 && part.startsWith(' ') && part.endsWith(' ') && part.trim() ? part.slice(1, -1) : part;
+    return part
+      .replace(/\\([!-/:-@[-`{-~])/g, (_m, c: string) => `\uE000${escapes.push(c) - 1}\uE001`)
+      .replace(/!?\[([^\]]*)\](?:\([^)]*\)|\[[^\]]*\])?/g, '$1')
+      .replace(/<[^>]*>/g, '')
+      .replace(/\*+|~~|(^|[^\p{L}\p{N}])_+|_+(?=[^\p{L}\p{N}]|$)/gu, (_m, lead?: string) => lead ?? '')
+      .replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (_m, name: string) => ({ amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", nbsp: ' ' })[name]!)
+      .replace(/&#(\d+);|&#[xX]([0-9A-Fa-f]+);/g, (_m, dec?: string, hex?: string) => String.fromCodePoint(dec ? Number(dec) : parseInt(hex!, 16)))
+      .replace(/\uE000(\d+)\uE001/g, (_m, n: string) => escapes[Number(n)]!);
+  }).join('').trim();
+}
+/**
+ * The anchors a markdown document defines on GitHub: one per heading (ATX or setext, outside code) by GitHub's slug
+ * rules (lower case; everything but letters, marks, digits, `_`, `-` and spaces removed; spaces become `-`; a repeated
+ * slug gets `-1`, `-2`, ...), plus the `id` and `name` attributes of HTML tags.
+ */
+export function markdownAnchors(text: string): Set<string> {
+  const anchors = new Set<string>(), occurrences = new Map<string, number>();
+  const add = (heading: string): void => {
+    const base = headingText(heading).toLowerCase().replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, '').replace(/ /g, '-');
+    let slug = base;
+    while (occurrences.has(slug)) { const count = occurrences.get(base)! + 1; occurrences.set(base, count); slug = `${base}-${count}`; }
+    occurrences.set(slug, 0); anchors.add(slug);
+  };
+  let paragraph: string[] = [];
+  for (const line of maskBlocks(text).split('\n')) {
+    const atx = /^[ \t]*#{1,6}(?=[ \t\r]|$)(.*)$/.exec(line);
+    if (atx) { add(atx[1]!.replace(/\r$/, '').replace(/(?:^|[ \t]+)#+[ \t]*$/, '')); paragraph = []; }
+    else if (isBlank(line)) paragraph = [];
+    else if (paragraph.length && /^[ \t]*(?:=+|-+)[ \t\r]*$/.test(line)) { add(paragraph.join(' ')); paragraph = []; }
+    else paragraph.push(line.replace(/\r$/, ''));
+  }
+  const masked = maskInline(maskBlocks(text));
+  for (const { name, start, end } of htmlAttributes(masked)) if (name === 'id' || name === 'name') anchors.add(text.slice(start, end));
+  return anchors;
+}
+/** Whether `#anchor` names a place in a document with these anchors. `#` and `#top` are the top of any page. */
+function anchorDefined(anchors: ReadonlySet<string>, anchor: string): boolean {
+  const name = decoded(anchor.slice(1));
+  return name !== undefined && (name === '' || name.toLowerCase() === 'top' || anchors.has(name) || anchors.has(name.toLowerCase()));
+}
+
+/** The repository at stage time: its tracked files and a reader for them. */
+export type RepositoryFiles = { readonly tracked: ReadonlySet<string>; readonly read: (path: string) => string };
+/**
+ * The links of a shipped markdown document, before the rewrite, that point nowhere, as `<document>: <target>`. Every
+ * relative target must be a file or folder tracked in the repository (the package and the public repository hold
+ * only tracked files), and an anchor into a markdown file, or into the document itself, must name one of its headings
+ * or HTML ids. A file is never linked as a folder (`docs/LIMITS.md/`). Anchors into other files (such as `#L10` line
+ * anchors) are not checked. Targets the rewrite leaves as written (outside the repository, starting at a root, or
+ * undecodable) are not reported here: brokenMarkdownLinks refuses them in the staged document.
+ */
+export function repositoryLinkProblems(packagePath: string, repoSource: string, body: Buffer, repository: RepositoryFiles): string[] {
+  const text = body.toString('utf8'), problems: string[] = [], anchors = new Map<string, Set<string>>();
+  const anchorsOf = (path: string): Set<string> => {
+    if (!anchors.has(path)) anchors.set(path, markdownAnchors(path === repoSource ? text : repository.read(path)));
+    return anchors.get(path)!;
+  };
+  mapMarkdownTargets(text, target => {
+    const plain = unescapeTarget(target);
+    if (plain.startsWith('#')) { if (!anchorDefined(anchorsOf(repoSource), plain)) problems.push(`${packagePath}: ${target}`); return target; }
+    const link = repositoryLink(repoSource, target);
+    if (!link) return target;
+    if (link.path !== '.' && !listedPath(link.path, repository.tracked)) problems.push(`${packagePath}: ${target}`);
+    else if (link.folder && repository.tracked.has(link.path)) problems.push(`${packagePath}: ${target}`);
+    else if (link.anchor && !link.folder && /\.md$/i.test(link.path) && repository.tracked.has(link.path) && !anchorDefined(anchorsOf(link.path), link.anchor)) problems.push(`${packagePath}: ${target}`);
+    return target;
+  });
+  return problems;
+}
+/** Refuses a stage in which a shipped markdown document links to an untracked path or to an anchor that does not exist. */
+export function assertRepositoryLinks(documents: readonly { path: string; source: string; body: Buffer }[], repository: RepositoryFiles): void {
+  const problems = documents.filter(d => d.path.endsWith('.md')).flatMap(d => repositoryLinkProblems(d.path, d.source, d.body, repository));
+  if (problems.length) throw fault('STAGE_DOCUMENT_LINK', problems);
+}
+/**
+ * The files tracked in the repository at `root` (by `git ls-files`) that exist in the working tree, with a cached reader.
+ * Git rather than the file system: the public repository holds tracked files only, so a git-ignored build output or
+ * an untracked local note on disk must not satisfy a link. `root` must be the top level of its own git checkout: in a
+ * copy without .git, git would answer for an enclosing repository (or for none), so that is refused as such.
+ */
+export function repositoryFiles(root: string): RepositoryFiles {
+  // Variables a git hook may set would point git at another repository.
+  const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^GIT_(?:DIR|WORK_TREE|INDEX_FILE|COMMON_DIR|PREFIX)$/.test(name)));
+  const git = (...args: string[]) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', env, timeout: 60_000, maxBuffer: 64 * 1024 * 1024 });
+  const top = git('rev-parse', '--show-toplevel');
+  if (top.status !== 0 || !existsSync(top.stdout.trim()) || realpathSync(top.stdout.trim()) !== realpathSync(root)) throw fault('STAGE_NEEDS_GIT_CHECKOUT');
+  const listed = git('ls-files', '-z');
+  if (listed.status !== 0) throw fault('STAGE_TRACKED_FILES');
+  const tracked = new Set(listed.stdout.split('\0').filter(path => path && existsSync(join(root, path)))), texts = new Map<string, string>();
+  return { tracked, read: path => { if (!texts.has(path)) texts.set(path, readFileSync(join(root, path), 'utf8')); return texts.get(path)!; } };
 }
 
 /** Only the helper's narrow pure shared modules/seed live under an eval path. No gateway eval module is admitted. */
@@ -259,7 +654,7 @@ export const HTTP_DISPATCH: Readonly<Record<string, string>> = {
   // SMART discovery: one unauthenticated GET of <baseUrl>/.well-known/smart-configuration.
   'packages/auth/src/smart-discovery.js': '18479560908e19065b135cd5387b59f5966173dad34cb4f4796a07a2c12721a5',
   // SMART standalone launch: the code exchange and refresh token POSTs to the discovered (or pinned) loopback token endpoint.
-  'packages/auth/src/smart-standalone.js': '4e5d12b5e47d541b566999d4651e14524fec658a180c7332cf0b004f6d347576',
+  'packages/auth/src/smart-standalone.js': '2412e1f7b465b148b260b3ab269e6d3629e327ed450d4b5a176e29e0c6cfd79f',
   'packages/core/src/transport.js': 'd116466f0e6cff1195b0e651abfee5725e583263e2b45c1fc0b99ce64aaca070',
   // The account module only (`fireboat login`): the one-shot 127.0.0.1 redirect listener, pinned with its handler.
   'packages/server/src/login.js': '8e10504d55dc358ba9dd402741aa91493ea0e9a43e2da0eaa259074630c0d7d6',
@@ -340,7 +735,8 @@ export function describeInventoryDrift(label: string, approved: ExpectedInventor
   if (!isDeepStrictEqual(approved.identity, actual.identity)) lines.push(`${label}: identity differs`);
   return lines;
 }
-const rootIdentity = (pkg: any): ExpectedInventory['identity'] => ({ name: pkg.name, version: pkg.version, bin: pkg.bin });
+/** An inventory's identity, as prepareFiles derives it from package.json (or the helper's examples/quickstart/package.json). */
+export const rootIdentity = (pkg: any): ExpectedInventory['identity'] => ({ name: pkg.name, version: pkg.version, bin: pkg.bin });
 
 /** Interior links, special files, and unapproved empty directories are refused as well as extra files. */
 export async function listRegularFiles(root: string): Promise<string[]> {
@@ -395,6 +791,53 @@ export async function verifyCheckedBuild(root: string, scratch: string, paths: r
   }
 }
 
+/** Package paths staged from dist/: everything under dist/ but the manifest, the helper's modules and its timing script. */
+export const fromDist = (path: string): boolean => (path.startsWith('dist/') && path !== 'dist/package.json') || path.startsWith('quickstart/dist/') || path === 'quickstart/fireboat-timing.mjs';
+/**
+ * Why dist/ cannot be compared with the approved dist hashes now, or undefined when it is a complete, fresh build.
+ * A stale dist/ is skipped, not failed, so a test run before the build (as npm run check does) still passes after an
+ * edit; the stage itself recompiles and compares, so a stale build never stages.
+ */
+export function distComparisonSkip(dist: { built: boolean; complete: boolean; stale: readonly string[] }): string | undefined {
+  if (!dist.built) return 'dist/ is not built: run npm run build to compare the approved dist hashes';
+  // npm run build writes the release metadata last; a bare compile (as the mutation gate runs in its copies) has none.
+  if (!dist.complete) return 'dist/ is not a complete npm run build: run npm run build to compare the approved dist hashes';
+  if (dist.stale.length) return `dist/ is older than its sources (${dist.stale.slice(0, 3).join(', ')}${dist.stale.length > 3 ? ', ...' : ''}): run npm run build to compare the approved dist hashes`;
+  return undefined;
+}
+/** How the files staged from dist/ (package paths) differ from both approved inventories, as paths only. */
+export function distInventoryDrift(built: readonly FileInventory[], npm: ExpectedInventory, helper: ExpectedInventory): string[] {
+  return [
+    ...describeInventoryDrift('npm-files.json', { ...npm, files: npm.files.filter(f => fromDist(f.path)) }, { ...npm, files: [...built] }),
+    ...describeInventoryDrift('helper-files.json', { ...helper, files: helper.files.filter(f => fromDist(`quickstart/${f.path}`)) },
+      { ...helper, files: built.filter(f => f.path.startsWith('quickstart/')).map(f => ({ ...f, path: f.path.slice('quickstart/'.length) })) }),
+  ];
+}
+
+type StageCopy = { source: string; target: string; mode: number };
+/** Every file the stage copies, in order: its repository source, its package path and its mode. `helperModules` is the quickstart helper's built module graph. */
+export async function stageCopies(root: string, helperModules: readonly string[]): Promise<StageCopy[]> {
+  const copies: StageCopy[] = [];
+  const copy = (source: string, target = source, mode = 0o644): void => { copies.push({ source, target, mode }); };
+  for (const p of GATEWAY_MODULES) copy(`dist/${p}`, `dist/${p}`, p === 'packages/server/src/cli.js' ? 0o755 : 0o644);
+  for (const p of [...RUNTIME_FILES, 'packages/server/src/generated/release.json']) copy(`dist/${p}`);
+  for (const p of DOCUMENTS) copy(documentSource(p), p);
+  copy('packaging/npm-shrinkwrap.json', 'npm-shrinkwrap.json');
+  for (const p of await listRegularFiles(join(root, LICENSES_SOURCE))) copy(`${LICENSES_SOURCE}/${p}`, `licenses/${p}`);
+  copy('examples/quickstart/package.json', 'quickstart/package.json');
+  copy('examples/quickstart/package-lock.json', 'quickstart/package-lock.json');
+  for (const p of helperModules) copy(`dist/${p}`, `quickstart/dist/${p}`, p === 'examples/quickstart/main.js' ? 0o755 : 0o644);
+  for (const p of HELPER_ASSETS) copy(p, `quickstart/${p}`);
+  copy('dist/examples/quickstart/timing.js', 'quickstart/fireboat-timing.mjs', 0o755);
+  return copies;
+}
+/** A copied file as staged: compiled modules lose their source-map comment; other files are copied as they are. Markdown is rewritten later. */
+export const stagedCopy = (source: string, body: Buffer): Buffer => source.endsWith('.js') ? withoutSourceMap(body) : body;
+/** Every package path: the copied files plus the manifest, which ships at the package root and in dist/. */
+export const packagePaths = (copied: readonly string[]): string[] => [...copied, 'package.json', 'dist/package.json'].sort(order);
+/** The staged manifest's bytes, as both package.json and dist/package.json. */
+export const manifestBytes = (pkg: any, paths: readonly string[]): Buffer => jsonBytes(stagedManifest(pkg, paths));
+
 export async function prepareFiles(root: string, scratch: string): Promise<{ files: StagedFile[]; helper: ExpectedInventory }> {
   const pkg = await readJson(join(root, 'package.json')), lock = await readJson(join(root, 'packaging/npm-shrinkwrap.json'));
   assertProductionLock(lock);
@@ -412,32 +855,24 @@ export async function prepareFiles(root: string, scratch: string): Promise<{ fil
 
   // Re-emit into scratch and compare selected build outputs; stale dist/source substitutions cannot be staged.
   await verifyCheckedBuild(root, scratch, [...GATEWAY_MODULES, ...boundary.modules]);
-  const files: StagedFile[] = [], sources = new Map<string, string>();
-  const add = (path: string, body: Buffer, mode = 0o644): void => { assertProductionFile(path); files.push({ path, body, mode }); };
-  const copy = async (source: string, target = source, mode = 0o644): Promise<void> => {
-    const info = await lstat(join(root, source)); if (!info.isFile() || info.isSymbolicLink()) throw fault('STAGE_FORBIDDEN');
-    const body = await readFile(join(root, source)); add(target, source.endsWith('.js') ? withoutSourceMap(body) : body, mode);
-    sources.set(target, source);
-  };
-  for (const p of GATEWAY_MODULES) await copy(`dist/${p}`, `dist/${p}`, p === 'packages/server/src/cli.js' ? 0o755 : 0o644);
-  for (const p of [...RUNTIME_FILES, 'packages/server/src/generated/release.json']) await copy(`dist/${p}`);
-  for (const p of DOCUMENTS) await copy(documentSource(p), p);
-  await copy('packaging/npm-shrinkwrap.json', 'npm-shrinkwrap.json');
   const licenses = await import(pathToFileURL(join(root, 'scripts/release-licenses.mjs')).href);
   await licenses.checkReleaseLicenses(root);
-  for (const p of await listRegularFiles(join(root, LICENSES_SOURCE))) await copy(`${LICENSES_SOURCE}/${p}`, `licenses/${p}`);
-  await copy('examples/quickstart/package.json', 'quickstart/package.json');
-  await copy('examples/quickstart/package-lock.json', 'quickstart/package-lock.json');
-  for (const p of boundary.modules) await copy(`dist/${p}`, `quickstart/dist/${p}`, p === 'examples/quickstart/main.js' ? 0o755 : 0o644);
-  for (const p of HELPER_ASSETS) await copy(p, `quickstart/${p}`);
-  await copy('dist/examples/quickstart/timing.js', 'quickstart/fireboat-timing.mjs', 0o755);
-  const paths = [...files.map(f => f.path), 'package.json', 'dist/package.json'].sort(order);
+  const files: StagedFile[] = [], sources = new Map<string, string>();
+  const add = (path: string, body: Buffer, mode = 0o644): void => { assertProductionFile(path); files.push({ path, body, mode }); };
+  for (const { source, target, mode } of await stageCopies(root, boundary.modules)) {
+    const info = await lstat(join(root, source)); if (!info.isFile() || info.isSymbolicLink()) throw fault('STAGE_FORBIDDEN');
+    add(target, stagedCopy(source, await readFile(join(root, source))), mode);
+    sources.set(target, source);
+  }
+  const paths = packagePaths(files.map(f => f.path));
+  // Every link of a shipped markdown document names a tracked file or folder, and every checked anchor exists.
+  assertRepositoryLinks(files.map(file => ({ path: file.path, source: sources.get(file.path)!, body: file.body })), repositoryFiles(root));
   // Markdown links and images point inside the package or to the public repository; the source files are not changed.
   const staged = new Set(paths);
   for (const file of files) if (file.path.endsWith('.md')) file.body = stagedMarkdown(file.path, sources.get(file.path)!, file.body, staged);
   assertStagedLinks(files, staged);
   if (!isDeepStrictEqual(pkg.files, paths)) throw fault('STAGE_FILES_ALLOWLIST');
-  const manifest = jsonBytes(stagedManifest(pkg, paths));
+  const manifest = manifestBytes(pkg, paths);
   add('package.json', manifest); add('dist/package.json', manifest);
   if (new Set(files.map(f => f.path)).size !== files.length) throw fault('STAGE_INVENTORY');
   return { files, helper: inventory(rootIdentity(helperPkg), files.filter(f => f.path.startsWith('quickstart/')).map(f => ({ ...f, path: f.path.slice(11) }))) };
@@ -485,6 +920,7 @@ if (isMainModule(import.meta.url)) {
       for (const line of error.detail) console.error(`stage-package: ${line}`);
       console.error('stage-package: if every difference above is an intended, reviewed change, re-approve with: npm run stage:package -- --approve-inventory <absolute-new-stage>');
     }
+    if (error instanceof StageFault && error.code === 'STAGE_NEEDS_GIT_CHECKOUT') console.error('stage-package: staging needs a git checkout of this repository: the root must be its own top level, not a copy or export');
     console.error(`stage-package: ${error instanceof StageFault ? error.code : error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'STAGE_FAILED'}`); process.exitCode = 1;
   }
 }

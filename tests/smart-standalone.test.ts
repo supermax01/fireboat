@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { chmod, lstat, mkdir, mkdtemp, readFile, rm, stat, symlink, unlink, utimes, writeFile } from 'node:fs/promises';
 import { lstatSync, readdirSync, readFileSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createRequire, syncBuiltinESMExports } from 'node:module';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -14,7 +15,7 @@ import { listenLoopbackCallback } from '../packages/server/src/login.js';
 import { prepareGrantDirectory, readTokenFile, removeStoredGrant, withGrantLock, writeTokenFile, type StoredGrant } from '../packages/auth/src/token-store.js';
 import { CredentialFault } from '../packages/auth/src/token-provider.js';
 import { SmartStandaloneProvider } from '../packages/auth/src/smart-standalone.js';
-import { approve, standaloneConfig, startSmartStub, type Rec, type SmartStub, type StubOptions } from './smart-helpers.js';
+import { approve, SMART_PATIENT, standaloneConfig, startSmartStub, type Rec, type SmartStub, type StubOptions } from './smart-helpers.js';
 import { guardAgainstUncaught } from './no-uncaught.js';
 
 guardAgainstUncaught();
@@ -652,6 +653,71 @@ test('SMART grant lock: a leftover guard is removed only while it is still the s
   }
 });
 
+test('SMART grant lock: a waiter whose signal is aborted stops at once, creates no lock or guard of its own, and leaves the holder unaffected', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'fireboat-smart-lock-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const path = join(dir, 'grant.json'), lock = `${path}.lock`;
+  let owner = '';
+  const holder = withGrantLock(path, async held => { owner = readFileSync(lock, 'utf8'); await sleep(1_500); await held(); return 'holder finished'; });
+  for (let i = 0; i < 200 && !owner; i++) await sleep(5);
+  assert.ok(owner, 'the holder has the lock');
+  const controller = new AbortController();
+  const startedAt = performance.now();
+  const waiter = withGrantLock(path, async () => 'waiter ran', { signal: controller.signal, waitMs: 5_000 });
+  await sleep(100);
+  controller.abort();
+  await assert.rejects(waiter, (error: unknown) => error instanceof CredentialFault && error.code === 'REQUEST_CANCELLED');
+  assert.ok(performance.now() - startedAt < 1_000, `the waiter returned at once (${Math.round(performance.now() - startedAt)} ms)`);
+  assert.deepEqual(readdirSync(dir), ['grant.json.lock'], 'the waiter left no lock, guard or temporary file');
+  assert.equal(readFileSync(lock, 'utf8'), owner, "the holder's lock is untouched");
+  assert.equal(await holder, 'holder finished');
+  await assert.rejects(lstat(lock));
+  // An already aborted signal creates nothing, not even a missing grant directory.
+  await assert.rejects(withGrantLock(join(dir, 'missing', 'grant.json'), async () => 'ran', { signal: AbortSignal.abort() }),
+    (error: unknown) => error instanceof CredentialFault && error.code === 'REQUEST_CANCELLED');
+  assert.deepEqual(readdirSync(dir), []);
+});
+
+/** A signal that calls `onSleep` once, as soon as the grant-lock wait starts its poll sleep (that sleep listens for abort). */
+function sleepWatchedSignal(onSleep: (controller: AbortController) => void): AbortSignal {
+  const controller = new AbortController();
+  const signal = controller.signal;
+  const add = signal.addEventListener.bind(signal);
+  let fired = false;
+  signal.addEventListener = ((type: string, listener: EventListenerOrEventListenerObject, options?: AddEventListenerOptions | boolean) => {
+    add(type, listener, options);
+    if (type === 'abort' && !fired) { fired = true; queueMicrotask(() => onSleep(controller)); }
+  }) as typeof signal.addEventListener;
+  return signal;
+}
+
+test('SMART grant lock: a lock released while a cancelled waiter sleeps is not taken by that waiter', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'fireboat-smart-lock-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const path = join(dir, 'grant.json'), lock = `${path}.lock`;
+  writeFileSync(lock, 'another-process', { mode: 0o600 });
+  // While the waiter sleeps between attempts, the other process releases the lock and the waiter is cancelled.
+  const signal = sleepWatchedSignal(controller => { unlinkSync(lock); controller.abort(); });
+  let ran = false;
+  await assert.rejects(withGrantLock(path, async () => { ran = true; }, { signal, waitMs: 5_000 }),
+    (error: unknown) => error instanceof CredentialFault && error.code === 'REQUEST_CANCELLED');
+  assert.equal(ran, false, 'the cancelled waiter did not run its work');
+  assert.deepEqual(readdirSync(dir), [], 'the cancelled waiter created no lock');
+});
+
+test('SMART grant lock: a lock that goes stale while a cancelled waiter sleeps is neither reclaimed nor guarded by that waiter', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'fireboat-smart-lock-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const path = join(dir, 'grant.json'), lock = `${path}.lock`;
+  writeFileSync(lock, 'crashed-holder', { mode: 0o600 });
+  // While the waiter sleeps between attempts, the lock passes the stale limit and the waiter is cancelled.
+  const signal = sleepWatchedSignal(controller => { const old = new Date(Date.now() - 600_000); utimesSync(lock, old, old); controller.abort(); });
+  await assert.rejects(withGrantLock(path, async () => 'ran', { signal, waitMs: 5_000 }),
+    (error: unknown) => error instanceof CredentialFault && error.code === 'REQUEST_CANCELLED');
+  assert.deepEqual(readdirSync(dir), ['grant.json.lock'], 'no reclaim guard was created and the stale lock was not moved');
+  assert.equal(readFileSync(lock, 'utf8'), 'crashed-holder');
+});
+
 test('SMART standalone serving: a refresh whose grant lock was taken over stores nothing', async t => {
   let path = '';
   const s = await setup(t, { tokenReply: (body, _call, _scope) => {
@@ -670,6 +736,222 @@ test('SMART standalone serving: a refresh whose grant lock was taken over stores
   assert.deepEqual(await s.stored(), before, 'the holder that lost the lock wrote nothing');
   assert.equal(await readFile(`${s.tokenFile}.lock`, 'utf8'), 'another-process', "the other process's lock is left in place");
   assert.equal(s.stub.fhirRequests.length, 0);
+});
+
+/** A serving provider of its own, so a test can pass the caller's signal or deadline and watch the flight settle. */
+function servingProvider(t: TestContext, s: Awaited<ReturnType<typeof setup>>): SmartStandaloneProvider {
+  const provider = new SmartStandaloneProvider(s.stub.baseUrl, (s.config as Rec).source.auth as never,
+    { patientId: SMART_PATIENT, servedTypes: ['Observation', 'Patient', 'Encounter'], alias: 'smart-launch' });
+  t.after(() => provider.close());
+  return provider;
+}
+/** A stub whose refresh replies wait until released; `sent` resolves once a refresh request has arrived. */
+async function heldRefresh(t: TestContext, options: StubOptions = {}) {
+  let release!: () => void, arrived!: () => void;
+  const released = new Promise<void>(resolve => { release = resolve; });
+  const sent = new Promise<void>(resolve => { arrived = resolve; });
+  const s = await setup(t, { rotateStrictly: true, ...options,
+    holdToken: request => request.form.get('grant_type') === 'refresh_token' ? (arrived(), released) : undefined }, { offlineAccess: true });
+  await s.login();
+  const original = await s.stored();
+  await s.rewrite(expire);
+  const refreshes = () => s.stub.tokenRequests.filter(r => r.form.get('grant_type') === 'refresh_token');
+  return { ...s, original, release, sent, refreshes, lock: `${s.tokenFile}.lock`, url: new URL(`${s.stub.baseUrl}Observation`) };
+}
+const faultCode = (code: string) => (error: unknown) => error instanceof CredentialFault && error.code === code;
+
+test('SMART standalone serving: a caller that leaves while the refresh request is in flight still gets the rotated refresh token written back', async t => {
+  for (const how of ['cancelled', 'deadline'] as const) {
+    const s = await heldRefresh(t);
+    const provider = servingProvider(t, s);
+    const controller = new AbortController();
+    const call = provider.authorizationWithGeneration(s.url, how === 'cancelled' ? controller.signal : { deadline: Date.now() + 1_500 });
+    await s.sent;
+    if (how === 'cancelled') controller.abort();
+    await assert.rejects(call, faultCode(how === 'cancelled' ? 'REQUEST_CANCELLED' : 'TOKEN_TIMEOUT'), how);
+    await lstat(s.lock);
+    // The server answers only after the caller has left, with a rotated refresh token.
+    s.release();
+    await provider.settled(5_000);
+    const renewed = await s.stored();
+    assert.notEqual(renewed.refreshToken, s.original.refreshToken, `${how}: the rotated refresh token was written back`);
+    assert.ok(s.stub.refreshTokens.has(renewed.refreshToken!) && !s.stub.refreshTokens.has(s.original.refreshToken!), how);
+    await assert.rejects(lstat(s.lock), `${how}: the lock was released`);
+    // A later refresh presents the rotated token, which the strictly rotating stub accepts.
+    await s.rewrite(expire);
+    const later = await servingProvider(t, s).authorizationWithGeneration(s.url);
+    assert.equal(later.authorization, `Bearer ${(await s.stored()).accessToken}`, how);
+    assert.equal(s.refreshes().length, 2, how);
+    assert.ok(s.refreshes().every(r => r.rejected === undefined), `${how}: no refresh was rejected`);
+    assert.equal(s.refreshes()[1]!.form.get('refresh_token'), renewed.refreshToken, how);
+  }
+});
+
+test('SMART standalone serving: a caller that leaves during discovery or the grant-lock wait stops the refresh before any refresh request is sent', async t => {
+  // During discovery.
+  let holding = false, releaseDiscovery!: () => void, discovering!: () => void;
+  const discovered = new Promise<void>(resolve => { releaseDiscovery = resolve; });
+  const reached = new Promise<void>(resolve => { discovering = resolve; });
+  const d = await heldRefresh(t, { holdDiscovery: () => { if (holding) { discovering(); return discovered; } } });
+  holding = true;
+  const before = await d.stored();
+  const provider = servingProvider(t, d);
+  const controller = new AbortController();
+  const call = provider.authorizationWithGeneration(d.url, controller.signal);
+  await reached;
+  controller.abort();
+  await assert.rejects(call, faultCode('REQUEST_CANCELLED'));
+  releaseDiscovery();
+  await provider.settled(5_000);
+  assert.equal(d.refreshes().length, 0, 'no refresh request after a cancel during discovery');
+  assert.deepEqual(await d.stored(), before);
+  await assert.rejects(lstat(d.lock), 'the lock was released');
+
+  // During the wait for a grant lock another process holds.
+  const w = await heldRefresh(t);
+  const unchanged = await w.stored();
+  await writeFile(w.lock, 'another-process', { mode: 0o600 });
+  const waiting = servingProvider(t, w);
+  const leaving = new AbortController();
+  const pending = waiting.authorizationWithGeneration(w.url, leaving.signal);
+  await sleep(150);
+  leaving.abort();
+  await assert.rejects(pending, faultCode('REQUEST_CANCELLED'));
+  const startedAt = performance.now();
+  await waiting.settled(3_000);
+  assert.ok(performance.now() - startedAt < 1_000, `the flight stopped waiting for the lock (${Math.round(performance.now() - startedAt)} ms)`);
+  assert.equal(await readFile(w.lock, 'utf8'), 'another-process', "the other process's lock is untouched");
+  await unlink(w.lock);
+  await sleep(100);
+  assert.equal(w.refreshes().length, 0, 'no refresh request after a cancel during the lock wait');
+  assert.deepEqual(await w.stored(), unchanged);
+  await assert.rejects(lstat(w.lock));
+});
+
+test('SMART standalone serving: a refresh superseded or closed while its request is in flight writes the rotated token but does not install its access token', async t => {
+  for (const how of ['superseded', 'closed'] as const) {
+    const s = await heldRefresh(t);
+    const provider = servingProvider(t, s);
+    const controller = new AbortController();
+    const call = provider.authorizationWithGeneration(s.url, controller.signal);
+    await s.sent;
+    controller.abort();
+    await assert.rejects(call, faultCode('REQUEST_CANCELLED'));
+    if (how === 'superseded') provider.invalidate(); else provider.close();
+    s.release();
+    await provider.settled(5_000);
+    const renewed = await s.stored();
+    assert.notEqual(renewed.refreshToken, s.original.refreshToken, `${how}: the rotated refresh token was written back`);
+    assert.ok(s.stub.refreshTokens.has(renewed.refreshToken!), how);
+    await assert.rejects(lstat(s.lock), `${how}: the lock was released`);
+    assert.equal((provider as unknown as { cached: unknown }).cached, null, `${how}: no access token reached memory`);
+    if (how === 'closed') {
+      await assert.rejects(provider.authorizationWithGeneration(s.url), faultCode('PROVIDER_CLOSED'));
+      continue;
+    }
+    // A grant another process stores next is what the superseded provider serves, never the refreshed token it set aside.
+    await s.login();
+    const fresh = await s.stored();
+    assert.notEqual(fresh.accessToken, renewed.accessToken);
+    assert.equal((await provider.authorizationWithGeneration(s.url)).authorization, `Bearer ${fresh.accessToken}`);
+  }
+});
+
+test('SMART standalone serving: a refresh whose grant lock was taken over before its request is sent sends no refresh request and writes nothing', async t => {
+  let path = '';
+  // While the refresh is discovering, another process takes the lock over (as it may after this one slept past the stale limit).
+  const s = await setup(t, { holdDiscovery: () => { if (path) { unlinkSync(`${path}.lock`); writeFileSync(`${path}.lock`, 'another-process', { mode: 0o600 }); } } }, { offlineAccess: true });
+  await s.login();
+  await s.rewrite(expire);
+  const before = await s.stored();
+  path = s.tokenFile;
+  const result = await read(s.serve());
+  assert.equal(result.error?.code, 'TOKEN_TIMEOUT', JSON.stringify(result.error));
+  assert.equal(s.stub.tokenRequests.filter(r => r.form.get('grant_type') === 'refresh_token').length, 0, 'the superseded refresh token was never presented');
+  assert.deepEqual(await s.stored(), before, 'nothing was written');
+  assert.equal(await readFile(`${s.tokenFile}.lock`, 'utf8'), 'another-process', "the other process's lock is left in place");
+  assert.equal(s.stub.fhirRequests.length, 0);
+});
+
+test('SMART standalone serving: a provider closed after it found a changed grant under the grant lock does not take the lock again', async t => {
+  const s = await setup(t, {}, { offlineAccess: true });
+  await s.login();
+  await s.rewrite(expire);
+  const lock = `${s.tokenFile}.lock`;
+  // Another process holds the lock and stores a grant that is also expired, so adopting it would mean refreshing again.
+  await writeFile(lock, 'another-process', { mode: 0o600 });
+  const changed = { ...expire(await s.stored()), accessToken: randomBytes(24).toString('base64url') };
+  const provider = servingProvider(t, s);
+  const fsp = createRequire(import.meta.url)('node:fs/promises') as typeof import('node:fs/promises');
+  const realLink = fsp.link, realUnlink = fsp.unlink;
+  let lockings = 0;
+  Object.assign(fsp, {
+    // Counts the lock creations that succeeded.
+    link: async (from: string, to: string) => { await realLink(from, to); if (to === lock) lockings++; },
+    // The provider is closed just as its own lock is released, after it found the changed grant.
+    unlink: async (target: string) => { if (target === lock && lockings > 0) provider.close(); return realUnlink(target); },
+  });
+  syncBuiltinESMExports();
+  t.after(() => { Object.assign(fsp, { link: realLink, unlink: realUnlink }); syncBuiltinESMExports(); });
+  const call = provider.authorizationWithGeneration(new URL(`${s.stub.baseUrl}Observation`));
+  await sleep(100);
+  await writeTokenFile(s.tokenFile, changed);
+  await realUnlink(lock);
+  await assert.rejects(call, faultCode('PROVIDER_CLOSED'));
+  await provider.settled(3_000);
+  assert.equal(lockings, 1, 'the lock was taken once, to read the changed grant, and not again');
+  await assert.rejects(lstat(lock));
+  assert.deepEqual(await s.stored(), changed);
+  assert.equal(s.stub.tokenRequests.filter(r => r.form.get('grant_type') === 'refresh_token').length, 0);
+});
+
+test('SMART standalone serving: a caller still waiting when its refresh is superseded or closed during the sent request is released at once, and the rotated token is still written back', async t => {
+  for (const how of ['superseded', 'closed'] as const) {
+    const s = await heldRefresh(t);
+    const provider = servingProvider(t, s);
+    const call = provider.authorizationWithGeneration(s.url);
+    await s.sent;
+    if (how === 'closed') provider.close();
+    else {
+      // The first supersession is retried once in the new generation (that retry waits for the grant lock the sent
+      // refresh still holds); a second one is surfaced.
+      provider.invalidate();
+      await sleep(100);
+      provider.invalidate();
+    }
+    const outcome = await Promise.race([call.then(() => 'resolved', (error: unknown) => error), sleep(1_000).then(() => 'still waiting')]);
+    assert.ok(faultCode(how === 'closed' ? 'PROVIDER_CLOSED' : 'CREDENTIAL_INVALIDATED')(outcome), `${how}: ${String((outcome as Error)?.message ?? outcome)}`);
+    // The server answers only now; the sent refresh was not cut and writes the rotated token back.
+    s.release();
+    await provider.settled(5_000);
+    const renewed = await s.stored();
+    assert.notEqual(renewed.refreshToken, s.original.refreshToken, `${how}: the rotated refresh token was written back`);
+    assert.ok(s.stub.refreshTokens.has(renewed.refreshToken!), how);
+    assert.equal(s.refreshes().length, 1, `${how}: one refresh request`);
+    await assert.rejects(lstat(s.lock), `${how}: the lock was released`);
+    assert.equal((provider as unknown as { cached: unknown }).cached, null, `${how}: no access token reached memory`);
+  }
+});
+
+test('SMART standalone: a login whose provider closes while it waits for the grant lock stops at once and writes nothing', async t => {
+  const s = await setup(t);
+  const lock = `${s.tokenFile}.lock`;
+  await writeFile(lock, 'a-refreshing-server', { mode: 0o600 });
+  const gateway = new FhirGateway(s.config as never);
+  t.after(() => gateway.close());
+  let pending: Promise<unknown> = Promise.resolve();
+  const login = gateway.smartLogin({ listen: listenLoopbackCallback, timeoutMs: 5_000, onAuthorizeUrl: url => { pending = approve(url.href).catch(error => error); } });
+  login.catch(() => undefined);
+  for (let i = 0; i < 300 && !s.stub.tokenRequests.length; i++) await sleep(10);
+  assert.equal(s.stub.tokenRequests.length, 1, 'the code was exchanged');
+  await sleep(150);
+  const startedAt = performance.now();
+  gateway.close();
+  await assert.rejects(login, faultCode('PROVIDER_CLOSED'));
+  assert.ok(performance.now() - startedAt < 1_000, `the login stopped waiting for the lock (${Math.round(performance.now() - startedAt)} ms)`);
+  await pending;
+  await assert.rejects(lstat(s.tokenFile), 'nothing was written');
+  assert.equal(await readFile(lock, 'utf8'), 'a-refreshing-server', "the other process's lock is untouched");
 });
 
 test('SMART standalone: a refresh token is neither stored nor used without offlineAccess', async t => {
@@ -802,19 +1084,20 @@ test('SMART standalone serving: shutting down while a refresh holds the grant lo
   }
 });
 
-test('SMART standalone serving: a refresh that cannot finish does not keep a shutting-down server alive past the bound', async t => {
+test("SMART standalone serving: a refresh waiting for another process's grant lock stops at once on shutdown and leaves that lock in place", async t => {
   const s = await setup(t, {}, { offlineAccess: true });
   await s.login();
   await s.rewrite(expire);
-  // Another process holds the grant lock, so the refresh waits for it (up to the lock wait limit, well past the bound).
+  // Another process holds the grant lock, so the refresh waits for it (up to the 10 s lock wait limit). Closing aborts
+  // that wait at once, so shutdown finishes well inside the 1.5 s settle bound instead of waiting it out.
   await writeFile(`${s.tokenFile}.lock`, 'another-process', { mode: 0o600 });
   const server = await serveOverStdio(t, s.config, s.dir);
   await sleep(750);
   const startedAt = Date.now();
   server.child.stdin.end();
   const code = await server.exitWithin(5_000);
-  assert.equal(code, 0, `the server exits 0 within the bound; stderr: ${server.stderr()}`);
-  assert.ok(Date.now() - startedAt < 5_000);
+  assert.equal(code, 0, `the server exits 0; stderr: ${server.stderr()}`);
+  assert.ok(Date.now() - startedAt < 1_200, `the server exited ${Date.now() - startedAt} ms after its input closed`);
   assert.equal(s.stub.tokenRequests.filter(r => r.form.get('grant_type') === 'refresh_token').length, 0, 'the refresh never got the lock');
   assert.equal(await readFile(`${s.tokenFile}.lock`, 'utf8'), 'another-process', "the other process's lock is left in place");
 });

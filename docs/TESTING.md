@@ -30,7 +30,7 @@ Some practical rules:
 | Isolation suite | `npm run test:isolation` | Every listed attack and control case passes its independent checks | `status=DIAGNOSTIC earned=0 cases=68`, exit 0 |
 | Mutation gate | `npm run mutation:guards` | Every registered weakening of guarded code is caught by a named test | `0 inconclusive`, only declared survivors, exit 0 |
 | Generator and contract checks | three `--check` commands, below | Generated docs, the contract and the checkable-path table match their inputs | `in sync` lines, exit 0 |
-| Package checks | `npm run test:package` | Shipped documents and licence files match the approved inventory | `fail 0` |
+| Package checks | `npm run test:package` | Shipped documents, licence files and (after a complete build) `dist/` files match the approved inventories; links in shipped documents resolve | `fail 0` |
 | Live checks | `npm run test:hapi`, `npm run test:medplum`, `npm run test:smart` | The gateway behaves the same against a real local FHIR server | One summary line (JSON for HAPI and Medplum), exit 0 |
 | Benchmark harness | `npm --prefix bench test` | The harness's own scoring and parsing tests pass | `fail 0` |
 
@@ -165,7 +165,7 @@ It stops at the first batch that kills. This pass can only kill, and only on a n
 
 **Expected output.** A passing run ends with a line such as `mutation-guards: N killed, 3 survived, 0 inconclusive (declared survivors: 3)`, or for an aggregate, `mutation-guards aggregate: N killed, 3 survived, 0 inconclusive, 0 anchor-errors (...)`, and exits 0. A full run is long, so sharding lets it run in pieces. Parallelism is bounded across all workers (`--workers`, `--test-concurrency`) so that copies of the suite do not overload the machine.
 
-A passing run covers the guards that have registered mutants, not every line, and holds only for the tree it ran on. A change to guarded code needs its mutants judged again.
+A passing run covers the guards that have registered mutants, not every line, and holds only for the tree it ran on. A change to guarded code needs its mutants judged again: an `--only` run of the mutants that edit the changed files, and a full run when the gateway itself (`packages/core`, `packages/auth` or `packages/server`) changes, and before a release. A change confined to the tooling (the quickstart helper, the evals, the isolation-suite bookkeeping, package staging and other scripts) is judged by its own mutants only.
 
 ## Generator and contract checks
 
@@ -189,11 +189,11 @@ Never hand-edit these outputs: change the inputs and regenerate. [Limits](LIMITS
 npm run test:package
 ```
 
-This runs three test files. `package-stage.test.ts` checks the staging tool. `package-licenses.test.ts` checks that every locked dependency ships its verbatim licence texts. `package-inventory-drift.test.ts` checks that every shipped document and licence file matches its hash in the approved inventory (`packaging/npm-files.json`), taking Markdown documents as staged, and that every link in a staged Markdown document points inside the package or to the public repository. It needs no build, and its summary ends with `fail 0`.
+This runs three test files. `package-stage.test.ts` checks the staging tool. `package-licenses.test.ts` checks that every locked dependency ships its verbatim licence texts. `package-inventory-drift.test.ts` checks that every shipped document and licence file matches its hash in the approved inventories (`packaging/npm-files.json` and `packaging/helper-files.json`), taking Markdown documents as staged, that the inventories name the same package as `package.json` and `examples/quickstart/package.json`, and that every link in a staged Markdown document points inside the package or to the public repository. Those checks need no build. After a complete, fresh `npm run build` it also compares the staged `dist/` files with both inventories; it skips that comparison, and says why, when `dist/` is missing, incomplete or older than its sources, and it skips the tracked-file link check when there is no `.git`. Its summary ends with `fail 0`.
 
 Related tools:
 
-- `npm run build`, then `npm run stage:package -- <absolute-new-dir>` stages the package and checks it against the approved inventory. Staging rewrites each relative link in a shipped Markdown document to its path in the package, or to the file on the public repository when the file is not shipped, and refuses the stage (`STAGE_DOCUMENT_LINK`) if a relative link is left pointing outside the package. A maintainer who has reviewed an intended change re-approves with `npm run stage:package -- --approve-inventory <absolute-new-dir>` and reviews the `git diff` of `packaging/*.json`. Never hand-edit those inventories. See [contributing](../.github/CONTRIBUTING.md).
+- `npm run build`, then `npm run stage:package -- <absolute-new-dir>` stages the package and checks it against the approved inventory. Staging rewrites each relative link in a shipped Markdown document to its path in the package, or to the file on the public repository when the file is not shipped, and refuses the stage (`STAGE_DOCUMENT_LINK`) if a relative link is left pointing outside the package, names a root-relative, undecodable or untracked path, or carries an anchor that names no heading or HTML `id` in the target Markdown file. Indented code blocks and HTML comments are read as prose, so a link-like string there is checked too. If a correct heading anchor is refused, add an explicit `<a id="...">`. Staging needs a git checkout of this repository at its top level (`STAGE_NEEDS_GIT_CHECKOUT` otherwise). A maintainer who has reviewed an intended change re-approves with `npm run stage:package -- --approve-inventory <absolute-new-dir>` and reviews the `git diff` of `packaging/*.json`. Never hand-edit those inventories. See [contributing](../.github/CONTRIBUTING.md).
 - `npm run licenses:release` checks the licence inventory against the installed dependencies.
 - `npm run verify:package -- --tar <file>` checks a packed tarball against the approved inventory.
 - `npm run test:package-installed` installs a packed tarball and the quickstart helper into a fresh scratch directory and runs the packaged tasks. It needs the `FIREBOAT_PACKAGE_*` inputs (the tarball, a scratch directory outside the checkout and others), is deliberately outside `tests/*.test.ts`, and never skips when an input is missing.
@@ -238,22 +238,22 @@ The tests use synthetic data only; a few also check real data or generated files
 
 ## Results on this tree
 
-The table below records the gate results for this tree, run on 17 and 18 November 2026 (UTC) with Node 24.22.0 on an Apple-silicon Mac. A gate that has not been run on this tree is not claimed. The full set ran on the source tree before the last documentation-only edits; after those edits, `npm run check`, `npm run test:package`, package staging, the generator and contract checks and the mutation anchors were run again and passed.
+The table below records the gate results for this tree, run on 18 November 2026 (UTC) with Node 24.22.0 on an Apple-silicon Mac. A gate that has not been run on this tree is not claimed. The full set ran on the source tree before the last documentation-only edits; after those edits, `npm run check`, `npm run test:package`, package staging, the generator and contract checks and the mutation anchors were run again and passed.
 
 | Gate | Result |
 | --- | --- |
-| `npm run check` | Passed, 2,698 of 2,698 tests (typecheck, suite and build). |
+| `npm run check` | Passed: 2,735 tests, 2,734 passed and 1 skipped, 0 failed (typecheck, suite and build). The skipped test compares the built files with the approved inventory; it needs the build, which runs after the suite, and it ran in `npm run test:package`. |
 | `npm run demo -- --check` | Passed, 8 outcomes. |
 | `npm run eval:retrieval` (modern) | Passed: each arm (fhir, compact, selected) 85/85 tasks and 301/301 comparable checks. |
 | `npm run eval:retrieval -- --era legacy` | Passed, with the same counts as the modern era. |
 | `npm run test:isolation` | Passed: 139 of 139 tests, all 68 cases; `status=DIAGNOSTIC earned=0`, as designed. |
-| `npm run mutation:guards` (full, aggregated) | Passed: 1,659 mutants in two shards, each run exactly once. 1,656 killed and 3 declared survivors, with 0 inconclusive, 0 anchor errors and 0 timeout-only kills. The targeted pass decided 1,650 and the full path 9. |
+| `npm run mutation:guards` (full, aggregated) | Passed: 1,718 mutants in two shards, each run exactly once. 1,715 killed and 3 declared survivors, with 0 inconclusive, 0 anchor errors and 0 timeout-only kills. The targeted pass decided 1,710 and the full path 8. |
 | Generator and contract checks | Passed: generated docs, tool contract and R4 checkable-path table in sync; every mutation anchor applies. |
-| `npm run test:package` | Passed, 23 of 23; package staging passed against the approved inventory; `npm run licenses:release` passed. |
+| `npm run test:package` | Passed, 48 of 48, including the comparison of the built files with the approved inventory; package staging passed against the approved inventory; `npm run licenses:release` passed. |
 | `npm run test:hapi` | Not run on this tree. |
 | `npm run test:medplum` | Not run on this tree. |
 | `npm run test:smart` | Passed against the SMART Launcher and HAPI FHIR in local Docker, with synthetic data: standalone launch, refresh and Backend Services worked; a token for another patient, a grant that is too narrow, a wrong signing key and a bad bearer token were all refused. |
-| Benchmark harness checks | Passed: typecheck; `npm test` 169 passed, 6 skipped (they need downloaded benchmark data), 0 failed; Python gold tests 127 passed. |
+| Benchmark harness checks | Passed: typecheck; `npm test` 199 passed, 6 skipped (they need downloaded benchmark data), 0 failed; Python gold tests 127 passed. |
 
 ## What is not proven
 

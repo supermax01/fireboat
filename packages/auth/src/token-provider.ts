@@ -33,6 +33,8 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_TOKEN_BYTES = 16_384;
 const DEFAULT_EXPIRY_SKEW_MS = 30_000;
 const DEFAULT_MAX_EXPIRES_IN_S = 86_400;
+/** After the settle bound, how long shutdown still waits for a cut token request to release its grant lock. */
+const SETTLE_RELEASE_MS = 250;
 export const MAX_TOKEN_LENGTH = 8_192;
 
 export function fault(code: string, message: string, retryable = false): CredentialFault {
@@ -60,15 +62,25 @@ export function boundedOption(value: number | undefined, fallback: number, min: 
   return value;
 }
 
-function abortFault(signal: AbortSignal): CredentialFault {
+/** The fault for an acquisition stopped by `signal`: a timeout is TOKEN_TIMEOUT, any other abort REQUEST_CANCELLED. */
+export function abortFault(signal: AbortSignal): CredentialFault {
   const reason: unknown = signal.reason;
   return reason instanceof Error && reason.name === 'TimeoutError'
     ? fault('TOKEN_TIMEOUT', 'Token endpoint timed out.', true)
     : fault('REQUEST_CANCELLED', 'Token acquisition was cancelled.');
 }
 
+/** Whether every promise settled within `ms`. */
+async function settledWithin(promises: Promise<unknown>[], ms: number): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const all = Promise.allSettled(promises).then(() => true);
+  const result = await Promise.race([all, new Promise<boolean>(resolve => { timer = setTimeout(() => resolve(false), ms); })]);
+  clearTimeout(timer);
+  return result;
+}
+
 export interface CachedToken { header: string; usableUntil: number; generation: number }
-interface Flight { promise: Promise<CachedToken>; controller: AbortController; waiters: number }
+interface Flight { promise: Promise<CachedToken>; controller: AbortController; waiters: number; generation: number }
 /** `generation` identifies the credential behind `authorization`; pass it to `invalidate` so a late rejection of an older token cannot discard a newer one. */
 export interface AuthorizationGrant { authorization: string; generation: number }
 /** The FHIR interactions a granted scope can permit. */
@@ -101,8 +113,11 @@ export abstract class TokenProvider {
 
   protected cached: CachedToken | null = null;
   private inflight: Flight | null = null;
-  /** Every acquisition still running, abandoned ones included: an aborted refresh still has to release its grant lock. */
+  /** Every acquisition still running, abandoned ones included: an abandoned refresh may still be writing back a rotated
+   * refresh token, and it still has to release its grant lock. */
   private readonly running = new Set<Promise<CachedToken>>();
+  /** Cuts a token request already sent. Neither a caller leaving nor close() does that; only shutdown, once it stops waiting. */
+  private readonly sentRequests = new AbortController();
   protected generation = 0;
   protected closed = false;
 
@@ -181,20 +196,27 @@ export abstract class TokenProvider {
 
   /**
    * Resolves once every acquisition still running has settled, or after `settleMs`, whichever comes first. Closing
-   * aborts an acquisition, but its cleanup is asynchronous: a refresh still releases the grant lock it holds, and
-   * finishes writing a rotated refresh token it already received. A process that exits first leaves the lock for
-   * other servers to wait out.
+   * stops an acquisition that has not yet sent its token request, but its cleanup is asynchronous: a refresh still
+   * releases the grant lock it holds. A refresh request already sent is not cut by closing: its response is awaited
+   * here, and written back if it arrives within `settleMs`. Past the bound a closed provider cuts that request too and
+   * waits a short moment more for the grant lock to be released; a process that exits first leaves the lock for other
+   * servers to wait out, and a rotated refresh token whose response had not arrived is lost.
    */
   async settled(settleMs: number): Promise<void> {
     if (this.running.size === 0) return;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    await Promise.race([Promise.allSettled([...this.running]), new Promise<void>(resolve => { timer = setTimeout(resolve, settleMs); })]);
-    clearTimeout(timer);
+    if (await settledWithin([...this.running], settleMs) || !this.closed) return;
+    this.sentRequests.abort();
+    await settledWithin([...this.running], SETTLE_RELEASE_MS);
+  }
+
+  /** The signal for a token request about to be sent: its own timeout, and shutdown once it stops waiting (see `settled`). */
+  protected sentRequestSignal(): AbortSignal {
+    return AbortSignal.any([this.sentRequests.signal, AbortSignal.timeout(this.timeoutMs)]);
   }
 
   private startFlight(): Flight {
     const controller = new AbortController();
-    const flight: Flight = { controller, waiters: 0, promise: this.acquire(this.generation, controller.signal) };
+    const flight: Flight = { controller, waiters: 0, generation: this.generation, promise: this.acquire(this.generation, controller.signal) };
     this.inflight = flight;
     this.running.add(flight.promise);
     const settled = () => { this.running.delete(flight.promise); if (this.inflight === flight) this.inflight = null; };
@@ -208,7 +230,11 @@ export abstract class TokenProvider {
     flight.controller.abort();
   }
 
-  /** Each caller races its own signal/deadline against the shared flight; the flight is aborted only when no waiter still needs it. */
+  /**
+   * Each caller races its own signal/deadline against the shared flight; the flight is aborted only when no waiter still
+   * needs it. A waiter also leaves as soon as its flight is aborted by close() or invalidate(), with the fault that flight
+   * would end with, though a refresh request it already sent keeps running and is still written back.
+   */
   private wait(signal?: AbortSignal, deadline?: number): Promise<CachedToken> {
     if (signal?.aborted) return Promise.reject(abortFault(signal));
     const remaining = deadline === undefined ? undefined : deadline - this.now();
@@ -224,6 +250,7 @@ export abstract class TokenProvider {
         done = true;
         clearTimeout(timer);
         signal?.removeEventListener('abort', onAbort);
+        flight.controller.signal.removeEventListener('abort', onFlightAbort);
         if (leaving) {
           if (--flight.waiters === 0) this.abandon(flight);
           reject(leaving);
@@ -231,7 +258,9 @@ export abstract class TokenProvider {
         return true;
       };
       const onAbort = () => { settle(abortFault(signal!)); };
+      const onFlightAbort = () => { settle(this.endedFlightFault(flight.generation, flight.controller.signal) ?? abortFault(flight.controller.signal)); };
       signal?.addEventListener('abort', onAbort, { once: true });
+      flight.controller.signal.addEventListener('abort', onFlightAbort, { once: true });
       // A supplied deadline is always enforced: one acquisition can take several requests (discovery, then the token
       // request) and a wait for the grant lock, each within its own timeout, so their sum can exceed the deadline.
       if (remaining !== undefined) timer = setTimeout(() => { settle(fault('TOKEN_TIMEOUT', 'Token acquisition deadline was reached.', true)); }, remaining);
@@ -254,12 +283,15 @@ export abstract class TokenProvider {
 
   private async acquire(generation: number, signal: AbortSignal): Promise<CachedToken> {
     try { return await this.request(generation, signal); }
-    catch (error) {
-      if (this.closed) throw fault('PROVIDER_CLOSED', 'Credential provider is closed.');
-      if (generation !== this.generation) throw fault('CREDENTIAL_INVALIDATED', 'Credential was invalidated while a token request was in flight.', true);
-      if (signal.aborted) throw fault('REQUEST_CANCELLED', 'Token acquisition was cancelled.');
-      throw this.mapFetchError(error);
-    }
+    catch (error) { throw this.endedFlightFault(generation, signal) ?? this.mapFetchError(error); }
+  }
+
+  /** How a flight for `generation` ends once the provider closed, the generation was superseded or `signal` aborted. */
+  private endedFlightFault(generation: number, signal: AbortSignal): CredentialFault | undefined {
+    if (this.closed) return fault('PROVIDER_CLOSED', 'Credential provider is closed.');
+    if (generation !== this.generation) return fault('CREDENTIAL_INVALIDATED', 'Credential was invalidated while a token request was in flight.', true);
+    if (signal.aborted) return fault('REQUEST_CANCELLED', 'Token acquisition was cancelled.');
+    return undefined;
   }
 
   /** Redirect, status, media type, declared and actual size, then a strict UTF-8 JSON object. */

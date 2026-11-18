@@ -5,7 +5,7 @@ import { newState, pkcePair, stateMatches } from './pkce.js';
 import { checkDiscoveredEndpoint, discoverSmartConfiguration, discoveryOutcome, type SmartConfiguration } from './smart-discovery.js';
 import { assessGrant, requestedScopes, validateScopeOverrides, type GrantAssessment, type ScopeSyntax } from './smart-scopes.js';
 import { bindingMatches, defaultTokenFile, prepareGrantDirectory, readTokenFile, withGrantLock, writeTokenFile, type GrantBinding, type LockHeld, type StoredGrant } from './token-store.js';
-import { BEARER_TOKEN, CredentialFault, fault, MAX_TOKEN_LENGTH, parseLoopbackUrl, TokenProvider, type CachedToken, type GrantedInteraction,
+import { abortFault, BEARER_TOKEN, CredentialFault, fault, MAX_TOKEN_LENGTH, parseLoopbackUrl, TokenProvider, type CachedToken, type GrantedInteraction,
   type SmartDoctorStatus, type TokenProviderOptions } from './token-provider.js';
 
 export interface SmartStandaloneLaunchConfig {
@@ -101,6 +101,11 @@ export class SmartStandaloneProvider extends TokenProvider {
   /** The access token this process last served; distrusted once the source rejected it. */
   private servedAccess?: string;
   private distrusted?: string;
+  /**
+   * Stops a sign-in in progress when the provider closes: its discovery, code exchange and wait for the grant lock. The
+   * wait for the browser callback is not stopped; it ends on the listener's own timeout. Cleared when the sign-in ends.
+   */
+  private signingIn?: AbortController;
 
   constructor(sourceBaseUrl: string, config: SmartStandaloneLaunchConfig, options: SmartStandaloneOptions) {
     super(sourceBaseUrl);
@@ -162,6 +167,11 @@ export class SmartStandaloneProvider extends TokenProvider {
 
   allows(resourceType: string, interaction: GrantedInteraction): boolean {
     return this.grant?.permits.get(resourceType)?.has(interaction) === true;
+  }
+
+  override close(): void {
+    super.close();
+    this.signingIn?.abort();
   }
 
   /** A rejected access token is never served again from the file; the next acquisition refreshes or asks for a login. */
@@ -239,8 +249,11 @@ export class SmartStandaloneProvider extends TokenProvider {
       const current = await this.stored();
       if (current.accessToken !== stored.accessToken || current.refreshToken !== stored.refreshToken) return { changed: current };
       return this.refreshLocked(generation, signal, current, held);
-    });
+    }, { signal });
     if ('token' in outcome) return outcome.token;
+    // Adopting a grant another process stored can mean refreshing again under a new wait for the lock: a closed provider
+    // or a cancelled flight stops here instead.
+    this.stopIfDone(signal);
     if ('changed' in outcome) {
       if (rereads > 0) return this.fromStored(generation, signal, outcome.changed, rereads - 1);
       throw fault('CONNECTION_REQUIRED', 'The stored SMART grant keeps changing; run fireboat login.');
@@ -253,13 +266,29 @@ export class SmartStandaloneProvider extends TokenProvider {
     throw fault('CONNECTION_REQUIRED', 'The stored SMART grant was rejected; run fireboat login.');
   }
 
-  /** One refresh with the grant file locked. A 400 or 401 is reported as rejected; anything else throws. */
+  /** Throws the provider's fault when it was closed, or the cancellation fault when `signal` was aborted. */
+  private stopIfDone(signal: AbortSignal): void {
+    if (this.closed) throw fault('PROVIDER_CLOSED', 'Credential provider is closed.');
+    if (signal.aborted) throw abortFault(signal);
+  }
+
+  /**
+   * One refresh with the grant file locked. A 400 or 401 is reported as rejected; anything else throws. `signal` (the
+   * flight's) stops discovery and everything else before the refresh request is sent. The request itself is not cut by
+   * it: the server may rotate the refresh token as soon as the request arrives, so the request and its response run to
+   * their own timeout even after every waiter has left or the flight was superseded.
+   */
   private async refreshLocked(generation: number, signal: AbortSignal, stored: StoredGrant, held: LockHeld): Promise<{ token: CachedToken } | { rejected: true }> {
     const discovered = await this.discover(signal);
     if (discovered.tokenEndpoint.href !== stored.binding.tokenEndpoint) throw fault('CONNECTION_REQUIRED', 'The SMART token endpoint changed; run fireboat login.');
     const tokenUrl = discovered.tokenEndpoint;
     const form = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: stored.refreshToken!, ...await this.clientAuthentication(tokenUrl) });
 
+    // A holder that lost the grant lock (it stalled past the stale limit, say) must not present a refresh token that
+    // another process may already have replaced: a server that detects refresh-token reuse can revoke the whole grant.
+    await held();
+    // The last point at which an abort stops the refresh: nothing has been sent yet.
+    if (signal.aborted) throw abortFault(signal);
     // Lifetime is anchored to request start: the token may have been issued at any instant after this.
     const startedAt = this.now();
     let response: Response;
@@ -269,7 +298,7 @@ export class SmartStandaloneProvider extends TokenProvider {
         method: 'POST',
         redirect: 'manual',
         maxCompressedBytes: this.maxTokenResponseBytes,
-        signal: AbortSignal.any([signal, AbortSignal.timeout(this.timeoutMs)]),
+        signal: this.sentRequestSignal(),
         headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
         body: form.toString(),
       });
@@ -286,10 +315,13 @@ export class SmartStandaloneProvider extends TokenProvider {
     if (fields.patient !== undefined && fields.patient !== stored.binding.patientId) throw fault('POLICY_DENIED', 'Refreshed token patient context differs from the configured patient.');
     const grant = this.assess(fields.scope);
     if (fields.refresh_token !== undefined && !refreshShape(fields.refresh_token)) throw fault('INVALID_TOKEN_RESPONSE', 'Token endpoint returned an invalid response.');
-    // A rotated refresh token is written back even if this flight was superseded, so it is never lost; a holder that
-    // lost the grant lock writes nothing, since another process now owns the file.
+    // The file is the only copy of a rotated refresh token, so a response that was received is written back even if
+    // every waiter has left, the flight was superseded or the provider closed meanwhile. Only a holder that lost the
+    // grant lock writes nothing, since another process now owns the file. A process that exits before the response
+    // arrives can still lose a rotated token.
     await writeTokenFile(this.tokenFile, { ...stored, scope: grant.scope, accessToken, issuedAt: startedAt, expiresAt: startedAt + expiresIn * 1_000,
       ...(typeof fields.refresh_token === 'string' ? { refreshToken: fields.refresh_token } : {}) }, held);
+    // The access token reaches memory only while this flight's generation is current and the provider open.
     const token = this.commitToken(generation, startedAt, accessToken, expiresIn);
     this.adoptGrant(grant, accessToken);
     return { token };
@@ -301,6 +333,13 @@ export class SmartStandaloneProvider extends TokenProvider {
     // A grant directory that cannot hold the grant fails here, before the user is sent to approve anything.
     await prepareGrantDirectory(this.tokenFile);
     const controller = new AbortController();
+    this.signingIn = controller;
+    try { return await this.signInWith(io, controller); }
+    finally { if (this.signingIn === controller) this.signingIn = undefined; }
+  }
+
+  /** The sign-in itself, stopped through `controller` when the provider closes. */
+  private async signInWith(io: LoginIo, controller: AbortController): Promise<LoginResult> {
     const discovered = await this.discover(controller.signal);
     if (!discovered.codeChallengeMethods.includes('S256')) throw new LoginFault('PKCE_UNSUPPORTED');
     const key = this.keySource ? await loadAssertionKey(this.keySource, this.keyId!, this.env) : undefined;
@@ -360,7 +399,10 @@ export class SmartStandaloneProvider extends TokenProvider {
       if (!(this.now() < usableUntil)) throw fault('TOKEN_EXPIRED', 'Token endpoint returned a token whose usable lifetime elapsed before delivery.', true);
       const stored: StoredGrant = { version: 1, binding: this.expectedBinding(tokenUrl.href), scope: grant.scope, accessToken,
         issuedAt: startedAt, expiresAt: startedAt + expiresIn * 1_000, ...(typeof refreshToken === 'string' ? { refreshToken } : {}) };
-      await withGrantLock(this.tokenFile, held => this.storeLogin(stored, usableUntil, held));
+      // A provider closed during the sign-in neither takes the grant lock nor waits for it, and writes nothing.
+      if (this.closed) throw fault('PROVIDER_CLOSED', 'Credential provider is closed.');
+      try { await withGrantLock(this.tokenFile, held => this.storeLogin(stored, usableUntil, held), { signal: controller.signal }); }
+      catch (error) { throw this.closed ? fault('PROVIDER_CLOSED', 'Credential provider is closed.') : error; }
       return { scope: relation(grant), grantedTypes: grant.permits.size, servedTypes: this.servedTypes.length, refresh: typeof refreshToken === 'string',
         warnings: [...discovered.warnings, ...(grant.broader ? ['SMART_GRANT_BROADER_THAN_REQUESTED'] : []), ...(grant.narrower ? ['SMART_GRANT_NARROWER_THAN_REQUESTED'] : [])] };
     } finally {
@@ -371,6 +413,7 @@ export class SmartStandaloneProvider extends TokenProvider {
 
   /** Stores a login's grant with the grant lock held. The wait for the lock can outlast the token: an expired grant never replaces the stored one. */
   private async storeLogin(stored: StoredGrant, usableUntil: number, held: LockHeld): Promise<void> {
+    if (this.closed) throw fault('PROVIDER_CLOSED', 'Credential provider is closed.');
     if (!(this.now() < usableUntil)) throw fault('TOKEN_EXPIRED', 'The token\'s usable lifetime elapsed while the grant lock was held by another process.', true);
     await writeTokenFile(this.tokenFile, stored, held);
   }

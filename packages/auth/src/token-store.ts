@@ -4,7 +4,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { BEARER_TOKEN, fault, MAX_TOKEN_LENGTH, SCOPE_TOKEN } from './token-provider.js';
+import { abortFault, BEARER_TOKEN, fault, MAX_TOKEN_LENGTH, SCOPE_TOKEN } from './token-provider.js';
 
 /** What a stored grant is bound to. A file whose binding differs from the configuration is never used. */
 export interface GrantBinding { sourceBaseUrl: string; tokenEndpoint: string; clientId: string; patientId: string }
@@ -335,10 +335,17 @@ async function reclaimStale(lock: string, seen: LockState, owner: string, staleM
  * is never taken over; a lock untouched for longer than the stale limit (a crashed holder) is taken over under the
  * reclaim guard (see reclaimStale).
  * `work` receives `held`, which every commit calls first: a holder that lost its lock commits nothing. Waiting longer
- * than the wait limit is TOKEN_TIMEOUT. Only the holder's own lock is removed.
+ * than the wait limit is TOKEN_TIMEOUT. `signal` is checked before the directory is prepared and before every attempt
+ * to create or reclaim the lock: an abort seen there ends the wait with the provider's cancellation fault, and that
+ * waiter creates nothing (no directory, lock or reclaim guard). An attempt already under way when the abort arrives
+ * finishes; a lock it created is handed to `work`, which is responsible for honouring the signal, and is released as
+ * usual. Only the holder's own lock is removed.
  */
-export async function withGrantLock<T>(path: string, work: (held: LockHeld) => Promise<T>, options: { staleMs?: number; waitMs?: number } = {}): Promise<T> {
+export async function withGrantLock<T>(path: string, work: (held: LockHeld) => Promise<T>,
+  options: { staleMs?: number; waitMs?: number; signal?: AbortSignal } = {}): Promise<T> {
   if (!isAbsolute(path)) throw fault('INVALID_CONFIG', 'The SMART grant path must be absolute.');
+  const { signal } = options;
+  if (signal?.aborted) throw abortFault(signal);
   await privateDirectory(dirname(path));
   const lock = `${path}.lock`;
   const owner = randomBytes(16).toString('hex');
@@ -347,6 +354,9 @@ export async function withGrantLock<T>(path: string, work: (held: LockHeld) => P
   const started = performance.now();
   let handle: FileHandle;
   for (;;) {
+    // Checked first on every iteration: the sleep below ends early on abort, and a lock released or gone stale
+    // meanwhile must not be taken or reclaimed by a waiter that was cancelled.
+    if (signal?.aborted) throw abortFault(signal);
     const created = await createLock(lock, owner);
     if (created) { handle = created; break; }
     const seen = await inspectLock(lock);
@@ -354,7 +364,7 @@ export async function withGrantLock<T>(path: string, work: (held: LockHeld) => P
     // which applies on every attempt so a run of vanishing or reclaimed locks cannot outlast it.
     const again = !seen || (age(seen) > staleMs && await reclaimStale(lock, seen, owner, staleMs));
     if (performance.now() - started > waitMs) throw fault('TOKEN_TIMEOUT', 'The stored SMART grant is locked by another process.', true);
-    if (!again) await sleep(20);
+    if (!again) await sleep(20, undefined, { signal }).catch(() => undefined);
   }
   const touch = () => { const now = new Date(); return handle.utimes(now, now).catch(() => undefined); };
   const heartbeat = setInterval(() => { void touch(); }, heartbeatMs);

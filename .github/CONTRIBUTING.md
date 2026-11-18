@@ -33,7 +33,7 @@ The project uses no hosted CI. Pull requests get no automatic checks, so run the
 - `npm run eval:retrieval` and `npm run eval:retrieval -- --era legacy`, which cover MCP protocol versions 2026-07-28 and 2025-11-25. Both must pass.
 - `npm run test:isolation`, the patient-isolation suite. It currently runs diagnostically, so 0 counted cases is expected.
 - `node --import tsx scripts/generate-m3b-docs.ts --check` and `node --import tsx scripts/emit-m3b-contract.mjs --check`, which confirm the generated docs and the tool contract match the code.
-- `npm run test:package` after editing any document that ships in the npm package (see "Generated files" below). If its drift test fails, say so in the pull request.
+- `npm run test:package` after editing any document that ships in the npm package (see "Generated files" below), and after `npm run build` when you changed shipped code. If its drift test fails, say so in the pull request.
 
 Add tests for anything that touches authorization, patient confinement, payload withholding, continuations, strict search, transport budgets, redirects or denials. Prefer tests that use a real MCP SDK client over stdio.
 
@@ -41,7 +41,9 @@ Add tests for anything that touches authorization, patient confinement, payload 
 
 The code that enforces the safety boundaries is guarded by deliberate weakenings, called mutants, listed in `scripts/mutation-guards.mjs`. The gate edits the code to apply each mutant and expects a named test to fail. If a test does not notice, the guard is not doing its job. If you change guarded code, keep every mutant caught, or update its anchor (the code snippet it edits) so it keeps the same meaning. `node --import tsx --test tests/mutation-anchors.test.ts` checks that every anchor still applies. Never weaken a guard, budget, oracle, gate or test to make something pass. If a test looks wrong, say so in the pull request instead of editing it.
 
-A full run of the gate splits the mutants into shards (`--shard i/n`), then combines the shard reports with `--aggregate`. Most mutants are decided by a targeted first pass that runs a few likely test files and kills a mutant only when a named test fails twice; every other mutant is judged by the full path. A few mutants are declared survivors, each with a written justification in `scripts/mutation-survivors.json`. A full run takes hours, so while iterating run a few mutants with `--only <ids>`; a diagnostic `--only` run never counts as a full pass. Current results are in [docs/TESTING.md](../docs/TESTING.md).
+A full run of the gate splits the mutants into shards (`--shard i/n`), then combines the shard reports with `--aggregate`. Most mutants are decided by a targeted first pass that runs a few likely test files and kills a mutant only when a named test fails twice; every other mutant is judged by the full path. A few mutants are declared survivors, each with a written justification in `scripts/mutation-survivors.json`. A full run takes about an hour on an 18-CPU Mac, so while iterating run a few mutants with `--only <ids>`; a diagnostic `--only` run never counts as a full pass.
+
+**When to run what.** For any change to guarded code, run the anchor check and an `--only` run of the mutants whose registry entries edit the files you changed (`grep -n '<path>' scripts/mutation-guards.mjs` finds them). A full run is needed only when the change touches the gateway itself (`packages/core`, `packages/auth` or `packages/server`), and before a release. A change confined to the tooling (the quickstart helper, the evals, the isolation-suite bookkeeping, package staging and other scripts) does not need one. Current results are in [docs/TESTING.md](../docs/TESTING.md).
 
 ## Generated files
 
@@ -51,7 +53,7 @@ Do not hand-edit generated files. Change their inputs and regenerate:
 - `packages/core/src/generated/*` (generated from the pinned HL7 FHIR R4 package)
 - `packaging/licenses/inventory.json` and `packaging/*.json` (approved inventories, updated only by the packaging tools)
 
-Some documents ship in the npm package, including `README.md`, `.github/SECURITY.md`, `packaging/THIRD_PARTY_NOTICES.md`, several files under `docs/` and the files under `packaging/licenses/`. Their hashes are pinned in `packaging/npm-files.json`, and `tests/package-inventory-drift.test.ts` fails when one of them changes without a maintainer re-approving the inventory. If it fails after your edit, say so in the pull request; the maintainer re-approves it with `npm run stage:package -- --approve-inventory <absolute-new-stage>`.
+Some documents ship in the npm package, including `README.md`, `.github/SECURITY.md`, `packaging/THIRD_PARTY_NOTICES.md`, several files under `docs/` and the files under `packaging/licenses/`. Their hashes are pinned in `packaging/npm-files.json`, and `tests/package-inventory-drift.test.ts` fails when one of them changes without a maintainer re-approving the inventory, when a link in one of them names a file this repository does not track or a heading that does not exist, and, after a complete build, when a built `dist/` file differs from the approved inventory. If a correct heading anchor is refused, add an explicit `<a id="...">` before the heading. If it fails after your edit, say so in the pull request; the maintainer re-approves it with `npm run stage:package -- --approve-inventory <absolute-new-stage>`.
 
 Tool descriptions, schemas and server instructions are measured against byte caps in `docs/contracts/m3b-tools.json`. A wording change needs a fresh capture and must stay within each tool's cap.
 

@@ -5,9 +5,9 @@
 import { canonicalDecimal, compareDecimal, isDecimalLexeme, lexemeChangedByFloat } from './decimal.js';
 import {
   byteCompare, codings, compareInstant, get, get1, getStr, hasCoding, instantMs, isObj, refOf, sortBytes, str, uniqSorted, utcDate,
-  type Res,
+  type Json, type Res,
 } from './fhir.js';
-import { BANDS, elementCodings, inLLWindow, llDate, llToken, llType, tokenMatches } from './longlist.js';
+import { BANDS, LL_TYPES, elementCodings, inLLWindow, llDate, llToken, llType, tokenMatches } from './longlist.js';
 import type { PatientData, SharedData } from './reader.js';
 import type { AnswerForm, AnswerKind, GoldItem, Ref } from '../lib/types.js';
 
@@ -66,6 +66,19 @@ export function ccName(cc: unknown): string | null {
   const c = codings(cc)[0];
   return c?.display ?? c?.code ?? null;
 }
+
+/**
+ * Answer helpers also read returned copies, and a compact server (fhirHydrant, see servers/items.ts) may give a
+ * CodeableConcept or Coding as a plain string (its name) and a Reference as a plain string (the reference). Raw files
+ * never use these forms, so the gold is unchanged.
+ */
+export function conceptName(cc: unknown): string | null {
+  const c = Array.isArray(cc) ? cc[0] : cc; // a compact copy may wrap a single concept in a list (servers/items.ts first())
+  return typeof c === 'string' ? c : ccName(c);
+}
+export const refText = (v: unknown): string | null => (typeof v === 'string' ? v : refStr(v));
+/** Type/id of a reference, also when written absolute or versioned (as a compact server may write it). */
+export const refKey = (ref: string): string => /(?:^|\/)([A-Za-z]+\/[A-Za-z0-9.-]{1,64})(?:\/_history\/[^/]+)?$/.exec(ref)?.[1] ?? ref;
 
 export function obsValue(r: Res): ValueInfo {
   if (r.valueQuantity !== undefined) return quantityInfo(r.valueQuantity);
@@ -145,16 +158,21 @@ function resolve(ctx: Ctx, ref: string): Res {
   return r;
 }
 
+/** Looks up a referenced record; throws when it cannot be found. */
+export type Resolver = (ref: string) => Res;
+
 /** MIMIC keeps a drug's name in identifier (system .../mimic-medication-name); mixes name their ingredients. */
-export function medicationName(ctx: Ctx, med: Res): string {
+export function medicationNameWith(lookup: Resolver, med: Res): string {
   const named = get(med, 'identifier').find(i => isObj(i) && (str(i.system) ?? '').endsWith('/mimic-medication-name'));
   if (isObj(named) && str(named.value)) return str(named.value)!;
-  const ingredients = get(med, 'ingredient.itemReference.reference').map(x => str(x)).filter((x): x is string => !!x);
-  if (ingredients.length > 0) return ingredients.map(ref => medicationName(ctx, resolve(ctx, ref))).join(' + ');
-  const n = ccName(med.code);
+  const ingredients = get(med, 'ingredient.itemReference').map(x => refText(x)).filter((x): x is string => !!x);
+  if (ingredients.length > 0) return ingredients.map(ref => medicationNameWith(lookup, lookup(ref))).join(' + ');
+  const n = conceptName(med.code);
   if (!n) throw new Excluded(`Medication/${med.id} has no name`);
   return n;
 }
+
+export const medicationName = (ctx: Ctx, med: Res): string => medicationNameWith(ref => resolve(ctx, ref), med);
 
 /** Medication refs a name depends on: the product and, for a mix, its ingredients. */
 export function medicationRefs(ctx: Ctx, ref: string): string[] {
@@ -162,17 +180,20 @@ export function medicationRefs(ctx: Ctx, ref: string): string[] {
   return [ref, ...get(med, 'ingredient.itemReference.reference').map(x => str(x)!).flatMap(r => medicationRefs(ctx, r))];
 }
 
-export function drugName(ctx: Ctx, r: Res): string {
+/** Drug name of an order, administration or dispensing: the inline concept's name, else the referenced Medication's name. */
+export function drugNameWith(lookup: Resolver, r: Res): string {
   const cc = r.medicationCodeableConcept;
   if (cc !== undefined) {
-    const n = ccName(cc);
+    const n = conceptName(cc);
     if (!n) throw new Excluded(`${refOf(r)} has an unnamed medication`);
     return n;
   }
-  const ref = refStr(r.medicationReference);
+  const ref = refText(r.medicationReference);
   if (!ref) throw new Excluded(`${refOf(r)} has no medication`);
-  return medicationName(ctx, resolve(ctx, ref));
+  return medicationNameWith(lookup, lookup(ref));
 }
+
+export const drugName = (ctx: Ctx, r: Res): string => drugNameWith(ref => resolve(ctx, ref), r);
 
 export function drugDepends(ctx: Ctx, r: Res): string[] {
   const ref = refStr(r.medicationReference);
@@ -253,14 +274,80 @@ export function noteText(doc: Res): string {
 
 /** K2 entries of one CareTeam: "<member display> (<role>)" per participant, the reference when there is no display. */
 export function careTeamEntries(team: Res): string[] {
-  return get(team, 'participant').filter(isObj).map(pt => `${getStr(pt, 'member.display') ?? refStr(pt.member) ?? 'unknown'} (${ccName(get1(pt, 'role')) ?? 'no role'})`);
+  return get(team, 'participant').filter(isObj).map(pt => `${getStr(pt, 'member.display') ?? refText(pt.member) ?? 'unknown'} (${conceptName(get1(pt, 'role')) ?? 'no role'})`);
 }
 
-/** Templates whose answer is text in the item's own record: recompute the answer list from one returned copy; null = the copy lacks the text. */
-export const ANSWER_FROM_COPY: Record<string, (copy: Res) => string[] | null> = {
-  N2: c => { const d = getStr(c, 'content.attachment.data'); return d ? noteConditions(Buffer.from(d, 'base64').toString('utf8')) : null; },
-  K2: careTeamEntries,
-};
+/** O2 item display: the route of an order's first dosage instruction. */
+export const orderRoute = (r: Res): string | null => conceptName(get1(r, 'dosageInstruction.route'));
+
+/** C1 item display: the first coding's code. */
+export const firstCode = (cc: unknown): string | null => codings(cc)[0]?.code ?? null;
+
+/** E1 item display: the encounter class code. */
+export const encounterClass = (r: Res): string | null => (typeof r.class === 'string' ? r.class : getStr(r, 'class.code'));
+
+/**
+ * B1 entry of one organism record: "<organism> (<specimen type>)", from the first derivedFrom record that is a
+ * microbiology test whose Specimen was collected on `date` (UTC). `find` returns a referenced record or undefined.
+ * null when no such test is found.
+ */
+export function microOrganismEntry(org: Res, find: (ref: string) => Res | undefined, date: string): string | null {
+  for (const ref of get(org, 'derivedFrom').map(x => refText(x)).filter((x): x is string => !!x)) {
+    const test = find(ref);
+    if (!test || test.resourceType !== 'Observation' || !isMicroTest(test)) continue;
+    const specRef = refText(test.specimen);
+    const spec = specRef ? find(specRef) : undefined;
+    const t = spec && spec.resourceType === 'Specimen' ? getStr(spec, 'collection.collectedDateTime') : null;
+    if (!spec || t === null || utcDate(t) !== date) continue;
+    return `${conceptName(org.code)} (${conceptName(spec.type)})`;
+  }
+  return null;
+}
+
+/** F1: a claim's total (Money: value, currency as the unit). */
+export function claimTotal(c: Res): ValueInfo {
+  const total = get1(c, 'total');
+  return quantityInfo(isObj(total) ? { value: total.value, unit: total.currency } : null);
+}
+
+/** L9: the record states a dataAbsentReason and carries no value[x]. */
+export const recordedAbsent = (r: Res): boolean => r.dataAbsentReason !== undefined && obsValue(r).kind === 'none';
+
+/** E3 answer: hours from period.start to period.end of a stay. */
+export function stayHours(enc: Res): string {
+  const start = getStr(enc, 'period.start'), end = getStr(enc, 'period.end');
+  if (!start || !end) throw new Excluded('open period');
+  return hoursBetween(start, end);
+}
+
+/** E4 entries: the names of an encounter's reasonCode concepts. */
+export const encounterReasons = (enc: Res): string[] => get(enc, 'reasonCode').map(cc => conceptName(cc)).filter((x): x is string => !!x);
+
+/** K1 entries: the names of a care plan's activity.detail.code concepts. */
+export const carePlanActivities = (plan: Res): string[] => get(plan, 'activity.detail.code').map(cc => conceptName(cc)).filter((x): x is string => !!x);
+
+/** M1 entries: "<modality> | <body site>" per series of an imaging study. */
+export const imagingSeriesPairs = (s: Res): string[] => get(s, 'series').filter(isObj).map(se => {
+  const modality = typeof se.modality === 'string' ? se.modality : getStr(se, 'modality.display') ?? getStr(se, 'modality.code');
+  const site = typeof se.bodySite === 'string' ? se.bodySite : getStr(se, 'bodySite.display') ?? getStr(se, 'bodySite.code') ?? 'none';
+  return `${modality} | ${site}`;
+});
+
+/** M2 entries: "instances: <n>" and "series: <m>", counted from the series and instance arrays. */
+export function imagingCounts(s: Res): string[] {
+  const series = get(s, 'series').filter(isObj);
+  const instances = series.reduce((n, se) => n + get(se, 'instance').length, 0);
+  return [`instances: ${instances}`, `series: ${series.length}`];
+}
+
+/** D1 entries: "birth_date: ...", "deceased: <date>|yes|alive", "gender: ...". */
+export function demographicEntries(pt: Res): string[] {
+  const deceased = getStr(pt, 'deceasedDateTime') ?? (pt.deceasedBoolean === true ? 'yes' : 'alive');
+  return [`birth_date: ${str(pt.birthDate) ?? 'unknown'}`, `deceased: ${deceased}`, `gender: ${str(pt.gender) ?? 'unknown'}`];
+}
+
+/** LS1 entries of one record: system|code of every coding in the type's code element. */
+export const llCodeEntries = (r: Res, field: string): string[] => elementCodings(r, field).map(c => `${c.system}|${c.code}`);
 
 const encStart = (r: Res) => getStr(r, 'period.start');
 const procTime = (r: Res) => getStr(r, 'performedDateTime') ?? getStr(r, 'performedPeriod.start');
@@ -323,7 +410,7 @@ const RULES: Record<string, Rule> = {
   // A vital sign recorded with dataAbsentReason: gold is "not recorded".
   L9: (p, ctx) => {
     const r = resolve(ctx, p.record!);
-    if (r.dataAbsentReason === undefined || obsValue(r).kind !== 'none') throw new Excluded('record has a value');
+    if (!recordedAbsent(r)) throw new Excluded('record has a value');
     return valueResult('value', goldItem(r, null, obsTime(r), ccName(r.code)), [r], [`dataAbsentReason: ${ccName(r.dataAbsentReason)}`]);
   },
   // Latest survey score.
@@ -364,7 +451,7 @@ const RULES: Record<string, Rule> = {
       ? refStr(r.medicationReference) === p.medication
       : hasCoding(r.medicationCodeableConcept, p.code_system!, p.code!));
     const dose = (r: Res) => quantityInfo(get1(r, 'dosageInstruction.doseAndRate.doseQuantity'));
-    const route = (r: Res) => ccName(get1(r, 'dosageInstruction.route'));
+    const route = orderRoute;
     const { r, tied, notes } = latest(recs, x => getStr(x, 'authoredOn'), x => ({ ...dose(x), unit: `${dose(x).unit}|${route(x)}` }));
     if (dose(r).value === null) throw new Excluded('latest order has no dose');
     // O2 ruling: the Medication the orders reference (with a mix's ingredients, which name it) is in depends_on; the route
@@ -388,11 +475,7 @@ const RULES: Record<string, Rule> = {
     const tests = ctx.data.of('Observation').filter(o => isMicroTest(o) && specRefs.has(refStr(o.specimen) ?? ''));
     const testRefs = new Set(tests.map(refOf));
     const orgs = ctx.data.of('Observation').filter(o => isMicroOrg(o) && get(o, 'derivedFrom.reference').some(x => testRefs.has(str(x) ?? '')));
-    const items = orgs.map(o => {
-      const test = resolve(ctx, get(o, 'derivedFrom.reference').map(x => str(x)!).find(x => testRefs.has(x))!);
-      const spec = resolve(ctx, refStr(test.specimen)!);
-      return goldItem(o, null, obsTime(o), `${ccName(o.code)} (${ccName(spec.type)})`);
-    });
+    const items = orgs.map(o => goldItem(o, null, obsTime(o), microOrganismEntry(o, ref => ctx.data.byRef.get(ref), p.date!)));
     return listResult(items.map(i => i.display!), items, orgs.map(refOf), [...specimens, ...tests, ...orgs].map(refOf),
       ['entries are "<organism> (<specimen type>)"']);
   },
@@ -409,7 +492,7 @@ const RULES: Record<string, Rule> = {
   // Distinct diagnosis codes for stay E.
   C1: (p, ctx) => {
     const recs = ctx.data.of('Condition').filter(r => refStr(r.encounter) === p.encounter);
-    const items = recs.map(r => goldItem(r, null, null, codings(r.code)[0]?.code ?? null));
+    const items = recs.map(r => goldItem(r, null, null, firstCode(r.code)));
     return listResult(items.map(i => i.display!).filter(Boolean), items, recs.map(refOf), recs.map(refOf), ['entries are diagnosis codes']);
   },
   // Has the patient ever had diagnosis X?
@@ -446,8 +529,8 @@ const RULES: Record<string, Rule> = {
   E1: (_p, ctx) => {
     const recs = ctx.data.of('Encounter');
     const counts = new Map<string, number>();
-    for (const r of recs) { const c = getStr(r, 'class.code') ?? 'none'; counts.set(c, (counts.get(c) ?? 0) + 1); }
-    const items = recs.map(r => goldItem(r, null, encStart(r), getStr(r, 'class.code')));
+    for (const r of recs) { const c = encounterClass(r) ?? 'none'; counts.set(c, (counts.get(c) ?? 0) + 1); }
+    const items = recs.map(r => goldItem(r, null, encStart(r), encounterClass(r)));
     // E1 ruling: the answer is the total; answer_list is the per-class breakdown.
     const core = listResult([...counts].map(([c, n]) => `${c}: ${n}`), items, recs.map(refOf), recs.map(refOf), ['answer is the total; entries are "<class code>: <count>"']);
     return recs.length > 0 ? { ...core, answer: String(recs.length) } : core;
@@ -468,10 +551,8 @@ const RULES: Record<string, Rule> = {
   // Length of stay E in hours.
   E3: (p, ctx) => {
     const enc = resolve(ctx, p.encounter!);
-    const start = getStr(enc, 'period.start'), end = getStr(enc, 'period.end');
-    if (!start || !end) throw new Excluded('open period');
-    const h = hoursBetween(start, end);
-    const item: GoldItem = { ref: refOf(enc), value: h, value_as_recorded: null, unit: 'h', unit_code: 'h', unit_system: null, time: start, display: null };
+    const h = stayHours(enc);
+    const item: GoldItem = { ref: refOf(enc), value: h, value_as_recorded: null, unit: 'h', unit_code: 'h', unit_system: null, time: getStr(enc, 'period.start'), display: null };
     return { ...valueResult('value', item, [enc], ['hours from period.start to period.end, two decimals, half up']), value_as_recorded: null };
   },
   // Reason for the encounter on date D (Synthea).
@@ -479,7 +560,7 @@ const RULES: Record<string, Rule> = {
     const encs = encountersOn(ctx, p.date!);
     if (encs.length !== 1) throw new Excluded('not exactly one encounter on that date');
     const enc = encs[0]!;
-    const names = get(enc, 'reasonCode').map(cc => ccName(cc)).filter((x): x is string => !!x);
+    const names = encounterReasons(enc);
     return listResult(names, [goldItem(enc, null, encStart(enc), names.join('; '))], [refOf(enc)], ctx.data.of('Encounter').filter(e => overlapsDay(e, p.date!)).map(refOf));
   },
   // Date of the last encounter of type X.
@@ -494,8 +575,7 @@ const RULES: Record<string, Rule> = {
     const claims = ctx.data.of('Claim').filter(c => get(c, 'item.encounter.reference').some(x => str(x) === p.encounter));
     if (claims.length !== 1) throw new Excluded('not exactly one claim for the encounter');
     const c = claims[0]!;
-    const total = get1(c, 'total');
-    const v = quantityInfo(isObj(total) ? { value: total.value, unit: total.currency } : null);
+    const v = claimTotal(c);
     return valueResult('value', goldItem(c, v, getStr(c, 'created'), null), [c], ['unit is total.currency']);
   },
   // Number of claims created in UTC year Y.
@@ -549,7 +629,7 @@ const RULES: Record<string, Rule> = {
   K1: (p, ctx) => {
     const plan = resolve(ctx, p.record!);
     if (str(plan.status) !== 'active') throw new Excluded('plan not active');
-    const names = get(plan, 'activity.detail.code').map(cc => ccName(cc)).filter((x): x is string => !!x);
+    const names = carePlanActivities(plan);
     const active = ctx.data.of('CarePlan').filter(c => str(c.status) === 'active');
     return listResult(names, [goldItem(plan, null, getStr(plan, 'period.start'), p.display ?? null)], [refOf(plan)], active.map(refOf),
       ['distinct activity.detail.code names']);
@@ -563,7 +643,7 @@ const RULES: Record<string, Rule> = {
   // Modality and body site of the most recent imaging study.
   M1: (_p, ctx) => {
     const studies = ctx.data.of('ImagingStudy');
-    const pairs = (s: Res) => get(s, 'series').filter(isObj).map(se => `${getStr(se, 'modality.display') ?? getStr(se, 'modality.code')} | ${getStr(se, 'bodySite.display') ?? getStr(se, 'bodySite.code') ?? 'none'}`);
+    const pairs = imagingSeriesPairs;
     const { r, tied, notes } = latest(studies, s => getStr(s, 'started'), s => ({ ...none(), recorded: sortBytes(pairs(s)).join(',') }));
     return listResult(pairs(r), tied.map(s => goldItem(s, null, getStr(s, 'started'), null)), tied.map(refOf), studies.map(refOf),
       [...notes, 'entries are "<modality> | <body site>" per series']);
@@ -575,7 +655,7 @@ const RULES: Record<string, Rule> = {
     const instances = series.reduce((n, se) => n + get(se, 'instance').length, 0);
     const notes: string[] = ['counted from the series and instance arrays'];
     if (str(s.numberOfSeries) !== String(series.length) || str(s.numberOfInstances) !== String(instances)) notes.push('recorded numberOfSeries/numberOfInstances differ from the arrays');
-    return listResult([`instances: ${instances}`, `series: ${series.length}`], [goldItem(s, null, getStr(s, 'started'), null)], [refOf(s)], [refOf(s)], notes);
+    return listResult(imagingCounts(s), [goldItem(s, null, getStr(s, 'started'), null)], [refOf(s)], [refOf(s)], notes);
   },
   // Device types recorded for the patient.
   V1: (_p, ctx) => {
@@ -589,7 +669,7 @@ const RULES: Record<string, Rule> = {
   LS1: (p, ctx) => {
     const { t, recs, notes } = llSet(p, ctx);
     const time = (r: Res) => (t.date ? getStr(r, t.date.element) : null);
-    const codes = recs.flatMap(r => elementCodings(r, t.code.field).map(c => `${c.system}|${c.code}`));
+    const codes = recs.flatMap(r => llCodeEntries(r, t.code.field));
     if (codes.length === 0) throw new Excluded('no coded record in the set');
     const items = recs.map(r => goldItem(r, null, time(r), null));
     return listResult(codes, items, recs.map(refOf), recs.map(refOf), [...notes, `entries are system|code from ${t.code.field}, every coding counted`]);
@@ -630,9 +710,7 @@ const RULES: Record<string, Rule> = {
   // Birth date, sex, and date of death or alive.
   D1: (_p, ctx) => {
     const pt = ctx.data.patient;
-    const deceased = getStr(pt, 'deceasedDateTime') ?? (pt.deceasedBoolean === true ? 'yes' : 'alive');
-    const list = [`birth_date: ${str(pt.birthDate) ?? 'unknown'}`, `deceased: ${deceased}`, `gender: ${str(pt.gender) ?? 'unknown'}`];
-    return listResult(list, [goldItem(pt, null, null, null)], [refOf(pt)], [refOf(pt)], ['entries are "birth_date: ...", "deceased: <date>|alive", "gender: ..."']);
+    return listResult(demographicEntries(pt), [goldItem(pt, null, null, null)], [refOf(pt)], [refOf(pt)], ['entries are "birth_date: ...", "deceased: <date>|alive", "gender: ..."']);
   },
 };
 
@@ -714,3 +792,145 @@ export function lexemeEligible(core: GoldCore): boolean {
 
 export const hasRule = (id: string) => ruleId(id) in RULES;
 export { encounterOf, procTime, encStart };
+
+// ---- Answer entries on returned copies (scoring: run/score-lib.ts) ----------------------------------------------
+
+/** A returned copy of a referenced record is missing (scoring only). */
+export class MissingCopy extends Error {}
+
+/** The run's returned copies of one record, in call order. */
+export type CopyLookup = (ref: string) => Res[];
+
+/** The first returned copy of a referenced record; throws MissingCopy when none came back. */
+export function firstCopy(look: CopyLookup, ref: string): Res {
+  const c = look(ref)[0];
+  if (!c) throw new MissingCopy(ref);
+  return c;
+}
+
+/**
+ * How a template's answer is read from a record, so that scoring can apply the gold rule's own extraction to a returned
+ * copy. `from(copy, look, params)` returns the entries the copy yields, or null when it cannot (a referenced record has
+ * no returned copy, the rule would exclude it, or a date in the copy does not parse). `from` reads a referenced record
+ * through `look(ref)[0]`; answerOptions supplies each returned copy of it in turn. Scopes:
+ * - item: each gold item's copy yields [item.display] ([] when the display is null);
+ * - question: the item's copy yields the whole gold answer list (`value`: the item's own value instead, for E3);
+ * - set: each item's copy yields a subset of the answer list, and together the items yield all of it (LS1).
+ */
+export interface AnswerEntry {
+  scope: 'item' | 'question' | 'set';
+  /** Compare with the item's own value ([] when it is null: the copy must carry no value) instead of its display or the list. */
+  value?: true;
+  /**
+   * The record that names the item (E2's Encounter, N3's report): some returned copy of one of `refs` must reference the
+   * item, or the item fails. `refs` reads the gold provenance and the question parameters.
+   */
+  parent?: { refs: (provenance: readonly string[], params: Record<string, string>) => string[]; links: (parent: Res, itemRef: string) => boolean };
+  from: (copy: Res, look: CopyLookup, params: Record<string, string>) => string[] | null;
+}
+
+const one = (x: string | null): string[] => (x === null ? [] : [x]);
+/**
+ * The gold reader's value text of an Observation; null when the copy's value would not parse. A compact copy may write
+ * valueCodeableConcept as a plain string (its name, as conceptName reads it); raw files never do, so obsValue is unchanged.
+ */
+const obsEntry = (c: Res): string[] | null => {
+  if (typeof c.valueCodeableConcept === 'string' && c.valueQuantity === undefined && str(c.valueString) === null) return one(c.valueCodeableConcept);
+  try { return one(obsValue(c).value); } catch { return null; }
+};
+/** A dataAbsentReason that is present and not empty: an object with at least one property, or a non-empty string. */
+const statedReason = (v: unknown): boolean => (typeof v === 'string' ? v.length > 0 : isObj(v) && Object.keys(v).length > 0);
+const linksTo = (refs: Json[], itemRef: string) => refs.some(x => { const t = refText(x); return t !== null && refKey(t) === itemRef; });
+const drugEntry = (c: Res, look: CopyLookup) => [drugNameWith(ref => firstCopy(look, ref), c)];
+
+export const ANSWER_ENTRIES: Record<string, AnswerEntry> = {
+  // item scope: one entry per record, the item's display.
+  C1: { scope: 'item', from: c => one(firstCode(c.code)) },
+  C3: { scope: 'item', from: c => one(conceptName(c.code)) },
+  P1: { scope: 'item', from: c => one(conceptName(c.code)) },
+  A1: { scope: 'item', from: c => one(conceptName(c.code)) },
+  B2: { scope: 'item', from: c => one(conceptName(c.code)) },
+  N3: { scope: 'item', from: c => one(conceptName(c.code)),
+    parent: { refs: prov => prov.filter(r => r.startsWith('DiagnosticReport/')), links: (dr, ref) => linksTo(get(dr, 'result'), ref) } },
+  V1: { scope: 'item', from: c => one(conceptName(c.type)) },
+  // L9: the copy must state the absence (a dataAbsentReason present and not empty, no value[x]); its entry is the item's name.
+  L9: { scope: 'item', from: c => {
+    let absent: boolean;
+    try { absent = recordedAbsent(c); } catch { return null; } // a value the gold reader would not parse is not an absence
+    return absent && statedReason(c.dataAbsentReason) ? one(conceptName(c.code)) : null;
+  } },
+  // the item's own value as the gold reader reads it: text (L7), or for L2 and L5 also a canonical decimal or no value
+  L2: { scope: 'item', value: true, from: obsEntry },
+  L5: { scope: 'item', value: true, from: obsEntry },
+  L7: { scope: 'item', value: true, from: obsEntry },
+  F1: { scope: 'item', value: true, from: c => { try { return one(claimTotal(c).value); } catch { return null; } } },
+  E1: { scope: 'item', from: c => one(encounterClass(c)) },
+  E2: { scope: 'item', from: c => one(str(c.name)),
+    parent: { refs: (_prov, p) => [p.encounter!], links: (enc, ref) => linksTo(get(enc, 'location').filter(isObj).map(l => l.location as Json), ref) } },
+  O2: { scope: 'item', from: c => one(orderRoute(c)) },
+  O1: { scope: 'item', from: drugEntry },
+  G1: { scope: 'item', from: drugEntry },
+  O3: { scope: 'item', from: drugEntry },
+  B1: { scope: 'item', from: (c, look, p) => {
+    let e: string | null;
+    try { e = microOrganismEntry(c, ref => look(ref)[0], p.date!); } catch (err) {
+      if (err instanceof Excluded || err instanceof MissingCopy) throw err;
+      return null; // a collection time the gold reader would not parse (no offset, not a date) cannot place the specimen
+    }
+    return e === null ? null : [e];
+  } },
+  // question scope: the item's record holds the whole answer.
+  N2: { scope: 'question', from: c => { const d = getStr(c, 'content.attachment.data'); return d ? noteConditions(Buffer.from(d, 'base64').toString('utf8')) : null; } },
+  K2: { scope: 'question', from: careTeamEntries },
+  E4: { scope: 'question', from: encounterReasons },
+  K1: { scope: 'question', from: carePlanActivities },
+  M1: { scope: 'question', from: imagingSeriesPairs },
+  M2: { scope: 'question', from: imagingCounts },
+  D1: { scope: 'question', from: demographicEntries },
+  E3: { scope: 'question', value: true, from: c => {
+    try { return [stayHours(c)]; } catch { return null; } // an open period, or a time the gold reader would not parse
+  } },
+  // set scope: the answer is the union over the records.
+  LS1: { scope: 'set', from: (c, _look, p) => {
+    if (!LL_TYPES.some(t => t.type === p.resource_type)) throw new Excluded('question names no long-list type');
+    return llCodeEntries(c, llType(p.resource_type!).code.field);
+  } },
+};
+
+/** Upper bound on the combinations of referenced copies tried for one copy of an item (copies per record are few). */
+export const MAX_COPY_COMBINATIONS = 256;
+
+/**
+ * Every distinct entry list one copy of an item can yield, trying each returned copy of each referenced record (a
+ * Medication and a mix's ingredients, a test Observation and its Specimen) in turn, up to MAX_COPY_COMBINATIONS
+ * combinations. A combination that hits a rule exclusion or a referenced record without a copy yields nothing; an
+ * empty result means the copy cannot yield the answer. With one copy per record (raw files) there is at most one list.
+ */
+export function answerOptions(entry: AnswerEntry, copy: Res, look: CopyLookup, params: Record<string, string>): string[][] {
+  const out = new Map<string, string[]>();
+  const prefix: number[] = [];
+  for (let n = 0; n < MAX_COPY_COMBINATIONS; n++) {
+    const counts: number[] = [];
+    let k = 0;
+    const pick: CopyLookup = ref => {
+      const cs = look(ref);
+      if (cs.length === 0) return [];
+      const i = prefix[k] ?? 0;
+      prefix[k] = i;
+      counts[k++] = cs.length;
+      return [cs[i]!];
+    };
+    try {
+      const got = entry.from(copy, pick, params);
+      if (got !== null) out.set(JSON.stringify(got), got);
+    } catch (e) { if (!(e instanceof Excluded || e instanceof MissingCopy)) throw e; }
+    // next combination: advance the last choice that has another copy, and drop the choices made after it
+    prefix.length = k;
+    let j = k - 1;
+    while (j >= 0 && prefix[j]! + 1 >= counts[j]!) j--;
+    if (j < 0) break;
+    prefix[j] = prefix[j]! + 1;
+    prefix.length = j + 1;
+  }
+  return [...out.values()];
+}

@@ -88,21 +88,21 @@
     },
     {
       "path": "dist/packages/auth/src/smart-standalone.js",
-      "size": 23019,
+      "size": 25896,
       "mode": 420,
-      "sha256": "99a10a667de38e4159437c8dfc7758a0ac67c780ce54df30e406a3a1d07b0ae8"
+      "sha256": "196d7c50ada46ea9b3ba62e8e3eac98b7bb929c2876ec058d2a05a47de4b0838"
     },
     {
       "path": "dist/packages/auth/src/token-provider.js",
-      "size": 17556,
+      "size": 19815,
       "mode": 420,
-      "sha256": "728dd7e9b4a3a760c5b687da7991c4147fc5480935de529287c504ccfa08863a"
+      "sha256": "c3186b3c443f446953d3bd5db54267983732d2f924f0234cc1cdfad027d6c349"
     },
     {
       "path": "dist/packages/auth/src/token-store.js",
-      "size": 20539,
+      "size": 21395,
       "mode": 420,
-      "sha256": "c585820bf8f28765ef2aaf2f8dea0eddd7f642609ffc4b1f6dfdfd70029e85b8"
+      "sha256": "a10b78150bd5e79c4d5645051847ee88327f69ec88283a1a911d317172e992e0"
     },
     {
       "path": "dist/packages/core/src/catalog.js",
@@ -286,9 +286,9 @@
     },
     {
       "path": "dist/packages/server/src/main.js",
-      "size": 13816,
+      "size": 14587,
       "mode": 420,
-      "sha256": "bcd8b09c03d5757d1fba28d535da20e01b264d2abe4e4c3d246f89989866c446"
+      "sha256": "217ed46a81ebd73e8b95269d060e493a04a91f3278747a4f7c40b1e882fc5efe"
     },
     {
       "path": "dist/packages/server/src/release.js",

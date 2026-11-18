@@ -44,8 +44,13 @@ SMART sign-in decides whether the FHIR server will answer fireboat. It does not 
    token if there is one, and otherwise asks you to run `fireboat login` again. Refreshes, sign-ins and `logout` are
    serialized with a lock file, so several fireboat processes can share one token file without overwriting each other's
    grant. A process that is still working keeps its lock; a lock left by a process that stopped is taken over after a
-   minute. A server that shuts down (its input closes, or it gets SIGINT or SIGTERM) stops a sign-in in progress and waits up to
-   about 1.5 seconds for it to unwind, so it normally releases a lock it holds.
+   minute. A tool call that is cancelled or reaches its deadline does not cut a refresh request already sent: the
+   authorization server may already have replaced the refresh token, so the reply is stored when it arrives, and until that
+   request ends (at most `limits.timeoutMs`) other calls wait for the lock. A server that shuts down (its input closes, or
+   it gets SIGINT or SIGTERM) stops token work that has not sent its request yet. It gives a refresh request already sent
+   up to about 1.5 seconds to be answered and stored, then cuts it and releases the lock; if the reply had not arrived, a
+   refresh token the server replaced is lost and you need to run `fireboat login` again. The process exits within about
+   2.5 seconds of the shutdown starting ([limits of that bound](CONFIGURATION.md#cli-and-configuration-path-precedence)).
 
 ## Standalone patient launch
 
@@ -124,7 +129,7 @@ SMART adds no new error codes to tool results. Sign-in problems in the MCP serve
 | Discovery or token response malformed, or `scope` missing | `INVALID_TOKEN_RESPONSE` |
 | A token naming another patient, a write-capable grant, or a type not granted | `POLICY_DENIED` |
 | An endpoint not on loopback, or on another origin without a pin | `LOOPBACK_ONLY` |
-| Another fireboat process held the token file's lock for more than 10 seconds | `TOKEN_TIMEOUT` (retryable) |
+| A refresh in this or another fireboat process held the token file's lock for more than 10 seconds | `TOKEN_TIMEOUT` (retryable) |
 
 `fireboat login` prints `login: ok` on success, with how the granted scope compares with the request and how many
 resource types it covers. On failure it prints one line, `fireboat: <code>`, and exits non-zero:
@@ -149,8 +154,8 @@ If the token file stays locked by another process, `login` prints `TOKEN_TIMEOUT
 compare with the request, as categories and counts only. Under SMART, the `recent-labs-v1` workflow counts as ready only
 when the grant also permits reading Patient and searching Observation. Doctor signs in before it reads the metadata. If
 that fails (before `fireboat login`, a grant that expired with no refresh token, SMART discovery or a token endpoint
-that redirects, a discovered endpoint that the loopback rules refuse, or a token endpoint error), or the source rejects the
-token, doctor prints `metadata: not-checked` and the fault `SIGN_IN_UNAVAILABLE`: a failed sign-in is reported as the
+that redirects, a discovered endpoint that the loopback rules refuse, or a token endpoint error), or the source answers
+the metadata request with 401 (the token is rejected), doctor prints `metadata: not-checked` and the fault `SIGN_IN_UNAVAILABLE`: a failed sign-in is reported as the
 sign-in, not as a metadata fault.
 
 ## Example configurations

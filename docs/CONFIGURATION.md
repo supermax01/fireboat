@@ -95,9 +95,9 @@ These settings were prompted by one run against a cloud FHIR service through a l
 | `upstreamBytes` | Upstream body byte bound. |
 | `retentionBytes` | In-memory retention byte bound. |
 | `ttlMs` | Retained-result and search-cursor lifetime. |
-| `timeoutMs` | Transport request timeout. |
+| `timeoutMs` | Timeout for each request to the source and to a SMART or OAuth token endpoint. A SMART refresh request already sent runs to this timeout even after the tool call that started it ends. |
 | `maxHandles` | Retained handle quota, including search cursors. When it is full, the oldest result handle is evicted first, then the oldest search cursor ([Limits](LIMITS.md)). |
-| `deadlineMs` | Overall gateway-call deadline. |
+| `deadlineMs` | Overall gateway-call deadline. It ends the tool call's wait, but it does not cut a SMART refresh request already sent. |
 | `maxQueue` | Local admission queue bound. |
 
 `defaultBytes` and `maxBytes` each accept 8–128 KiB. The explicit per-call `output.max_bytes` floor remains 4 KiB. The shipped default is 48 KiB, capped by the configured maximum (128 KiB by default); the reason is recorded in [Limits](LIMITS.md). An explicit default above that maximum is rejected. Since schema 0.4 these bounds count the response once: they bound the model copy, the larger of the text content and the compact JSON of `structuredContent`, for results and errors alike. The complete serialized MCP tool result, which carries both copies, is reported as `budget.wire_bytes` and is always at most 3 × the limit + 4,096 bytes; JSON-RPC framing is measured separately. Schema 0.3 counted the complete result against a 24 KiB default. See [Limits](LIMITS.md) for bounds, measured floors and how a full handle quota evicts cursors.
@@ -130,6 +130,8 @@ Config path precedence is `--config` > `FIREBOAT_CONFIG` > `FHIR_MCP_CONFIG`. Th
 
 During serving, stdout carries MCP protocol traffic only; diagnostics go to stderr. The compiled `node ...` command is the same stdio server as the `fireboat --config <path>` form.
 
+The server shuts down when its standard input ends or closes, or on SIGINT or SIGTERM, and exits within about 2.5 seconds; a SMART refresh in progress gets part of that time to finish and release its lock ([SMART on FHIR sign-in](SMART.md)). The bound relies on Node.js writing to a pipe asynchronously, which it does on macOS and Linux. On Windows, where Node.js writes to a pipe synchronously, a client that stops reading the server's output without closing it can block the server before the bound applies. Only macOS has been run.
+
 ## Run the synthetic source and server
 
 The source defaults to port 8080. Set `SYNTHETIC_FHIR_PORT` to move it; only that variable is read, and a generic `PORT` is ignored. Keep this running in a separate terminal:
@@ -148,7 +150,7 @@ npm run doctor -- --config "$PWD/.local/fireboat.config.json"
 node dist/packages/server/src/cli.js --config "$PWD/.local/fireboat.config.json"
 ```
 
-`npm run doctor` alone wraps `--doctor --config examples/local.config.json`, so it checks port 8080. The extra `--config` above overrides it because the last one wins. If doctor prints `METADATA_UNAVAILABLE`, check that the source is running on the port in `source.baseUrl`. If it prints `SIGN_IN_UNAVAILABLE`, the configured sign-in gave no usable token (for example, no `fireboat login` yet, a client secret that is not set, a token endpoint that failed or redirected, or a discovered endpoint that the loopback rules refuse), or the source rejected the token, so the metadata was not checked.
+`npm run doctor` alone wraps `--doctor --config examples/local.config.json`, so it checks port 8080. The extra `--config` above overrides it because the last one wins. If doctor prints `METADATA_UNAVAILABLE`, check that the source is running on the port in `source.baseUrl`. If it prints `SIGN_IN_UNAVAILABLE`, the configured sign-in gave no usable token (for example, no `fireboat login` yet, a client secret that is not set, a token endpoint that failed or redirected, or a discovered endpoint that the loopback rules refuse), or the source answered the metadata request with 401 (it rejected the token), so the metadata was not checked.
 
 Point an MCP host at `node /absolute/path/to/dist/packages/server/src/cli.js --config /absolute/path/to/config.json`. Use absolute paths for Node, the CLI and configuration. Only Claude Code has been tested; generated configuration does not establish host compatibility.
 
@@ -160,7 +162,7 @@ Doctor checks configuration and source metadata. It prints:
 - the runtime cell;
 - the source alias, with its loopback check, auth type and data classification;
 - the FHIR version and metadata coverage, or `metadata: not-checked` when the configured sign-in failed or the source
-  rejected its token (the fault is then `SIGN_IN_UNAVAILABLE`, not a metadata fault);
+  answered with 401 (it rejected the token; the fault is then `SIGN_IN_UNAVAILABLE`, not a metadata fault);
 - the readiness of the `recent-labs-v1` workflow (under SMART sign-in, this also needs Patient read and Observation search
   in the granted scope);
 - the search-profile proof state;

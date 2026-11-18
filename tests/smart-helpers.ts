@@ -39,6 +39,8 @@ export interface StubOptions {
   basePath?: string;
   /** Edits the discovery document before it is served. */
   discovery?: (doc: Rec, origin: string) => Rec | void;
+  /** Awaited before the discovery document is served, to hold the reply. */
+  holdDiscovery?: () => Promise<void> | void;
   /** Replaces the discovery response entirely. */
   discoveryReply?: (res: ServerResponse) => boolean;
   /** Edits the token response for call `n` (1-based); `requestedScope` is what the client asked for. */
@@ -82,6 +84,7 @@ export async function startSmartStub(options: StubOptions = {}) {
     const url = new URL(req.url!, origin);
     if (url.pathname === `${basePath}/.well-known/smart-configuration`) {
       discoveryRequests++;
+      await options.holdDiscovery?.();
       if (options.discoveryReply?.(res)) return;
       let doc: Rec = { issuer: `${origin}${basePath}`, token_endpoint: tokenUrl(), authorization_endpoint: `${origin}${prefix}/auth/authorize`,
         grant_types_supported: ['authorization_code', 'client_credentials'], token_endpoint_auth_methods_supported: ['private_key_jwt'],

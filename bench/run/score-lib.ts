@@ -1,12 +1,12 @@
 // Scripted-track scoring of questions and probes. Pure functions over RunRecords and gold.
 // Scoring choices beyond the plain checks are marked "rule:" and listed in the report.
-import { LosslessNumber, type LosslessValue } from '../lib/json.js';
+import { LosslessNumber, parseNumbersAsStrings, stringifyLossless, type LosslessValue } from '../lib/json.js';
 import type { CallBytes, CountedSignal, GoldItem, GoldRecord, ParsedResult, QuestionRecord, Ref, RunRecord, ScoreRecord, Verdict } from '../lib/types.js';
 import type { ProbeGoldRecord, ProbeRecord } from '../gold/probes.js';
 import { decimalEquals, isDecimalLexeme, lexemeChangedByFloat } from '../gold/decimal.js';
 import { bandOf } from '../gold/longlist.js';
 import { uniqSorted, type Res } from '../gold/fhir.js';
-import { ANSWER_FROM_COPY, ruleId } from '../gold/rules.js';
+import { ANSWER_ENTRIES, answerOptions, refKey, ruleId, type AnswerEntry } from '../gold/rules.js';
 import { instantEqual } from '../agent/grade.js';
 import { parserFor } from '../servers/parsers.js';
 import { isObj, type Obj } from '../servers/items.js';
@@ -62,25 +62,51 @@ export function timeStrings(r: LosslessValue): string[] {
 export interface ItemCheck { ref: Ref; found: boolean; identity: boolean; value: boolean | null; unit: boolean | null; time: boolean | null;
   unit_code: boolean | null; lexeme_eligible: boolean; lexeme_exact: boolean | null; text: boolean | null }
 
-/** The gold answer list and the gold rule's own extraction for a template whose answer is text in the item's record. */
-export interface AnswerCheck { from: (copy: Res) => string[] | null; list: readonly string[] }
+/**
+ * The answer entries one gold item must yield and the gold rule's own extraction applied to a returned copy: every entry
+ * list the copy can yield with some returned copy of each record it references (empty: none). equal: as unique sorted
+ * lists; subset: every entry the copy yields is expected.
+ */
+export interface AnswerCheck { expected: readonly string[]; from: (copy: Res) => string[][]; mode: 'equal' | 'subset'; decidesValue?: boolean }
+
+/** A returned copy in the gold reader's form (numbers as lexeme strings), so gold extraction code applies unchanged. */
+const asRes = (() => {
+  const cache = new WeakMap<Obj, Res>();
+  return (o: Obj): Res => {
+    let r = cache.get(o);
+    if (!r) { r = parseNumbersAsStrings(stringifyLossless(o)) as Res; cache.set(o, r); }
+    return r;
+  };
+})();
+
+/** Whether a copy's entries meet the check. */
+export function answerMatches(got: readonly string[] | null, a: Pick<AnswerCheck, 'expected' | 'mode'>): boolean {
+  if (got === null) return false;
+  if (a.mode === 'subset') { const want = new Set(a.expected); return got.every(x => want.has(x)); }
+  return uniqSorted(got).join('\n') === uniqSorted(a.expected).join('\n');
+}
 
 /**
  * Item checks (value, unit, time, identity) for one gold item against every returned copy of its resource.
  * rule: value and unit are checked only when the gold value is recorded in the resource (value_as_recorded non-null);
- *       derived values (for example a length of stay) are not item checks. Time is checked when the gold item has one.
+ *       a derived value (a stay's length, E3) is not a value check here; its answer entry below checks it on the copy.
+ *       Where the answer entry reads the item's value (decidesValue) and the gold value is text, the entry alone decides it:
+ *       the value node search would accept the text anywhere in the resource and never sees a coding's code.
+ *       Time is checked when the gold item has one.
  * rule: a value passes if some Quantity or value[x] in the resource is decimal-equal (text: exactly equal); the unit
  *       passes if that same node shows the gold unit (unit, else code, else currency), or none when the gold has none.
- * rule: for a template whose answer is text in the item's own record (gold/rules.ts ANSWER_FROM_COPY), the text check
- *       passes only if some returned copy yields exactly the gold answer list (as unique sorted lists) when the gold
- *       rule's own extraction is applied to it. A copy without the text (extraction null) never passes.
+ * rule: for a template whose answer is read from a record (gold/rules.ts ANSWER_ENTRIES), the text check passes only
+ *       if some returned copy yields the expected entries when the gold rule's own extraction is applied to it (item
+ *       scope: the item's display; question scope: the gold answer list; set scope: a subset of the answer list), with
+ *       some returned copy of each record it references (every combination is tried, bounded). A copy that cannot yield
+ *       them (extraction null, for example a referenced record without a returned copy) never passes.
  */
 export function checkItem(g: GoldItem, copies: Obj[], identityOk: boolean, answer?: AnswerCheck): ItemCheck {
   const c: ItemCheck = { ref: g.ref, found: copies.length > 0, identity: identityOk && copies.length > 0, value: null, unit: null, time: null,
     unit_code: null, lexeme_eligible: false, lexeme_exact: null, text: null };
   if (!c.found) return c;
   const rec = g.value_as_recorded;
-  if (rec !== null) {
+  if (rec !== null && !(answer?.decidesValue && !isDecimalLexeme(rec))) {
     const numeric = isDecimalLexeme(rec);
     const nodes = copies.flatMap(r => valueNodes(r)).filter(n => (numeric ? isDecimalLexeme(n.lexeme) && decimalEquals(n.lexeme, rec) : n.lexeme === rec));
     c.value = nodes.length > 0;
@@ -89,13 +115,7 @@ export function checkItem(g: GoldItem, copies: Obj[], identityOk: boolean, answe
     if (numeric && lexemeChangedByFloat(rec)) { c.lexeme_eligible = true; c.lexeme_exact = nodes.some(n => n.lexeme === rec); }
   }
   if (g.time !== null) c.time = copies.some(r => timeStrings(r).some(t => instantEqual(t, g.time!)));
-  if (answer) {
-    const want = uniqSorted(answer.list).join('\n');
-    c.text = copies.some(r => {
-      const got = answer.from(r as unknown as Res);
-      return got !== null && uniqSorted(got).join('\n') === want;
-    });
-  }
+  if (answer) c.text = copies.some(r => answer.from(asRes(r)).some(got => answerMatches(got, answer)));
   return c;
 }
 
@@ -212,11 +232,39 @@ export function scoreQuestionRun(run: RunRecord, q: QuestionRecord, g: GoldRecor
     byRef.set(ref, [...(byRef.get(ref) ?? []), r]);
   }
   const identityOf = (ref: Ref) => items.some(i => i.ref === ref && (i.patient === null || i.patient === run.patient_id));
-  const from = ANSWER_FROM_COPY[ruleId(q.template_id)];
-  const answer: AnswerCheck | undefined = from ? { from, list: g.answer_list ?? [] } : undefined;
-  const checks = g.items.map(gi => checkItem(gi, byRef.get(gi.ref) ?? [], identityOf(gi.ref), answer));
+  // rule: B4 is scored on the completeness verdict, so its answer entries are not checked.
+  const entry: AnswerEntry | undefined = strataScoring(q.template_id) === 'verdict' ? undefined : ANSWER_ENTRIES[ruleId(q.template_id)];
+  // A reference may be absolute or versioned (as a compact server may write it); copies are keyed Type/id.
+  const look = (ref: string): Res[] => (byRef.get(refKey(ref)) ?? []).map(asRes);
+  // rule: where a record names the item (E2's Encounter, N3's report), some returned copy of it must still reference the
+  // item. When no copy of that record came back, coverage of depends_on already fails the question; it is not missing text.
+  const parentOk = (ref: Ref): boolean => {
+    if (!entry?.parent) return true;
+    const parents = entry.parent.refs(g.provenance, q.parameters).flatMap(p => look(p));
+    return parents.length === 0 || parents.some(c => entry.parent!.links(c, ref));
+  };
+  const answerOf = (gi: GoldItem): AnswerCheck | undefined => {
+    if (!entry) return undefined;
+    const linked = parentOk(gi.ref);
+    const from = (copy: Res) => (linked ? answerOptions(entry, copy, look, q.parameters) : []);
+    if (entry.value) return { expected: gi.value === null ? [] : [gi.value], from, mode: 'equal', decidesValue: true };
+    if (entry.scope === 'item') return { expected: gi.display === null ? [] : [gi.display], from, mode: 'equal' };
+    if (entry.scope === 'set') return { expected: g.answer_list ?? [], from, mode: 'subset' };
+    return { expected: g.answer_list ?? [], from, mode: 'equal' };
+  };
+  const checks = g.items.map(gi => checkItem(gi, byRef.get(gi.ref) ?? [], identityOf(gi.ref), answerOf(gi)));
   const textChecked = checks.filter(c => c.text !== null);
-  const textMissing = textChecked.some(c => c.text === false);
+  // rule: set scope (LS1): the entries of the items' passing copies must together equal the gold answer list. Checked only
+  // when every gold item came back: codes held by records that were not returned are a coverage failure, not missing text.
+  let setOk = true;
+  if (entry?.scope === 'set' && g.items.length > 0 && g.items.every(gi => look(gi.ref).length > 0)) {
+    const union = new Set<string>();
+    for (const gi of g.items) for (const copy of look(gi.ref)) for (const got of answerOptions(entry, copy, look, q.parameters)) {
+      if (answerMatches(got, { expected: g.answer_list ?? [], mode: 'subset' })) for (const x of got) union.add(x);
+    }
+    setOk = uniqSorted(union).join('\n') === uniqSorted(g.answer_list ?? []).join('\n');
+  }
+  const textMissing = textChecked.some(c => c.text === false) || !setOk;
   const outcomes = new Set(run.op_outcomes.map(o => o.outcome));
   const opsOk = run.op_outcomes.length === q.operations.length && [...outcomes].every(o => o === 'ok');
 
@@ -261,7 +309,7 @@ export function scoreQuestionRun(run: RunRecord, q: QuestionRecord, g: GoldRecor
     precision = round4(pr2.precision);
   }
   // rule: an item-free gold (an explicit "none" or empty count) is correct only if every operation succeeded and R covers G.
-  const itemsCorrect = g.items.length > 0 ? checks.every(itemOk) : opsOk && [...G].every(x => R.has(x));
+  const itemsCorrect = g.items.length > 0 ? checks.every(itemOk) && setOk : opsOk && [...G].every(x => R.has(x));
   // rule: a list question is correct only if R covers depends_on (the answer is known to be right) and, where the plan
   // selects exactly G, no list operation returned a record outside G or the gold items (identity applies to every
   // returned item; returning too much is not rewarded).
@@ -284,8 +332,9 @@ export function scoreQuestionRun(run: RunRecord, q: QuestionRecord, g: GoldRecor
     correct = other.length === 0 && (verdict === 'signalled_partial' || (verdict === 'complete' && coversG)) ? 1 : 0;
     notes.push('scored on the completeness verdict (band B4)');
   }
-  if (g.items.some(i => i.value_as_recorded === null && i.value !== null)) notes.push('derived item value not checked');
-  if (textMissing) notes.push('no returned copy of a gold record yields the gold answer list from its own text');
+  if (!entry?.value && g.items.some(i => i.value_as_recorded === null && i.value !== null)) notes.push('derived item value not checked');
+  if (textMissing) notes.push(entry?.scope === 'set' && !setOk ? 'the returned copies do not yield the gold answer list together'
+    : 'no returned copy of a gold record yields its answer entries under the gold rule\'s extraction');
 
   const failure: string[] = [...outcomes].filter(o => o !== 'ok');
   if (run.flags.includes('server_start_failed')) failure.push('server_start_failed');
@@ -304,7 +353,7 @@ export function scoreQuestionRun(run: RunRecord, q: QuestionRecord, g: GoldRecor
     },
     other_patient_refs: other, verdict, first_page_coverage: fpc, recall, precision, extra_records: extras.length, suppressed_reads: suppressedReads,
     lexeme: { eligible: checks.filter(c => c.lexeme_eligible).length, exact: checks.filter(c => c.lexeme_exact === true).length },
-    ...(answer ? { answer_text: { checked: textChecked.length, ok: textChecked.filter(c => c.text === true).length } } : {}),
+    ...(entry ? { answer_text: { checked: textChecked.length, ok: textChecked.filter(c => c.text === true).length } } : {}),
     calls: run.calls.length, bytes: sumBytes(run.calls),
     latency_ms: Math.round(run.calls.reduce((a, c) => a + c.latency_ms, 0) * 1000) / 1000,
     ...latencySplit(run.calls),

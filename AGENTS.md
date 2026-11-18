@@ -56,7 +56,7 @@ Breaking any of these is a bug, whatever a task asks for.
 | `packages/server/src/` | The MCP adapter, CLI (`cli.ts`, `main.ts`), `doctor.ts` and release identity. |
 | `packages/auth/src/` | Optional outbound sign-in: OAuth client credentials (`client-credentials.ts`), the shared token machinery (`token-provider.ts`), and the SMART client flows (`smart-discovery.ts`, `client-assertion.ts`, `smart-scopes.ts`, `smart-backend.ts`, `smart-standalone.ts`, `pkce.ts`, `token-store.ts`). `fireboat login` and its loopback redirect listener live in `packages/server/src/login.ts`, which the serving process never loads. |
 | `packages/evals/` | The deterministic retrieval eval harness and its fixtures. |
-| `tests/` | The Node test suite (`*.test.ts`), the isolation suite and its pinned design specification in `tests/isolation/`, and the installed-package tests in `tests/package/`. `tests/package-inventory-drift.test.ts` fails when a shipped document or licence file no longer matches the approved npm inventory. |
+| `tests/` | The Node test suite (`*.test.ts`), the isolation suite and its pinned design specification in `tests/isolation/`, and the installed-package tests in `tests/package/`. `tests/package-inventory-drift.test.ts` fails when a shipped document, licence file or (after a complete build) `dist/` file no longer matches the approved inventories, or a link in a shipped document is broken. |
 | `scripts/` | The mutation gate, generators, packaging and staging (`stage-package.ts`) and qualification tools. |
 | `examples/` | The demo, the synthetic FHIR source, example configs and the HAPI quickstart helper (`examples/quickstart/`). |
 | `docs/` | Testing ([TESTING.md](docs/TESTING.md)), benchmark results ([BENCHMARK.md](docs/BENCHMARK.md)), the security model, configuration, limits, the HAPI quickstart, generated reference docs, the tool contract (`docs/contracts/m3b-tools.json`), the README diagrams (`docs/assets/`) and the logo and brand assets (`docs/assets/brand/`). |
@@ -81,7 +81,7 @@ npm run demo -- --check  # no Docker, no keys: synthetic source + real stdio ser
 | Command | Use |
 | --- | --- |
 | `npm run check` | Required before every commit that touches code, tests, schemas or data. It takes a few minutes. |
-| `npm run test:package` | Staging, licence and inventory-drift tests. Run it after any change to a shipped document. |
+| `npm run test:package` | Staging, licence, inventory-drift and link tests. Run it after any change to a shipped document, and after `npm run build` when shipped code changed: with a complete, fresh `dist/` it also compares the approved dist hashes, and it says why when it skips that comparison. |
 | `node --import tsx --test tests/<file>.test.ts` | Run one test file while iterating. |
 | `npm run eval:retrieval` and `npm run eval:retrieval -- --era legacy` | Deterministic retrieval evals in both MCP protocol eras. Both must pass. |
 | `npm run test:isolation` | The patient-isolation suite. It currently runs diagnostically: `status=DIAGNOSTIC earned=0` is expected. |
@@ -90,20 +90,20 @@ npm run demo -- --check  # no Docker, no keys: synthetic source + real stdio ser
 | `node --import tsx scripts/emit-m3b-contract.mjs --check` | Check that the tool contract is current. |
 | `node --import tsx scripts/generate-r4-checkable-paths.ts --check` | Check that the checkable-path table matches the pinned R4 indexes. |
 | `node --import tsx --test tests/mutation-anchors.test.ts` | Check that every mutation anchor still applies. |
-| `node scripts/mutation-guards.mjs --list` | List the mutation registry (1,659 entries in this tree; the output's `count` field gives the current number). |
+| `node scripts/mutation-guards.mjs --list` | List the mutation registry (1,718 entries in this tree; the output's `count` field gives the current number). |
 
 Give long or parallel test runs their own `TMPDIR` and delete it afterwards. Some suites leave temporary folders behind when they are stopped early.
 
 The synthetic FHIR source listens on port 8080 by default. Set `SYNTHETIC_FHIR_PORT` (only that variable is read) to move it, for example when 8080 is busy, and point a copy of the config at the same port.
 
-Shipped documents (`README.md`, `LICENSE`, `NOTICE`, `.github/SECURITY.md`, `packaging/THIRD_PARTY_NOTICES.md`, `docs/QUICKSTART.md`, `docs/LIMITS.md`, the generated reference docs, `docs/contracts/m3b-tools.json` and `packaging/licenses/*`; the package stages the `.github/` and `packaging/` ones at its root as `SECURITY.md`, `THIRD_PARTY_NOTICES.md` and `licenses/*`) are hash-bound in `packaging/npm-files.json` (Markdown as staged, with relative links rewritten to package paths or to the public repository; staging refuses a link left outside the package); after an intended change, run `npm run build`, re-approve with `npm run stage:package -- --approve-inventory <dir>` (a new absolute directory, deleted afterwards), then run `npm run test:package`.
+Shipped documents (`README.md`, `LICENSE`, `NOTICE`, `.github/SECURITY.md`, `packaging/THIRD_PARTY_NOTICES.md`, `docs/QUICKSTART.md`, `docs/LIMITS.md`, the generated reference docs, `docs/contracts/m3b-tools.json` and `packaging/licenses/*`; the package stages the `.github/` and `packaging/` ones at its root as `SECURITY.md`, `THIRD_PARTY_NOTICES.md` and `licenses/*`) are hash-bound in `packaging/npm-files.json` (Markdown as staged, with relative links rewritten to package paths or to the public repository). Staging needs a git checkout of this repository at its top level, and refuses (`STAGE_DOCUMENT_LINK`) a link left outside the package, a root-relative, undecodable or untracked target, or an anchor that names no heading or HTML `id` in the target Markdown file; after an intended change, run `npm run build`, re-approve with `npm run stage:package -- --approve-inventory <dir>` (a new absolute directory, deleted afterwards), then run `npm run test:package`.
 
 ## How changes are judged
 
 The evidence is local and deterministic. **The project uses no hosted CI.**
 
 1. **Tests that pin behaviour.** Add tests for anything touching authorization, confinement, payload withholding, continuations, strict search, transport budgets, redirects or denials. Prefer tests that use a real MCP SDK client over stdio.
-2. **The mutation gate.** Guarded code has mutants in `scripts/mutation-guards.mjs`. Each mutant is a deliberate weakening that a named test must catch. If you change guarded code, keep its mutants killed, or update their anchors with the same meaning. The registry names killing tests by their titles, so do not rename a test without updating the registry.
+2. **The mutation gate.** Guarded code has mutants in `scripts/mutation-guards.mjs`. Each mutant is a deliberate weakening that a named test must catch. If you change guarded code, keep its mutants killed, or update their anchors with the same meaning. The registry names killing tests by their titles, so do not rename a test without updating the registry. Every change to guarded code runs the anchor check and an `--only` run of the mutants that edit the files it changed. The full sharded run is required when a change touches the gateway itself (`packages/core`, `packages/auth` or `packages/server`), and before a release; a change confined to the tooling (the quickstart helper, the evals, the isolation-suite bookkeeping, package staging and other scripts) does not need it.
 3. **The evals,** in both eras.
 4. **The isolation suite.**
 5. **Byte caps.** Tool descriptions, schemas and server instructions are measured against caps in `docs/contracts/m3b-tools.json`. A wording change needs a fresh capture, and must stay within each tool's cap.
