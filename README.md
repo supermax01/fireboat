@@ -108,7 +108,7 @@ claude mcp add --transport stdio --scope local fireboat -- "$NODE" "$CLI" --conf
 Restart Claude Code, then ask:
 “Show this synthetic patient's recent lab results. Cite the source records and explain any coverage limits.”
 
-**Only Claude Code has been tried as an AI host,** and only with an earlier version of the response format.
+**Only Claude Code has been tried as an AI host:** one scripted session with the current response format, against the bundled synthetic source.
 The [configuration guide](docs/CONFIGURATION.md) covers ports, CLI options, doctor output and search examples.
 Local stdio does not mean the host keeps data on your device; see the [security model](docs/SECURITY-MODEL.md#residuals-and-non-claims).
 
@@ -305,7 +305,7 @@ See the [security model](docs/SECURITY-MODEL.md#residuals-and-non-claims).
 **Why only one patient?** It keeps the safety rule simple and checkable: the agent cannot reach anyone else, whatever it
 asks for.
 
-**Which AI hosts work?** Only Claude Code has been tried, with an earlier version of the response format.
+**Which AI hosts work?** Only Claude Code has been tried: one scripted session with the current response format, against the bundled synthetic source.
 
 **Do I need Docker?** No. The demo and the bundled synthetic server need only Node. Docker is only for the optional HAPI
 FHIR quickstart and the live checks.
